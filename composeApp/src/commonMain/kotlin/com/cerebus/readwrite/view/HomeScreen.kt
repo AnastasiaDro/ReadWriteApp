@@ -1,5 +1,6 @@
-package com.cerebus.readwrite
+package com.cerebus.readwrite.view
 
+import com.cerebus.readwrite.Greeting
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,7 +22,7 @@ import readwriteapp.composeapp.generated.resources.compose_multiplatform
 
 @Composable
 @Preview
-fun App() {
+fun HomeScreen() {
     MaterialTheme {
         var showContent by remember { mutableStateOf(false) }
         Column(
