@@ -44,6 +44,8 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.koin.compose)
+            implementation(project(":feature:game_screen"))
+            implementation(project(":feature:flashcards"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

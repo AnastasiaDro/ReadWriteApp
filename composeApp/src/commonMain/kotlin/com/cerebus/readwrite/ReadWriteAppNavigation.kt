@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.cerebus.game_screen.presentation.GameScreenWrapper
 import com.cerebus.readwrite.view.HomeScreen
 import com.cerebus.tutube.navigation.Screens
 
@@ -22,9 +23,9 @@ fun ReadWriteAppNavigation() = MaterialTheme {
 //            }
             )
         }
-//        composable(Screens.AUTHORIZATION.route) {
-//            AuthScreenWrapper(navController)
-//        }
+        composable(Screens.GAME.route) {
+            GameScreenWrapper(navController)
+        }
 //        composable(Screens.FILL_USER_PROFILE.route) {
 //            ProfileScreenWrapper(navController)
 //        }
