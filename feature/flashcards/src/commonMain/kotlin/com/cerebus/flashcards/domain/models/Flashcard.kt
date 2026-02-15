@@ -9,4 +9,5 @@ data class Flashcard(
     val id: String,
     val imageUrl: String,
     val name: String,
+    val deckId: String? = null,
 )

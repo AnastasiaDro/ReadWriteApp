@@ -1,0 +1,12 @@
+package com.cerebus.flashcards.data.entity
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "flashcards")
+data class FlashcardEntity(
+    @PrimaryKey val id: String,
+    val imageUrl: String,
+    val name: String,
+    val deckId: String? = null,
+)

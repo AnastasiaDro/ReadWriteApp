@@ -7,15 +7,11 @@ import com.cerebus.flashcards.domain.repositories.FlashcardRepository
 import org.koin.dsl.module
 
 val flashcardsModule = module {
-
-    /** Data **/
-    /** Repository **/
     single<FlashcardRepository> {
         FlashcardRepositoryImpl(storage = get())
     }
 
-    /** Storage **/
     single<FlashcardStorage> {
-        FlashcardStorageImpl()
+        FlashcardStorageImpl(dao = get())
     }
 }

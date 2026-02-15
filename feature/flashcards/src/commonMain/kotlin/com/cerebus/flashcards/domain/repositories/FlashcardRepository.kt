@@ -1,5 +1,6 @@
 package com.cerebus.flashcards.domain.repositories
 
+import com.cerebus.core.utils.CustomResult
 import com.cerebus.flashcards.domain.models.BulkInsertResult
 import com.cerebus.flashcards.domain.models.Flashcard
 
@@ -18,6 +19,6 @@ interface FlashcardRepository {
 
     suspend fun updateFlashcard(id: String, newData: Flashcard): Boolean
 
-    suspend fun addFlashcardsBulk(cards: List<Flashcard>): Result<BulkInsertResult>
+    suspend fun addFlashcardsBulk(cards: List<Flashcard>): CustomResult<BulkInsertResult>
 
 }
