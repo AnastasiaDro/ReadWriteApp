@@ -11,5 +11,6 @@ fun <T : RoomDatabase> getRoomDatabase(
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 }

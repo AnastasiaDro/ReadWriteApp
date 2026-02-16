@@ -56,6 +56,7 @@ kotlin {
             implementation(project(":feature:game_screen"))
             implementation(project(":feature:flashcards"))
             implementation(project(":feature:decks"))
+            implementation(project(":feature:create_screen"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

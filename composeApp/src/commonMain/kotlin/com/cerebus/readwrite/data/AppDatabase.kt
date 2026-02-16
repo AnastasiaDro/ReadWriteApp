@@ -11,7 +11,7 @@ import com.cerebus.flashcards.data.entity.FlashcardEntity
 
 @Database(
     entities = [FlashcardEntity::class, DeckEntity::class],
-    version = 1,
+    version = 2,
 )
 @ConstructedBy(ReadWriteDatabaseConstructor::class)
 abstract class ReadWriteDatabase : RoomDatabase() {

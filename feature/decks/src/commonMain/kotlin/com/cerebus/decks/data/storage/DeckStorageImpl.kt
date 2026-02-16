@@ -9,6 +9,14 @@ import com.cerebus.decks.domain.models.BulkInsertResult
 class DeckStorageImpl(
     private val dao: DeckDao,
 ) : DeckStorage {
+    override suspend fun getAll(): List<DeckEntity> {
+        return runCatching { dao.getAll() }.getOrDefault(emptyList())
+    }
+
+    override suspend fun getById(id: String): DeckEntity? {
+        return runCatching { dao.getById(id) }.getOrNull()
+    }
+
     override suspend fun add(deck: DeckEntity): Boolean {
         return runCatching {
             dao.insert(deck)
@@ -87,6 +95,14 @@ class DeckStorageImpl(
         }.getOrElse { error ->
             CustomResult.Failure(error)
         }
+    }
+
+    override suspend fun updateName(id: String, name: String): Boolean {
+        return runCatching { dao.updateName(id, name) > 0 }.getOrDefault(false)
+    }
+
+    override suspend fun updateCoverUri(id: String, coverUri: String?): Boolean {
+        return runCatching { dao.updateCoverUri(id, coverUri) > 0 }.getOrDefault(false)
     }
 
     override suspend fun downloadStub(id: String): CustomResult<DeckEntity> {

@@ -1,0 +1,33 @@
+<resources>
+    <string name="create_deck">Создать колоду</string>
+    <string name="back">Назад</string>
+    <string name="my_decks">Мои колоды</string>
+    <string name="no_decks_yet">Пока нет колод</string>
+    <string name="deck_name_label">Название колоды</string>
+    <string name="add_cover">Добавить обложку</string>
+    <string name="edit_cover">Изменить обложку</string>
+    <string name="create">Создать</string>
+    <string name="cancel">Отмена</string>
+    <string name="choose_source">Выберите источник</string>
+    <string name="choose_from_gallery">Выбрать из галереи</string>
+    <string name="take_photo">Сделать фото</string>
+    <string name="close">Закрыть</string>
+    <string name="delete_deck_title">Удалить колоду?</string>
+    <string name="delete_deck_message">Удалить "%s"?</string>
+    <string name="delete">Удалить</string>
+    <string name="deck_created_message">Колода "%s" создана!</string>
+    <string name="add_cards">Добавить карточки</string>
+    <string name="no_cover">Нет обложки</string>
+    <string name="cards">Карточки</string>
+    <string name="edit_name">Изменить название</string>
+    <string name="save">Сохранить</string>
+    <string name="unnamed_deck">Без названия</string>
+    <string name="add_card">Добавить карточку</string>
+    <string name="flashcard_name">Карточка %d</string>
+    <string name="error_empty_deck_name">Пожалуйста, введите название колоды</string>
+    <string name="error_create_deck_failed">Не удалось создать колоду</string>
+    <string name="error_delete_deck_failed">Не удалось удалить колоду</string>
+    <string name="error_deck_not_found">Колода не найдена</string>
+    <string name="error_update_name_failed">Не удалось обновить название</string>
+    <string name="error_update_cover_failed">Не удалось обновить обложку</string>
+</resources>

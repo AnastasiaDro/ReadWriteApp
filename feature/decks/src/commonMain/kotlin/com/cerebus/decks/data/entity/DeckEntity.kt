@@ -7,4 +7,5 @@ import androidx.room.PrimaryKey
 data class DeckEntity(
     @PrimaryKey val id: String,
     val name: String,
+    val coverUri: String? = null,
 )

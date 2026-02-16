@@ -4,5 +4,11 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Нужен доступ к камере, чтобы сделать обложку колоды.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Нужен доступ к микрофону для корректной работы камеры.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Нужен доступ к фото, чтобы выбрать обложку колоды.</string>
 </dict>
 </plist>

@@ -1,0 +1,33 @@
+<resources>
+    <string name="create_deck">Create deck</string>
+    <string name="back">Back</string>
+    <string name="my_decks">My decks</string>
+    <string name="no_decks_yet">No decks yet</string>
+    <string name="deck_name_label">Deck name</string>
+    <string name="add_cover">Add cover</string>
+    <string name="edit_cover">Edit cover</string>
+    <string name="create">Create</string>
+    <string name="cancel">Cancel</string>
+    <string name="choose_source">Choose source</string>
+    <string name="choose_from_gallery">Choose from gallery</string>
+    <string name="take_photo">Take photo</string>
+    <string name="close">Close</string>
+    <string name="delete_deck_title">Delete deck?</string>
+    <string name="delete_deck_message">Delete "%s"?</string>
+    <string name="delete">Delete</string>
+    <string name="deck_created_message">Deck "%s" created!</string>
+    <string name="add_cards">Add cards</string>
+    <string name="no_cover">No cover</string>
+    <string name="cards">Cards</string>
+    <string name="edit_name">Edit name</string>
+    <string name="save">Save</string>
+    <string name="unnamed_deck">Untitled deck</string>
+    <string name="add_card">Add card</string>
+    <string name="flashcard_name">Card %d</string>
+    <string name="error_empty_deck_name">Please enter a deck name</string>
+    <string name="error_create_deck_failed">Failed to create deck</string>
+    <string name="error_delete_deck_failed">Failed to delete deck</string>
+    <string name="error_deck_not_found">Deck not found</string>
+    <string name="error_update_name_failed">Failed to update name</string>
+    <string name="error_update_cover_failed">Failed to update cover</string>
+</resources>

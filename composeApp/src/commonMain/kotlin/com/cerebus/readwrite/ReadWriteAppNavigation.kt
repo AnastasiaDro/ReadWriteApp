@@ -5,7 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.game_screen.presentation.GameScreenWrapper
+import com.cerebus.readwrite.view.CreateScreenRoute
+import com.cerebus.readwrite.view.DeckScreenRoute
 import com.cerebus.readwrite.view.HomeScreen
 import com.cerebus.tutube.navigation.Screens
 
@@ -18,16 +21,28 @@ fun ReadWriteAppNavigation() = MaterialTheme {
 
         composable(Screens.HOME.route) {
             HomeScreen(
-//                onNavigateToProfile = {
-//                navController.navigate(Screens.AUTHORIZATION.route)
-//            }
+                onNavigateToCreate = {
+                    navController.navigate(Screens.CREATE.route)
+                }
+            )
+        }
+        composable(Screens.CREATE.route) {
+            CreateScreenRoute(
+                onBackClick = { navController.popBackStack() },
+                onNavigateToDeck = { deckId ->
+                    DeckNavigationState.selectedDeckId = deckId
+                    navController.navigate(Screens.DECK.route)
+                }
+            )
+        }
+        composable(Screens.DECK.route) {
+            DeckScreenRoute(
+                deckId = DeckNavigationState.selectedDeckId,
+                onBackClick = { navController.popBackStack() },
             )
         }
         composable(Screens.GAME.route) {
             GameScreenWrapper(navController)
         }
-//        composable(Screens.FILL_USER_PROFILE.route) {
-//            ProfileScreenWrapper(navController)
-//        }
     }
 }
