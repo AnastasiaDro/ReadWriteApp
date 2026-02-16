@@ -20,7 +20,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_21)
         }
     }
-    
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -30,7 +30,7 @@ kotlin {
             isStatic = true
         }
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -55,6 +55,7 @@ kotlin {
             implementation(project(":core:database"))
             implementation(project(":feature:game_screen"))
             implementation(project(":feature:flashcards"))
+            implementation(project(":feature:decks"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

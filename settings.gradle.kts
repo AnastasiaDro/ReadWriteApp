@@ -31,5 +31,6 @@ dependencyResolutionManagement {
 include(":composeApp")
 include(":feature:game_screen")
 include(":feature:flashcards")
+include(":feature:decks")
 include(":core:utils")
 include(":core:database")

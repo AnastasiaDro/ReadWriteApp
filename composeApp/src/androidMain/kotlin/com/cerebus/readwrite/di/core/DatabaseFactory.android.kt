@@ -1,0 +1,10 @@
+package com.cerebus.readwrite.di.core
+
+import androidx.room.RoomDatabase
+import com.cerebus.database.getDatabaseBuilder
+import com.cerebus.readwrite.MyApp
+import com.cerebus.readwrite.data.ReadWriteDatabase
+
+actual fun provideDatabaseBuilder(): RoomDatabase.Builder<ReadWriteDatabase> {
+    return getDatabaseBuilder(context = MyApp.instance)
+}
