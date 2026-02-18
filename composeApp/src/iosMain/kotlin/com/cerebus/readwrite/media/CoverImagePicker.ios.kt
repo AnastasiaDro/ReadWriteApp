@@ -84,6 +84,10 @@ private class IOSImagePickerDelegate(
             ?: (didFinishPickingMediaWithInfo[UIImagePickerControllerOriginalImage] as? UIImage)
         val imageUrl = didFinishPickingMediaWithInfo[UIImagePickerControllerImageURL] as? NSURL
         val resolvedUri = when {
+            // Prefer library URL when available to avoid app-sandbox-only copies.
+            imageUrl != null &&
+                picker.sourceType == UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypePhotoLibrary ->
+                imageUrl.absoluteString
             image != null -> saveImageToLocalFile(image)
             imageUrl != null -> imageUrl.absoluteString
             else -> null
