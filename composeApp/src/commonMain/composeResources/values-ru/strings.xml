@@ -23,6 +23,8 @@
     <string name="save">Сохранить</string>
     <string name="unnamed_deck">Без названия</string>
     <string name="add_card">Добавить карточку</string>
+    <string name="add_card_title">Создать карточку</string>
+    <string name="card_name_label">Название карточки</string>
     <string name="flashcard_name">Карточка %d</string>
     <string name="error_empty_deck_name">Пожалуйста, введите название колоды</string>
     <string name="error_create_deck_failed">Не удалось создать колоду</string>
@@ -30,4 +32,6 @@
     <string name="error_deck_not_found">Колода не найдена</string>
     <string name="error_update_name_failed">Не удалось обновить название</string>
     <string name="error_update_cover_failed">Не удалось обновить обложку</string>
+    <string name="error_empty_card_name">Пожалуйста, введите название карточки</string>
+    <string name="error_add_card_failed">Не удалось создать карточку</string>
 </resources>

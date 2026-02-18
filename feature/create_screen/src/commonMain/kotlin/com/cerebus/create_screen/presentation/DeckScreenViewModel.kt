@@ -4,14 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.decks.domain.repositories.DeckRepository
+import com.cerebus.flashcards.domain.models.Flashcard
+import com.cerebus.flashcards.domain.repositories.FlashcardRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 class DeckScreenViewModel(
     private val deckRepository: DeckRepository,
+    private val flashcardRepository: FlashcardRepository,
 ) : ViewModel() {
 
     private companion object {
@@ -67,6 +71,7 @@ class DeckScreenViewModel(
                     it.copy(
                         isEditCoverSourceDialogVisible = false,
                         pendingPickerRequest = DeckPickerRequest.GALLERY,
+                        pendingPickerTarget = DeckPickerTarget.DECK_COVER,
                     )
                 }
             }
@@ -76,6 +81,7 @@ class DeckScreenViewModel(
                     it.copy(
                         isEditCoverSourceDialogVisible = false,
                         pendingPickerRequest = DeckPickerRequest.CAMERA,
+                        pendingPickerTarget = DeckPickerTarget.DECK_COVER,
                     )
                 }
             }
@@ -84,8 +90,69 @@ class DeckScreenViewModel(
                 _uiState.update { it.copy(pendingPickerRequest = null) }
             }
 
-            is DeckScreenAction.OnCoverUriSelected -> updateDeckCover(action.uri)
-            DeckScreenAction.OnAddCardClick -> Unit
+            is DeckScreenAction.OnImagePicked -> onImagePicked(action.uri)
+            DeckScreenAction.OnAddCardClick -> {
+                _uiState.update {
+                    it.copy(
+                        isAddCardDialogVisible = true,
+                        validationError = null,
+                        cardName = "",
+                        cardImageUrl = null,
+                    )
+                }
+            }
+
+            DeckScreenAction.OnDismissAddCardDialog -> {
+                _uiState.update {
+                    it.copy(
+                        isAddCardDialogVisible = false,
+                        isCardCoverSourceDialogVisible = false,
+                        cardName = "",
+                        cardImageUrl = null,
+                        isCardSaving = false,
+                        validationError = null,
+                    )
+                }
+            }
+
+            is DeckScreenAction.OnCardNameChanged -> {
+                _uiState.update {
+                    it.copy(
+                        cardName = action.value.take(MAX_DECK_NAME_LENGTH),
+                        validationError = null,
+                    )
+                }
+            }
+
+            DeckScreenAction.OnCardCoverButtonClick -> {
+                _uiState.update { it.copy(isCardCoverSourceDialogVisible = true) }
+            }
+
+            DeckScreenAction.OnDismissCardCoverSourceDialog -> {
+                _uiState.update { it.copy(isCardCoverSourceDialogVisible = false) }
+            }
+
+            DeckScreenAction.OnPickCardCoverFromGalleryClick -> {
+                _uiState.update {
+                    it.copy(
+                        isCardCoverSourceDialogVisible = false,
+                        pendingPickerRequest = DeckPickerRequest.GALLERY,
+                        pendingPickerTarget = DeckPickerTarget.CARD_IMAGE,
+                    )
+                }
+            }
+
+            DeckScreenAction.OnTakeCardCoverPhotoClick -> {
+                _uiState.update {
+                    it.copy(
+                        isCardCoverSourceDialogVisible = false,
+                        pendingPickerRequest = DeckPickerRequest.CAMERA,
+                        pendingPickerTarget = DeckPickerTarget.CARD_IMAGE,
+                    )
+                }
+            }
+
+            DeckScreenAction.OnConfirmAddCard -> addCard()
         }
     }
 
@@ -105,6 +172,7 @@ class DeckScreenViewModel(
                         validationError = null,
                     )
                 }
+                loadFlashcards(deckId)
             } else {
                 _uiState.update {
                     it.copy(
@@ -112,6 +180,77 @@ class DeckScreenViewModel(
                         validationError = DeckValidationError.DECK_NOT_FOUND,
                     )
                 }
+            }
+        }
+    }
+
+    private fun loadFlashcards(deckId: String) {
+        viewModelScope.launch {
+            val flashcards = flashcardRepository.getFlashcardsByDeckId(deckId)
+            _uiState.update { it.copy(flashcards = flashcards) }
+        }
+    }
+
+    private fun addCard() {
+        val state = _uiState.value
+        val normalizedName = state.cardName.trim()
+        if (normalizedName.isBlank()) {
+            _uiState.update { it.copy(validationError = DeckValidationError.EMPTY_CARD_NAME) }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCardSaving = true, validationError = null) }
+            val newCard = Flashcard(
+                id = generateId(),
+                imageUrl = state.cardImageUrl.orEmpty(),
+                name = normalizedName,
+                deckId = state.deckId,
+            )
+            val created = flashcardRepository.addFlashcard(newCard)
+            if (created) {
+                _uiState.update {
+                    it.copy(
+                        flashcards = it.flashcards + newCard,
+                        isCardSaving = false,
+                        isAddCardDialogVisible = false,
+                        isCardCoverSourceDialogVisible = false,
+                        cardName = "",
+                        cardImageUrl = null,
+                        validationError = null,
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isCardSaving = false,
+                        validationError = DeckValidationError.ADD_CARD_FAILED,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun onImagePicked(uri: String) {
+        when (_uiState.value.pendingPickerTarget) {
+            DeckPickerTarget.DECK_COVER -> updateDeckCover(uri)
+            DeckPickerTarget.CARD_IMAGE -> _uiState.update {
+                it.copy(
+                    cardImageUrl = uri,
+                    pendingPickerTarget = null,
+                    validationError = null,
+                )
+            }
+            null -> Unit
+        }
+        _uiState.update { it.copy(pendingPickerTarget = null) }
+    }
+
+    private fun generateId(): String {
+        val alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+        return buildString(16) {
+            repeat(16) {
+                append(alphabet[Random.nextInt(alphabet.length)])
             }
         }
     }
@@ -151,6 +290,7 @@ class DeckScreenViewModel(
                 _uiState.update {
                     it.copy(
                         coverUri = uri,
+                        pendingPickerTarget = null,
                         validationError = null,
                     )
                 }

@@ -7,7 +7,7 @@ plugins {
 
 kotlin {
     androidLibrary {
-        namespace = "com.cerebus.create_screen"
+        namespace = "com.cerebus.core.ui"
         compileSdk = 36
         minSdk = 29
 
@@ -21,7 +21,7 @@ kotlin {
         }
     }
 
-    val xcfName = "feature:create_screenKit"
+    val xcfName = "core:uiKit"
 
     iosX64 {
         binaries.framework {
@@ -48,12 +48,6 @@ kotlin {
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)
                 implementation(libs.compose.material3)
-                implementation(libs.compose.ui)
-                implementation(libs.coil)
-                implementation(libs.koin.compose.viewmodel)
-                implementation(project(":core:ui"))
-                implementation(project(":feature:decks"))
-                implementation(project(":feature:flashcards"))
             }
         }
 
@@ -65,7 +59,6 @@ kotlin {
 
         androidMain {
             dependencies {
-                implementation(libs.androidx.activity.compose)
             }
         }
 

@@ -23,6 +23,8 @@
     <string name="save">Save</string>
     <string name="unnamed_deck">Untitled deck</string>
     <string name="add_card">Add card</string>
+    <string name="add_card_title">Create card</string>
+    <string name="card_name_label">Card name</string>
     <string name="flashcard_name">Card %d</string>
     <string name="error_empty_deck_name">Please enter a deck name</string>
     <string name="error_create_deck_failed">Failed to create deck</string>
@@ -30,4 +32,6 @@
     <string name="error_deck_not_found">Deck not found</string>
     <string name="error_update_name_failed">Failed to update name</string>
     <string name="error_update_cover_failed">Failed to update cover</string>
+    <string name="error_empty_card_name">Please enter a card name</string>
+    <string name="error_add_card_failed">Failed to create card</string>
 </resources>

@@ -32,7 +32,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +45,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.cerebus.core.ui.components.AppAnimatedDialog
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -61,6 +65,11 @@ fun DeckScreen(
     val widthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     val isTablet = widthDp >= 840.dp
     val columns = if (isTablet) 4 else 3
+    val addCardCoverSize = if (isTablet) 88.dp else 180.dp
+    val addCardDialogMinHeight = if (isTablet) 300.dp else 430.dp
+    val isCardValidationError = state.validationError == DeckValidationError.EMPTY_CARD_NAME ||
+        state.validationError == DeckValidationError.ADD_CARD_FAILED
+    val cardValidationText = if (isCardValidationError) validationErrorText else null
 
     Scaffold(
         topBar = {
@@ -122,18 +131,18 @@ fun DeckScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(bottom = 88.dp),
             ) {
-                items((0 until state.flashcardsPlaceholderCount).toList()) { index ->
+                items(state.flashcards, key = { it.id }) { card ->
                     FlashcardGridItem(
-                        index = index + 1,
+                        name = card.name,
+                        imageUrl = card.imageUrl,
                         noCoverText = strings.noCover,
-                        nameTemplate = strings.flashcardNameTemplate,
                     )
                 }
             }
         }
     }
 
-    if (state.isEditNameDialogVisible) {
+    AppAnimatedDialog(visible = state.isEditNameDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(DeckScreenAction.OnDismissEditNameDialog) },
             title = { Text(strings.editName) },
@@ -157,9 +166,11 @@ fun DeckScreen(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.End,
                     )
-                    if (validationErrorText != null) {
+                    if (state.validationError == DeckValidationError.EMPTY_DECK_NAME ||
+                        state.validationError == DeckValidationError.UPDATE_NAME_FAILED
+                    ) {
                         Text(
-                            text = validationErrorText,
+                            text = validationErrorText.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -179,7 +190,7 @@ fun DeckScreen(
         )
     }
 
-    if (state.isEditCoverSourceDialogVisible) {
+    AppAnimatedDialog(visible = state.isEditCoverSourceDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(DeckScreenAction.OnDismissEditCoverSourceDialog) },
             title = { Text(strings.editCover) },
@@ -196,6 +207,99 @@ fun DeckScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { onAction(DeckScreenAction.OnDismissEditCoverSourceDialog) }) {
+                    Text(strings.close)
+                }
+            },
+        )
+    }
+
+    AppAnimatedDialog(visible = state.isAddCardDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { onAction(DeckScreenAction.OnDismissAddCardDialog) },
+            title = { Text(strings.addCardTitle) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(min = addCardDialogMinHeight)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    DeckCover(
+                        coverUri = state.cardImageUrl,
+                        noCoverText = strings.noCover,
+                        modifier = Modifier
+                            .size(addCardCoverSize)
+                            .align(Alignment.CenterHorizontally),
+                    )
+
+                    TextButton(onClick = { onAction(DeckScreenAction.OnCardCoverButtonClick) }) {
+                        Text(if (state.cardImageUrl.isNullOrBlank()) strings.addCover else strings.editCover)
+                    }
+
+                    OutlinedTextField(
+                        value = state.cardName,
+                        onValueChange = { onAction(DeckScreenAction.OnCardNameChanged(it)) },
+                        label = { Text(strings.cardNameLabel) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 56.dp),
+                    )
+                    Text(
+                        text = "${state.cardName.length}/$MAX_DECK_NAME_LENGTH",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End,
+                    )
+                    if (cardValidationText != null) {
+                        Text(
+                            text = cardValidationText,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { onAction(DeckScreenAction.OnConfirmAddCard) },
+                    enabled = !state.isCardSaving,
+                ) {
+                    if (state.isCardSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    } else {
+                        Text(strings.create)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { onAction(DeckScreenAction.OnDismissAddCardDialog) },
+                    enabled = !state.isCardSaving,
+                ) {
+                    Text(strings.cancel)
+                }
+            },
+        )
+    }
+
+    AppAnimatedDialog(visible = state.isCardCoverSourceDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { onAction(DeckScreenAction.OnDismissCardCoverSourceDialog) },
+            title = { Text(strings.chooseSource) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onAction(DeckScreenAction.OnPickCardCoverFromGalleryClick) }) {
+                        Text(strings.chooseFromGallery)
+                    }
+                    TextButton(onClick = { onAction(DeckScreenAction.OnTakeCardCoverPhotoClick) }) {
+                        Text(strings.takePhoto)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { onAction(DeckScreenAction.OnDismissCardCoverSourceDialog) }) {
                     Text(strings.close)
                 }
             },
@@ -282,9 +386,9 @@ private fun DeckHeader(
 
 @Composable
 private fun FlashcardGridItem(
-    index: Int,
+    name: String,
+    imageUrl: String,
     noCoverText: String,
-    nameTemplate: String,
 ) {
     Column(
         modifier = Modifier
@@ -292,19 +396,15 @@ private fun FlashcardGridItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
+        DeckCover(
+            coverUri = imageUrl.ifBlank { null },
+            noCoverText = noCoverText,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(noCoverText)
-        }
+                .aspectRatio(1f),
+        )
         Text(
-            text = nameTemplate.replace("%d", index.toString()),
+            text = name,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -322,6 +422,7 @@ private fun DeckCover(
 ) {
     val platformContext = LocalPlatformContext.current
     val imageLoader = remember(platformContext) { ImageLoader.Builder(platformContext).build() }
+    var imageLoadFailed by remember(coverUri) { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -330,7 +431,7 @@ private fun DeckCover(
             .background(MaterialTheme.colorScheme.surfaceContainerLow),
         contentAlignment = Alignment.Center,
     ) {
-        if (coverUri == null) {
+        if (coverUri.isNullOrBlank() || imageLoadFailed) {
             Text(noCoverText)
         } else {
             AsyncImage(
@@ -339,6 +440,8 @@ private fun DeckCover(
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
+                onSuccess = { imageLoadFailed = false },
+                onError = { imageLoadFailed = true },
             )
         }
     }

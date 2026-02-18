@@ -15,19 +15,25 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.jetbrains.compose.resources.stringResource
 import readwriteapp.composeapp.generated.resources.Res
 import readwriteapp.composeapp.generated.resources.add_card
+import readwriteapp.composeapp.generated.resources.add_card_title
+import readwriteapp.composeapp.generated.resources.add_cover
 import readwriteapp.composeapp.generated.resources.back
+import readwriteapp.composeapp.generated.resources.card_name_label
 import readwriteapp.composeapp.generated.resources.cancel
 import readwriteapp.composeapp.generated.resources.cards
 import readwriteapp.composeapp.generated.resources.choose_from_gallery
+import readwriteapp.composeapp.generated.resources.choose_source
 import readwriteapp.composeapp.generated.resources.close
+import readwriteapp.composeapp.generated.resources.create
 import readwriteapp.composeapp.generated.resources.deck_name_label
 import readwriteapp.composeapp.generated.resources.edit_cover
 import readwriteapp.composeapp.generated.resources.edit_name
+import readwriteapp.composeapp.generated.resources.error_add_card_failed
 import readwriteapp.composeapp.generated.resources.error_deck_not_found
+import readwriteapp.composeapp.generated.resources.error_empty_card_name
 import readwriteapp.composeapp.generated.resources.error_empty_deck_name
 import readwriteapp.composeapp.generated.resources.error_update_cover_failed
 import readwriteapp.composeapp.generated.resources.error_update_name_failed
-import readwriteapp.composeapp.generated.resources.flashcard_name
 import readwriteapp.composeapp.generated.resources.no_cover
 import readwriteapp.composeapp.generated.resources.save
 import readwriteapp.composeapp.generated.resources.take_photo
@@ -43,7 +49,7 @@ fun DeckScreenRoute(
 
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
-            viewModel.onAction(DeckScreenAction.OnCoverUriSelected(uri))
+            viewModel.onAction(DeckScreenAction.OnImagePicked(uri))
         },
         onError = {
             // Placeholder for future snackbar/toast integration.
@@ -71,18 +77,22 @@ fun DeckScreenRoute(
     val strings = DeckScreenStrings(
         back = stringResource(Res.string.back),
         addCard = stringResource(Res.string.add_card),
+        addCardTitle = stringResource(Res.string.add_card_title),
         cards = stringResource(Res.string.cards),
         editName = stringResource(Res.string.edit_name),
         editCover = stringResource(Res.string.edit_cover),
+        addCover = stringResource(Res.string.add_cover),
+        chooseSource = stringResource(Res.string.choose_source),
         chooseFromGallery = stringResource(Res.string.choose_from_gallery),
         takePhoto = stringResource(Res.string.take_photo),
+        create = stringResource(Res.string.create),
         save = stringResource(Res.string.save),
         cancel = stringResource(Res.string.cancel),
         close = stringResource(Res.string.close),
         deckNameLabel = stringResource(Res.string.deck_name_label),
+        cardNameLabel = stringResource(Res.string.card_name_label),
         noCover = stringResource(Res.string.no_cover),
         unnamedDeck = stringResource(Res.string.unnamed_deck),
-        flashcardNameTemplate = stringResource(Res.string.flashcard_name),
     )
 
     val validationErrorText = when (state.validationError) {
@@ -90,6 +100,8 @@ fun DeckScreenRoute(
         DeckValidationError.EMPTY_DECK_NAME -> stringResource(Res.string.error_empty_deck_name)
         DeckValidationError.UPDATE_NAME_FAILED -> stringResource(Res.string.error_update_name_failed)
         DeckValidationError.UPDATE_COVER_FAILED -> stringResource(Res.string.error_update_cover_failed)
+        DeckValidationError.EMPTY_CARD_NAME -> stringResource(Res.string.error_empty_card_name)
+        DeckValidationError.ADD_CARD_FAILED -> stringResource(Res.string.error_add_card_failed)
         null -> null
     }
 

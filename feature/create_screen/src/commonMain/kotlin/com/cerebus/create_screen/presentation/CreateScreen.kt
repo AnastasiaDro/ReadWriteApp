@@ -1,12 +1,5 @@
 package com.cerebus.create_screen.presentation
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import com.cerebus.core.ui.components.AppAnimatedDialog
 import com.cerebus.decks.domain.models.Deck
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -137,10 +130,7 @@ fun CreateScreen(
         }
     }
 
-    AnimatedAlertDialog(
-        visible = state.isCreateDialogVisible,
-        onDismissRequest = { onAction(CreateScreenAction.OnDismissCreateDialog) },
-    ) {
+    AppAnimatedDialog(visible = state.isCreateDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(CreateScreenAction.OnDismissCreateDialog) },
             title = { Text(strings.createDeckTitle) },
@@ -215,10 +205,7 @@ fun CreateScreen(
         )
     }
 
-    AnimatedAlertDialog(
-        visible = state.isCoverSourceDialogVisible,
-        onDismissRequest = { onAction(CreateScreenAction.OnDismissCoverSourceDialog) },
-    ) {
+    AppAnimatedDialog(visible = state.isCoverSourceDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(CreateScreenAction.OnDismissCoverSourceDialog) },
             title = { Text(strings.chooseSource) },
@@ -241,10 +228,7 @@ fun CreateScreen(
         )
     }
 
-    AnimatedAlertDialog(
-        visible = state.isDeleteDialogVisible,
-        onDismissRequest = { onAction(CreateScreenAction.OnDismissDeleteDialog) },
-    ) {
+    AppAnimatedDialog(visible = state.isDeleteDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(CreateScreenAction.OnDismissDeleteDialog) },
             title = { Text(strings.deleteDeckTitle) },
@@ -269,10 +253,7 @@ fun CreateScreen(
         )
     }
 
-    AnimatedAlertDialog(
-        visible = state.isSuccessDialogVisible,
-        onDismissRequest = { onAction(CreateScreenAction.OnCloseSuccessDialog) },
-    ) {
+    AppAnimatedDialog(visible = state.isSuccessDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(CreateScreenAction.OnCloseSuccessDialog) },
             title = {},
@@ -375,35 +356,6 @@ private fun CoverPreview(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-        }
-    }
-}
-
-@Composable
-private fun AnimatedAlertDialog(
-    visible: Boolean,
-    onDismissRequest: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    val transitionState = remember { MutableTransitionState(false) }
-
-    LaunchedEffect(visible) {
-        transitionState.targetState = visible
-    }
-
-    if (transitionState.currentState || transitionState.targetState) {
-        AnimatedVisibility(
-            visibleState = transitionState,
-            enter = fadeIn(animationSpec = tween(220)) + scaleIn(
-                initialScale = 0.92f,
-                animationSpec = tween(220),
-            ),
-            exit = fadeOut(animationSpec = tween(170)) + scaleOut(
-                targetScale = 0.92f,
-                animationSpec = tween(170),
-            ),
-        ) {
-            content()
         }
     }
 }
