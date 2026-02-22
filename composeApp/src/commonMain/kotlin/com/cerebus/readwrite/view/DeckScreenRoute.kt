@@ -25,19 +25,26 @@ import readwriteapp.composeapp.generated.resources.choose_from_gallery
 import readwriteapp.composeapp.generated.resources.choose_source
 import readwriteapp.composeapp.generated.resources.close
 import readwriteapp.composeapp.generated.resources.create
+import readwriteapp.composeapp.generated.resources.confirm_delete_cards_message
+import readwriteapp.composeapp.generated.resources.confirm_delete_cards_title
 import readwriteapp.composeapp.generated.resources.deck_name_label
 import readwriteapp.composeapp.generated.resources.edit_cover
+import readwriteapp.composeapp.generated.resources.edit_card_title
 import readwriteapp.composeapp.generated.resources.edit_name
 import readwriteapp.composeapp.generated.resources.error_add_card_failed
+import readwriteapp.composeapp.generated.resources.error_delete_cards_failed
 import readwriteapp.composeapp.generated.resources.error_deck_not_found
 import readwriteapp.composeapp.generated.resources.error_empty_card_name
 import readwriteapp.composeapp.generated.resources.error_empty_deck_name
+import readwriteapp.composeapp.generated.resources.error_update_card_failed
 import readwriteapp.composeapp.generated.resources.error_update_cover_failed
 import readwriteapp.composeapp.generated.resources.error_update_name_failed
 import readwriteapp.composeapp.generated.resources.no_cover
 import readwriteapp.composeapp.generated.resources.save
+import readwriteapp.composeapp.generated.resources.selected_count
 import readwriteapp.composeapp.generated.resources.take_photo
 import readwriteapp.composeapp.generated.resources.unnamed_deck
+import readwriteapp.composeapp.generated.resources.delete
 
 @Composable
 fun DeckScreenRoute(
@@ -78,6 +85,7 @@ fun DeckScreenRoute(
         back = stringResource(Res.string.back),
         addCard = stringResource(Res.string.add_card),
         addCardTitle = stringResource(Res.string.add_card_title),
+        editCardTitle = stringResource(Res.string.edit_card_title),
         cards = stringResource(Res.string.cards),
         editName = stringResource(Res.string.edit_name),
         editCover = stringResource(Res.string.edit_cover),
@@ -89,6 +97,10 @@ fun DeckScreenRoute(
         save = stringResource(Res.string.save),
         cancel = stringResource(Res.string.cancel),
         close = stringResource(Res.string.close),
+        delete = stringResource(Res.string.delete),
+        selectedCount = stringResource(Res.string.selected_count),
+        confirmDeleteCardsTitle = stringResource(Res.string.confirm_delete_cards_title),
+        confirmDeleteCardsMessage = stringResource(Res.string.confirm_delete_cards_message),
         deckNameLabel = stringResource(Res.string.deck_name_label),
         cardNameLabel = stringResource(Res.string.card_name_label),
         noCover = stringResource(Res.string.no_cover),
@@ -102,6 +114,8 @@ fun DeckScreenRoute(
         DeckValidationError.UPDATE_COVER_FAILED -> stringResource(Res.string.error_update_cover_failed)
         DeckValidationError.EMPTY_CARD_NAME -> stringResource(Res.string.error_empty_card_name)
         DeckValidationError.ADD_CARD_FAILED -> stringResource(Res.string.error_add_card_failed)
+        DeckValidationError.UPDATE_CARD_FAILED -> stringResource(Res.string.error_update_card_failed)
+        DeckValidationError.DELETE_CARDS_FAILED -> stringResource(Res.string.error_delete_cards_failed)
         null -> null
     }
 

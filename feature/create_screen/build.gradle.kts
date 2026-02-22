@@ -52,6 +52,7 @@ kotlin {
                 implementation(libs.coil)
                 implementation(libs.koin.compose.viewmodel)
                 implementation(project(":core:ui"))
+                implementation(project(":core:utils"))
                 implementation(project(":feature:decks"))
                 implementation(project(":feature:flashcards"))
             }

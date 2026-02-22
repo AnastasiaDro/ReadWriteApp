@@ -1,5 +1,6 @@
 package com.cerebus.game_screen.domain.models
 
+import com.cerebus.core.utils.UniqueIdGenerator
 import kotlin.time.Instant
 
 /**
@@ -13,6 +14,7 @@ import kotlin.time.Instant
  * @since 13.02.2026
  */
 data class CardStat(
+    val id: String = UniqueIdGenerator.randomAlphanumeric(prefix = "cstat"),
     val lastAttempt: Instant,
     val isCorrect: Boolean,
     val correctStreak: Int,

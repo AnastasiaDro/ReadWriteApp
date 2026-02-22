@@ -1,5 +1,7 @@
 <resources>
     <string name="create_deck">Создать колоду</string>
+    <string name="start_learning">Начать учиться!</string>
+    <string name="go_to_decks">К списку колод</string>
     <string name="back">Назад</string>
     <string name="my_decks">Мои колоды</string>
     <string name="no_decks_yet">Пока нет колод</string>
@@ -14,6 +16,8 @@
     <string name="close">Закрыть</string>
     <string name="delete_deck_title">Удалить колоду?</string>
     <string name="delete_deck_message">Удалить "%s"?</string>
+    <string name="confirm_delete_decks_title">Удалить выбранные колоды?</string>
+    <string name="confirm_delete_decks_message">Выбранные колоды будут удалены без возможности восстановления.</string>
     <string name="delete">Удалить</string>
     <string name="deck_created_message">Колода "%s" создана!</string>
     <string name="add_cards">Добавить карточки</string>
@@ -24,14 +28,21 @@
     <string name="unnamed_deck">Без названия</string>
     <string name="add_card">Добавить карточку</string>
     <string name="add_card_title">Создать карточку</string>
+    <string name="edit_card_title">Изменить карточку</string>
     <string name="card_name_label">Название карточки</string>
+    <string name="selected_count">выбрано</string>
+    <string name="confirm_delete_cards_title">Удалить выбранные карточки?</string>
+    <string name="confirm_delete_cards_message">Выбранные карточки будут удалены без возможности восстановления.</string>
     <string name="flashcard_name">Карточка %d</string>
     <string name="error_empty_deck_name">Пожалуйста, введите название колоды</string>
     <string name="error_create_deck_failed">Не удалось создать колоду</string>
     <string name="error_delete_deck_failed">Не удалось удалить колоду</string>
+    <string name="error_delete_decks_failed">Не удалось удалить часть колод</string>
     <string name="error_deck_not_found">Колода не найдена</string>
     <string name="error_update_name_failed">Не удалось обновить название</string>
     <string name="error_update_cover_failed">Не удалось обновить обложку</string>
     <string name="error_empty_card_name">Пожалуйста, введите название карточки</string>
     <string name="error_add_card_failed">Не удалось создать карточку</string>
+    <string name="error_update_card_failed">Не удалось обновить карточку</string>
+    <string name="error_delete_cards_failed">Не удалось удалить часть карточек</string>
 </resources>

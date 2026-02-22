@@ -22,20 +22,21 @@ import readwriteapp.composeapp.generated.resources.cancel
 import readwriteapp.composeapp.generated.resources.choose_from_gallery
 import readwriteapp.composeapp.generated.resources.choose_source
 import readwriteapp.composeapp.generated.resources.close
+import readwriteapp.composeapp.generated.resources.confirm_delete_decks_message
+import readwriteapp.composeapp.generated.resources.confirm_delete_decks_title
 import readwriteapp.composeapp.generated.resources.create
 import readwriteapp.composeapp.generated.resources.create_deck
 import readwriteapp.composeapp.generated.resources.deck_created_message
 import readwriteapp.composeapp.generated.resources.deck_name_label
 import readwriteapp.composeapp.generated.resources.delete
-import readwriteapp.composeapp.generated.resources.delete_deck_message
-import readwriteapp.composeapp.generated.resources.delete_deck_title
 import readwriteapp.composeapp.generated.resources.edit_cover
 import readwriteapp.composeapp.generated.resources.error_create_deck_failed
-import readwriteapp.composeapp.generated.resources.error_delete_deck_failed
+import readwriteapp.composeapp.generated.resources.error_delete_decks_failed
 import readwriteapp.composeapp.generated.resources.error_empty_deck_name
 import readwriteapp.composeapp.generated.resources.my_decks
 import readwriteapp.composeapp.generated.resources.no_cover
 import readwriteapp.composeapp.generated.resources.no_decks_yet
+import readwriteapp.composeapp.generated.resources.selected_count
 import readwriteapp.composeapp.generated.resources.take_photo
 
 @Composable
@@ -86,9 +87,10 @@ fun CreateScreenRoute(
         chooseFromGallery = stringResource(Res.string.choose_from_gallery),
         takePhoto = stringResource(Res.string.take_photo),
         close = stringResource(Res.string.close),
-        deleteDeckTitle = stringResource(Res.string.delete_deck_title),
-        deleteDeckMessageTemplate = stringResource(Res.string.delete_deck_message),
         delete = stringResource(Res.string.delete),
+        selectedCount = stringResource(Res.string.selected_count),
+        confirmDeleteDecksTitle = stringResource(Res.string.confirm_delete_decks_title),
+        confirmDeleteDecksMessage = stringResource(Res.string.confirm_delete_decks_message),
         deckCreatedTemplate = stringResource(Res.string.deck_created_message),
         addCards = stringResource(Res.string.add_cards),
         noCover = stringResource(Res.string.no_cover),
@@ -97,7 +99,8 @@ fun CreateScreenRoute(
     val validationErrorText = when (state.validationError) {
         CreateValidationError.EMPTY_DECK_NAME -> stringResource(Res.string.error_empty_deck_name)
         CreateValidationError.CREATE_DECK_FAILED -> stringResource(Res.string.error_create_deck_failed)
-        CreateValidationError.DELETE_DECK_FAILED -> stringResource(Res.string.error_delete_deck_failed)
+        CreateValidationError.DELETE_DECK_FAILED -> stringResource(Res.string.error_delete_decks_failed)
+        CreateValidationError.DELETE_DECKS_FAILED -> stringResource(Res.string.error_delete_decks_failed)
         null -> null
     }
 

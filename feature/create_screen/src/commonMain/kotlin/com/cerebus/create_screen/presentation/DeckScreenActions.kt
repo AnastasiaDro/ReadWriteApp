@@ -22,4 +22,11 @@ sealed interface DeckScreenAction {
     data object OnPickCardCoverFromGalleryClick : DeckScreenAction
     data object OnTakeCardCoverPhotoClick : DeckScreenAction
     data object OnConfirmAddCard : DeckScreenAction
+
+    data class OnCardLongPress(val cardId: String) : DeckScreenAction
+    data class OnCardClick(val cardId: String) : DeckScreenAction
+    data object OnDeleteSelectedCardsClick : DeckScreenAction
+    data object OnDismissDeleteSelectedCardsDialog : DeckScreenAction
+    data object OnConfirmDeleteSelectedCards : DeckScreenAction
+    data object OnClearCardSelection : DeckScreenAction
 }

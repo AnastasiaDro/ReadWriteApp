@@ -2,6 +2,7 @@ package com.cerebus.create_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.utils.UniqueIdGenerator
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.decks.domain.repositories.DeckRepository
 import com.cerebus.flashcards.domain.models.Flashcard
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 class DeckScreenViewModel(
     private val deckRepository: DeckRepository,
@@ -95,6 +95,8 @@ class DeckScreenViewModel(
                 _uiState.update {
                     it.copy(
                         isAddCardDialogVisible = true,
+                        cardEditorMode = CardEditorMode.CREATE,
+                        editingCardId = null,
                         validationError = null,
                         cardName = "",
                         cardImageUrl = null,
@@ -106,6 +108,8 @@ class DeckScreenViewModel(
                 _uiState.update {
                     it.copy(
                         isAddCardDialogVisible = false,
+                        cardEditorMode = CardEditorMode.CREATE,
+                        editingCardId = null,
                         isCardCoverSourceDialogVisible = false,
                         cardName = "",
                         cardImageUrl = null,
@@ -152,7 +156,24 @@ class DeckScreenViewModel(
                 }
             }
 
-            DeckScreenAction.OnConfirmAddCard -> addCard()
+            DeckScreenAction.OnConfirmAddCard -> saveCard()
+            is DeckScreenAction.OnCardLongPress -> toggleCardSelection(action.cardId)
+            is DeckScreenAction.OnCardClick -> onCardClick(action.cardId)
+            DeckScreenAction.OnDeleteSelectedCardsClick -> {
+                _uiState.update { it.copy(isDeleteSelectedDialogVisible = true) }
+            }
+            DeckScreenAction.OnDismissDeleteSelectedCardsDialog -> {
+                _uiState.update { it.copy(isDeleteSelectedDialogVisible = false) }
+            }
+            DeckScreenAction.OnConfirmDeleteSelectedCards -> deleteSelectedCards()
+            DeckScreenAction.OnClearCardSelection -> {
+                _uiState.update {
+                    it.copy(
+                        selectedCardIds = emptySet(),
+                        isDeleteSelectedDialogVisible = false,
+                    )
+                }
+            }
         }
     }
 
@@ -202,7 +223,7 @@ class DeckScreenViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isCardSaving = true, validationError = null) }
             val newCard = Flashcard(
-                id = generateId(),
+                id = UniqueIdGenerator.randomAlphanumeric(prefix = "card"),
                 imageUrl = state.cardImageUrl.orEmpty(),
                 name = normalizedName,
                 deckId = state.deckId,
@@ -214,6 +235,8 @@ class DeckScreenViewModel(
                         flashcards = it.flashcards + newCard,
                         isCardSaving = false,
                         isAddCardDialogVisible = false,
+                        cardEditorMode = CardEditorMode.CREATE,
+                        editingCardId = null,
                         isCardCoverSourceDialogVisible = false,
                         cardName = "",
                         cardImageUrl = null,
@@ -231,6 +254,128 @@ class DeckScreenViewModel(
         }
     }
 
+    private fun updateCard(cardId: String) {
+        val state = _uiState.value
+        val normalizedName = state.cardName.trim()
+        if (normalizedName.isBlank()) {
+            _uiState.update { it.copy(validationError = DeckValidationError.EMPTY_CARD_NAME) }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCardSaving = true, validationError = null) }
+            val updatedCard = Flashcard(
+                id = cardId,
+                imageUrl = state.cardImageUrl.orEmpty(),
+                name = normalizedName,
+                deckId = state.deckId,
+            )
+            val updated = flashcardRepository.updateFlashcard(cardId, updatedCard)
+            if (updated) {
+                _uiState.update {
+                    it.copy(
+                        flashcards = it.flashcards.map { card ->
+                            if (card.id == cardId) updatedCard else card
+                        },
+                        isCardSaving = false,
+                        isAddCardDialogVisible = false,
+                        cardEditorMode = CardEditorMode.CREATE,
+                        editingCardId = null,
+                        isCardCoverSourceDialogVisible = false,
+                        cardName = "",
+                        cardImageUrl = null,
+                        validationError = null,
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isCardSaving = false,
+                        validationError = DeckValidationError.UPDATE_CARD_FAILED,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun saveCard() {
+        val state = _uiState.value
+        when (state.cardEditorMode) {
+            CardEditorMode.CREATE -> addCard()
+            CardEditorMode.EDIT -> {
+                val cardId = state.editingCardId ?: return
+                updateCard(cardId)
+            }
+        }
+    }
+
+    private fun onCardClick(cardId: String) {
+        val isSelectionMode = _uiState.value.selectedCardIds.isNotEmpty()
+        if (isSelectionMode) {
+            toggleCardSelection(cardId)
+            return
+        }
+
+        val card = _uiState.value.flashcards.firstOrNull { it.id == cardId } ?: return
+        _uiState.update {
+            it.copy(
+                isAddCardDialogVisible = true,
+                cardEditorMode = CardEditorMode.EDIT,
+                editingCardId = card.id,
+                cardName = card.name,
+                cardImageUrl = card.imageUrl,
+                validationError = null,
+            )
+        }
+    }
+
+    private fun toggleCardSelection(cardId: String) {
+        _uiState.update { state ->
+            val selected = state.selectedCardIds.toMutableSet()
+            if (!selected.add(cardId)) {
+                selected.remove(cardId)
+            }
+            state.copy(
+                selectedCardIds = selected,
+                validationError = null,
+            )
+        }
+    }
+
+    private fun deleteSelectedCards() {
+        val current = _uiState.value
+        if (current.selectedCardIds.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isDeletingSelectedCards = true,
+                    validationError = null,
+                )
+            }
+
+            val selectedIds = _uiState.value.selectedCardIds.toList()
+            val deletedIds = mutableSetOf<String>()
+            selectedIds.forEach { id ->
+                if (flashcardRepository.deleteFlashcard(id)) {
+                    deletedIds.add(id)
+                }
+            }
+
+            _uiState.update { state ->
+                val hasFailures = deletedIds.size != selectedIds.size
+                val remainingSelection = state.selectedCardIds - deletedIds
+                state.copy(
+                    flashcards = state.flashcards.filterNot { it.id in deletedIds },
+                    selectedCardIds = remainingSelection,
+                    isDeletingSelectedCards = false,
+                    isDeleteSelectedDialogVisible = false,
+                    validationError = if (hasFailures) DeckValidationError.DELETE_CARDS_FAILED else null,
+                )
+            }
+        }
+    }
+
     private fun onImagePicked(uri: String) {
         when (_uiState.value.pendingPickerTarget) {
             DeckPickerTarget.DECK_COVER -> updateDeckCover(uri)
@@ -244,15 +389,6 @@ class DeckScreenViewModel(
             null -> Unit
         }
         _uiState.update { it.copy(pendingPickerTarget = null) }
-    }
-
-    private fun generateId(): String {
-        val alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
-        return buildString(16) {
-            repeat(16) {
-                append(alphabet[Random.nextInt(alphabet.length)])
-            }
-        }
     }
 
     private fun updateDeckName() {

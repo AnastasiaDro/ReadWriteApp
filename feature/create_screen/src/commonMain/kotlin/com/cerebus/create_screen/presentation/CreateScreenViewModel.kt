@@ -2,6 +2,7 @@ package com.cerebus.create_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.utils.UniqueIdGenerator
 import com.cerebus.decks.domain.models.Deck
 import com.cerebus.decks.domain.repositories.DeckRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -12,7 +13,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 class CreateScreenViewModel(
     private val deckRepository: DeckRepository,
@@ -83,32 +83,34 @@ class CreateScreenViewModel(
             CreateScreenAction.OnConfirmCreateDeck -> createDeck()
 
             is CreateScreenAction.OnDeckClick -> {
-                viewModelScope.launch {
-                    _effects.emit(CreateScreenEffect.OpenDeck(action.deckId))
+                if (_uiState.value.selectedDeckIds.isNotEmpty()) {
+                    toggleDeckSelection(action.deckId)
+                } else {
+                    viewModelScope.launch {
+                        _effects.emit(CreateScreenEffect.OpenDeck(action.deckId))
+                    }
                 }
             }
 
             is CreateScreenAction.OnDeckLongClick -> {
-                val deck = _uiState.value.decks.firstOrNull { it.id == action.deckId } ?: return
-                _uiState.update {
-                    it.copy(
-                        deckPendingDelete = deck,
-                        isDeleteDialogVisible = true,
-                    )
-                }
+                toggleDeckSelection(action.deckId)
             }
 
-            CreateScreenAction.OnDismissDeleteDialog -> {
+            CreateScreenAction.OnDeleteSelectedDecksClick -> {
+                _uiState.update { it.copy(isDeleteSelectedDialogVisible = true) }
+            }
+            CreateScreenAction.OnDismissDeleteSelectedDialog -> {
+                _uiState.update { it.copy(isDeleteSelectedDialogVisible = false) }
+            }
+            CreateScreenAction.OnConfirmDeleteSelectedDecks -> deleteSelectedDecks()
+            CreateScreenAction.OnClearDeckSelection -> {
                 _uiState.update {
                     it.copy(
-                        isDeleteDialogVisible = false,
-                        deckPendingDelete = null,
+                        selectedDeckIds = emptySet(),
+                        isDeleteSelectedDialogVisible = false,
+                        validationError = null,
                     )
                 }
-            }
-
-            CreateScreenAction.OnConfirmDeleteDeck -> {
-                deleteDeck()
             }
 
             CreateScreenAction.OnAddCardsClick,
@@ -142,7 +144,7 @@ class CreateScreenViewModel(
 
             val created = deckRepository.addDeck(
                 Deck(
-                    id = generateDeckId(),
+                    id = UniqueIdGenerator.randomAlphanumeric(prefix = "deck"),
                     name = normalizedName,
                     coverUri = current.coverUri,
                 )
@@ -176,40 +178,66 @@ class CreateScreenViewModel(
     private fun loadDecks() {
         viewModelScope.launch {
             val decks = deckRepository.getAllDecks()
-            _uiState.update { it.copy(decks = decks) }
+            _uiState.update { state ->
+                state.copy(
+                    decks = decks,
+                    selectedDeckIds = state.selectedDeckIds.intersect(decks.map { it.id }.toSet()),
+                )
+            }
         }
     }
 
-    private fun deleteDeck() {
-        val deck = _uiState.value.deckPendingDelete ?: return
+    private fun toggleDeckSelection(deckId: String) {
+        _uiState.update { state ->
+            val selected = state.selectedDeckIds.toMutableSet()
+            if (!selected.add(deckId)) {
+                selected.remove(deckId)
+            }
+            state.copy(
+                selectedDeckIds = selected,
+                validationError = null,
+            )
+        }
+    }
+
+    private fun deleteSelectedDecks() {
+        val selectedIds = _uiState.value.selectedDeckIds.toList()
+        if (selectedIds.isEmpty()) return
+
         viewModelScope.launch {
-            val deleted = deckRepository.deleteDeck(deck.id)
-            if (deleted) {
+            _uiState.update {
+                it.copy(
+                    isDeletingSelectedDecks = true,
+                    validationError = null,
+                )
+            }
+
+            var deletedCount = 0
+            selectedIds.forEach { id ->
+                if (deckRepository.deleteDeck(id)) {
+                    deletedCount++
+                }
+            }
+
+            if (deletedCount == selectedIds.size) {
                 _uiState.update {
                     it.copy(
-                        decks = it.decks.filterNot { item -> item.id == deck.id },
-                        isDeleteDialogVisible = false,
-                        deckPendingDelete = null,
+                        decks = it.decks.filterNot { item -> item.id in selectedIds },
+                        selectedDeckIds = emptySet(),
+                        isDeleteSelectedDialogVisible = false,
+                        isDeletingSelectedDecks = false,
                     )
                 }
             } else {
                 _uiState.update {
                     it.copy(
-                        isDeleteDialogVisible = false,
-                        deckPendingDelete = null,
-                        validationError = CreateValidationError.DELETE_DECK_FAILED,
+                        isDeleteSelectedDialogVisible = false,
+                        isDeletingSelectedDecks = false,
+                        validationError = CreateValidationError.DELETE_DECKS_FAILED,
                     )
                 }
             }
         }
     }
 
-    private fun generateDeckId(): String {
-        val alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
-        return buildString(16) {
-            repeat(16) {
-                append(alphabet[Random.nextInt(alphabet.length)])
-            }
-        }
-    }
 }

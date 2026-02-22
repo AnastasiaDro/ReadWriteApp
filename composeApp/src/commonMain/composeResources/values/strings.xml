@@ -1,5 +1,7 @@
 <resources>
     <string name="create_deck">Create deck</string>
+    <string name="start_learning">Start learning!</string>
+    <string name="go_to_decks">To deck list</string>
     <string name="back">Back</string>
     <string name="my_decks">My decks</string>
     <string name="no_decks_yet">No decks yet</string>
@@ -14,6 +16,8 @@
     <string name="close">Close</string>
     <string name="delete_deck_title">Delete deck?</string>
     <string name="delete_deck_message">Delete "%s"?</string>
+    <string name="confirm_delete_decks_title">Delete selected decks?</string>
+    <string name="confirm_delete_decks_message">Selected decks will be permanently deleted.</string>
     <string name="delete">Delete</string>
     <string name="deck_created_message">Deck "%s" created!</string>
     <string name="add_cards">Add cards</string>
@@ -24,14 +28,21 @@
     <string name="unnamed_deck">Untitled deck</string>
     <string name="add_card">Add card</string>
     <string name="add_card_title">Create card</string>
+    <string name="edit_card_title">Edit card</string>
     <string name="card_name_label">Card name</string>
+    <string name="selected_count">selected</string>
+    <string name="confirm_delete_cards_title">Delete selected cards?</string>
+    <string name="confirm_delete_cards_message">Selected cards will be permanently deleted.</string>
     <string name="flashcard_name">Card %d</string>
     <string name="error_empty_deck_name">Please enter a deck name</string>
     <string name="error_create_deck_failed">Failed to create deck</string>
     <string name="error_delete_deck_failed">Failed to delete deck</string>
+    <string name="error_delete_decks_failed">Failed to delete some decks</string>
     <string name="error_deck_not_found">Deck not found</string>
     <string name="error_update_name_failed">Failed to update name</string>
     <string name="error_update_cover_failed">Failed to update cover</string>
     <string name="error_empty_card_name">Please enter a card name</string>
     <string name="error_add_card_failed">Failed to create card</string>
+    <string name="error_update_card_failed">Failed to update card</string>
+    <string name="error_delete_cards_failed">Failed to delete some cards</string>
 </resources>

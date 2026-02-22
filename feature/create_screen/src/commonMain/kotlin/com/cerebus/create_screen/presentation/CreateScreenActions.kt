@@ -17,8 +17,10 @@ sealed interface CreateScreenAction {
 
     data class OnDeckClick(val deckId: String) : CreateScreenAction
     data class OnDeckLongClick(val deckId: String) : CreateScreenAction
-    data object OnDismissDeleteDialog : CreateScreenAction
-    data object OnConfirmDeleteDeck : CreateScreenAction
+    data object OnDeleteSelectedDecksClick : CreateScreenAction
+    data object OnDismissDeleteSelectedDialog : CreateScreenAction
+    data object OnConfirmDeleteSelectedDecks : CreateScreenAction
+    data object OnClearDeckSelection : CreateScreenAction
 
     data object OnAddCardsClick : CreateScreenAction
     data object OnCloseSuccessDialog : CreateScreenAction

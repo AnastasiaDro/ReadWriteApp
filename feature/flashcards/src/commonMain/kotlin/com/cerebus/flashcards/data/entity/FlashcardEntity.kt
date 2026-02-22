@@ -8,5 +8,6 @@ data class FlashcardEntity(
     @PrimaryKey val id: String,
     val imageUrl: String,
     val name: String,
+    val activeLetters: String,
     val deckId: String? = null,
 )

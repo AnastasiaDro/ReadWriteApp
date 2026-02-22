@@ -68,6 +68,7 @@ kotlin {
                 implementation(libs.compose.components.resources)
                 implementation(libs.androidx.navigation.compose)
                 implementation(libs.koin.compose.viewmodel)
+                implementation(project(":core:utils"))
             }
         }
 

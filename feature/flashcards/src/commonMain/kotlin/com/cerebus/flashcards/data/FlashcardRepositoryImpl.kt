@@ -40,10 +40,20 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
         return storage.insertBulk(cards.map { it.toEntity() })
     }
 
+    private fun buildActiveLetters(name: String): String {
+        return name
+            .lowercase()
+            .filter { it.isLetter() }
+            .asSequence()
+            .distinct()
+            .joinToString(separator = "")
+    }
+
     private fun FlashcardEntity.toDomain() = Flashcard(
         id = id,
         imageUrl = imageUrl,
         name = name,
+        activeLetters = activeLetters,
         deckId = deckId,
     )
 
@@ -51,6 +61,7 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
         id = id,
         imageUrl = imageUrl,
         name = name,
+        activeLetters = buildActiveLetters(name),
         deckId = deckId,
     )
 }

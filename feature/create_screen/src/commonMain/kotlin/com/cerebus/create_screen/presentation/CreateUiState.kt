@@ -6,6 +6,7 @@ enum class CreateValidationError {
     EMPTY_DECK_NAME,
     CREATE_DECK_FAILED,
     DELETE_DECK_FAILED,
+    DELETE_DECKS_FAILED,
 }
 
 data class CreateUiState(
@@ -13,8 +14,9 @@ data class CreateUiState(
     val isCreateDialogVisible: Boolean = false,
     val isCoverSourceDialogVisible: Boolean = false,
     val isSuccessDialogVisible: Boolean = false,
-    val isDeleteDialogVisible: Boolean = false,
-    val deckPendingDelete: Deck? = null,
+    val isDeleteSelectedDialogVisible: Boolean = false,
+    val selectedDeckIds: Set<String> = emptySet(),
+    val isDeletingSelectedDecks: Boolean = false,
     val createdDeckName: String = "",
     val createdDeckCoverUri: String? = null,
     val deckName: String = "",

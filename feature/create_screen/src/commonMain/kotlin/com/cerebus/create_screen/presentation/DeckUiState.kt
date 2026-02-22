@@ -12,6 +12,11 @@ enum class DeckPickerTarget {
     CARD_IMAGE,
 }
 
+enum class CardEditorMode {
+    CREATE,
+    EDIT,
+}
+
 enum class DeckValidationError {
     DECK_NOT_FOUND,
     EMPTY_DECK_NAME,
@@ -19,6 +24,8 @@ enum class DeckValidationError {
     UPDATE_COVER_FAILED,
     EMPTY_CARD_NAME,
     ADD_CARD_FAILED,
+    UPDATE_CARD_FAILED,
+    DELETE_CARDS_FAILED,
 }
 
 data class DeckUiState(
@@ -31,10 +38,15 @@ data class DeckUiState(
     val pendingPickerRequest: DeckPickerRequest? = null,
     val pendingPickerTarget: DeckPickerTarget? = null,
     val isAddCardDialogVisible: Boolean = false,
+    val cardEditorMode: CardEditorMode = CardEditorMode.CREATE,
+    val editingCardId: String? = null,
     val isCardCoverSourceDialogVisible: Boolean = false,
     val cardName: String = "",
     val cardImageUrl: String? = null,
     val isCardSaving: Boolean = false,
+    val isDeleteSelectedDialogVisible: Boolean = false,
+    val selectedCardIds: Set<String> = emptySet(),
+    val isDeletingSelectedCards: Boolean = false,
     val editingName: String = "",
     val validationError: DeckValidationError? = null,
     val flashcards: List<Flashcard> = emptyList(),
