@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.utils.UniqueIdGenerator
 import com.cerebus.create_screen.navigation.DeckNavigationState
-import com.cerebus.decks.domain.repositories.DeckRepository
-import com.cerebus.flashcards.domain.models.Flashcard
-import com.cerebus.flashcards.domain.repositories.FlashcardRepository
+import com.cerebus.data.decks.domain.repositories.DeckRepository
+import com.cerebus.data.flashcards.domain.models.Flashcard
+import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

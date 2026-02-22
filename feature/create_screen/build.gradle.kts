@@ -53,8 +53,8 @@ kotlin {
                 implementation(libs.koin.compose.viewmodel)
                 implementation(project(":core:ui"))
                 implementation(project(":core:utils"))
-                implementation(project(":feature:decks"))
-                implementation(project(":feature:flashcards"))
+                implementation(project(":data:decks"))
+                implementation(project(":data:flashcards"))
             }
         }
 

@@ -52,10 +52,12 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
-            implementation(project(":core:database"))
+            implementation(project(":data:database"))
             implementation(project(":feature:game_screen"))
-            implementation(project(":feature:flashcards"))
-            implementation(project(":feature:decks"))
+            implementation(project(":data:flashcards"))
+            implementation(project(":data:decks"))
+            implementation(project(":data:student"))
+            implementation(project(":data:student-deck"))
             implementation(project(":feature:create_screen"))
         }
         commonTest.dependencies {

@@ -3,8 +3,8 @@ package com.cerebus.create_screen.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.utils.UniqueIdGenerator
-import com.cerebus.decks.domain.models.Deck
-import com.cerebus.decks.domain.repositories.DeckRepository
+import com.cerebus.data.decks.domain.models.Deck
+import com.cerebus.data.decks.domain.repositories.DeckRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow

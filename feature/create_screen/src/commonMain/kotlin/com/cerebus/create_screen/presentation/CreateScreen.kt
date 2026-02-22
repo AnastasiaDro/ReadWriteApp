@@ -49,7 +49,7 @@ import com.cerebus.core.ui.components.AppAnimatedDialog
 import com.cerebus.core.ui.components.AppEntityEditorDialog
 import com.cerebus.core.ui.components.AppEntityEditorMode
 import com.cerebus.core.ui.components.AppConfirmationDialog
-import com.cerebus.decks.domain.models.Deck
+import com.cerebus.data.decks.domain.models.Deck
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext

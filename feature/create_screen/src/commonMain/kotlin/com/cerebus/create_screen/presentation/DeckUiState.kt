@@ -1,6 +1,6 @@
 package com.cerebus.create_screen.presentation
 
-import com.cerebus.flashcards.domain.models.Flashcard
+import com.cerebus.data.flashcards.domain.models.Flashcard
 
 enum class DeckPickerRequest {
     GALLERY,

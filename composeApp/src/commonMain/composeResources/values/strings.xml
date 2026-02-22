@@ -45,4 +45,8 @@
     <string name="error_add_card_failed">Failed to create card</string>
     <string name="error_update_card_failed">Failed to update card</string>
     <string name="error_delete_cards_failed">Failed to delete some cards</string>
+    <string name="no_students_title">Add a student to start a lesson</string>
+    <string name="no_students_subtitle">Each student has their own saved progress and decks</string>
+    <string name="add_student_cta">+ Add student</string>
+    <string name="try_demo_cta">Try demo</string>
 </resources>

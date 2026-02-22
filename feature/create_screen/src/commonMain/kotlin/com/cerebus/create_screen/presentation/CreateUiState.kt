@@ -1,6 +1,6 @@
 package com.cerebus.create_screen.presentation
 
-import com.cerebus.decks.domain.models.Deck
+import com.cerebus.data.decks.domain.models.Deck
 
 enum class CreateValidationError {
     EMPTY_DECK_NAME,

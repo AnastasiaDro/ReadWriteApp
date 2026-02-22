@@ -1,7 +1,7 @@
 package com.cerebus.readwrite.di.core
 
 import androidx.room.RoomDatabase
-import com.cerebus.database.getRoomDatabase
+import com.cerebus.data.database.getRoomDatabase
 import com.cerebus.readwrite.data.ReadWriteDatabase
 
 expect fun provideDatabaseBuilder(): RoomDatabase.Builder<ReadWriteDatabase>

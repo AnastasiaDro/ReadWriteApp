@@ -45,4 +45,8 @@
     <string name="error_add_card_failed">Не удалось создать карточку</string>
     <string name="error_update_card_failed">Не удалось обновить карточку</string>
     <string name="error_delete_cards_failed">Не удалось удалить часть карточек</string>
+    <string name="no_students_title">Добавьте ученика, чтобы начать занятие</string>
+    <string name="no_students_subtitle">Для каждого ученика сохраняется свой прогресс и колоды</string>
+    <string name="add_student_cta">+ Добавить ученика</string>
+    <string name="try_demo_cta">Попробовать демо</string>
 </resources>
