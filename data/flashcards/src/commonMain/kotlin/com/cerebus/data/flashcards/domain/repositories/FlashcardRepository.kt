@@ -9,6 +9,7 @@ interface FlashcardRepository {
     suspend fun getFlashcard(id: String): Flashcard?
 
     suspend fun getFlashcardsByDeckId(id: String): List<Flashcard>
+    suspend fun getAllCardsOfDeck(deckId: String): List<Flashcard>
     suspend fun getFlashcardsByIds(ids: List<String>): List<Flashcard>
 
     suspend fun searchFlashcards(query: String): List<Flashcard>

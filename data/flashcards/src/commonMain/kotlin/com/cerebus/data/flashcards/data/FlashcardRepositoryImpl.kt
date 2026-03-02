@@ -12,8 +12,12 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
         return storage.getById(id)?.toDomain()
     }
 
-    override suspend fun getFlashcardsByDeckId(deckId: String): List<Flashcard> {
-        return storage.getByDeckId(deckId).map { it.toDomain() }
+    override suspend fun getFlashcardsByDeckId(id: String): List<Flashcard> {
+        return storage.getByDeckId(id).map { it.toDomain() }
+    }
+
+    override suspend fun getAllCardsOfDeck(deckId: String): List<Flashcard> {
+        return getFlashcardsByDeckId(deckId)
     }
 
     override suspend fun getFlashcardsByIds(ids: List<String>): List<Flashcard> {

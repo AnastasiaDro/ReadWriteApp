@@ -4,6 +4,7 @@ import com.cerebus.data.decks.data.dao.DeckDao
 import com.cerebus.data.flashcards.data.dao.FlashcardDao
 import com.cerebus.data.student.data.dao.StudentDao
 import com.cerebus.data.studentdeck.data.dao.StudentDeckDao
+import com.cerebus.data.studyprogress.data.dao.StudyProgressDao
 import com.cerebus.readwrite.data.ReadWriteDatabase
 import org.koin.dsl.module
 
@@ -13,4 +14,5 @@ val databaseModule = module {
     single<DeckDao> { get<ReadWriteDatabase>().deckDao() }
     single<StudentDao> { get<ReadWriteDatabase>().studentDao() }
     single<StudentDeckDao> { get<ReadWriteDatabase>().studentDeckDao() }
+    single<StudyProgressDao> { get<ReadWriteDatabase>().studyProgressDao() }
 }

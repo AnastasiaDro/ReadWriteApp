@@ -28,4 +28,7 @@ interface StudentDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM students LIMIT 1)")
     suspend fun hasAnyStudents(): Boolean
+
+    @Query("SELECT id FROM students LIMIT 1")
+    suspend fun getFirstStudentId(): String?
 }

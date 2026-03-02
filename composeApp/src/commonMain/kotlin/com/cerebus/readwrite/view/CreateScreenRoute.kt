@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.create_screen.presentation.CreateScreen
 import com.cerebus.create_screen.presentation.CreateScreenAction
@@ -70,6 +71,12 @@ fun CreateScreenRoute(
     LaunchedEffect(deckChangedVersion) {
         if (deckChangedVersion > 0) {
             viewModel.onAction(CreateScreenAction.OnRefreshDecks)
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        CreateNavigationState.openCreateDialogRequests.collect {
+            viewModel.onAction(CreateScreenAction.OnCreateDeckClick)
         }
     }
 

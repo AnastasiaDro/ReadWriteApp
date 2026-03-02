@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -58,7 +57,12 @@ kotlin {
             implementation(project(":data:decks"))
             implementation(project(":data:student"))
             implementation(project(":data:student-deck"))
+            implementation(project(":data:preferences"))
+            implementation(project(":data:study_progress"))
+            implementation(project(":core:utils"))
+            implementation(project(":core:ui"))
             implementation(project(":feature:create_screen"))
+            implementation(libs.coil)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

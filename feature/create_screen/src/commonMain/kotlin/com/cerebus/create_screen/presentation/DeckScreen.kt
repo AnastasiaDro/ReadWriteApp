@@ -58,6 +58,7 @@ import coil3.compose.LocalPlatformContext
 
 private const val MAX_DECK_NAME_LENGTH = 40
 
+//TODO подумать и вынести в отдельный модуль
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 fun DeckScreen(
@@ -118,6 +119,21 @@ fun DeckScreen(
                     deleteText = strings.delete,
                     onDeleteClick = { onAction(DeckScreenAction.OnDeleteSelectedCardsClick) },
                 )
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Button(
+                        onClick = {
+                            TODO("Start training action is not implemented yet")
+                        },
+                    ) {
+                        Text(strings.startTraining)
+                    }
+                }
             }
         },
     ) { innerPadding ->
@@ -166,7 +182,7 @@ fun DeckScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = if (isSelectionMode) 120.dp else 88.dp),
+                contentPadding = PaddingValues(bottom = if (isSelectionMode) 120.dp else 140.dp),
             ) {
                 items(state.flashcards, key = { it.id }) { card ->
                     FlashcardGridItem(

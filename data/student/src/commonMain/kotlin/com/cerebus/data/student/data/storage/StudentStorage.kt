@@ -7,6 +7,7 @@ interface StudentStorage {
     suspend fun delete(id: String): Boolean
     suspend fun getById(id: String): StudentEntity?
     suspend fun hasAnyStudents(): Boolean
+    suspend fun getFirstStudentId(): String?
     suspend fun getActiveLettersById(id: String): String?
     suspend fun updateName(id: String, newName: String): Boolean
     suspend fun updateActiveLetters(id: String, activeLetters: String): Boolean

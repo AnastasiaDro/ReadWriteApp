@@ -25,6 +25,10 @@ class StudentRepositoryImpl(
         return storage.hasAnyStudents()
     }
 
+    override suspend fun getFirstStudentId(): String? {
+        return storage.getFirstStudentId()
+    }
+
     override suspend fun getActiveLettersById(id: String): String? {
         return storage.getActiveLettersById(id)
     }

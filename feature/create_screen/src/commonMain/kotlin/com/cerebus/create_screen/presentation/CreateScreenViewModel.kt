@@ -3,8 +3,11 @@ package com.cerebus.create_screen.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.utils.UniqueIdGenerator
+import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
+import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
+import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -16,6 +19,8 @@ import kotlinx.coroutines.launch
 
 class CreateScreenViewModel(
     private val deckRepository: DeckRepository,
+    private val studentDeckRepository: StudentDeckRepository,
+    private val preferencesRepository: PreferencesRepository,
 ) : ViewModel() {
     private companion object {
         const val MAX_DECK_NAME_LENGTH = 40
@@ -141,16 +146,31 @@ class CreateScreenViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, validationError = null) }
+            val newDeckId = UniqueIdGenerator.randomAlphanumeric(prefix = "deck")
 
             val created = deckRepository.addDeck(
                 Deck(
-                    id = UniqueIdGenerator.randomAlphanumeric(prefix = "deck"),
+                    id = newDeckId,
                     name = normalizedName,
                     coverUri = current.coverUri,
                 )
             )
 
             if (created) {
+                val activeStudentId = preferencesRepository.getLastActiveStudentId()
+                val isAssigned = activeStudentId.isNullOrBlank() ||
+                    studentDeckRepository.assignDeckToStudent(activeStudentId, newDeckId)
+                if (!isAssigned) {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            validationError = CreateValidationError.CREATE_DECK_FAILED,
+                        )
+                    }
+                    return@launch
+                }
+
+                DeckNavigationState.notifyDeckChanged()
                 loadDecks()
                 _uiState.update {
                     it.copy(

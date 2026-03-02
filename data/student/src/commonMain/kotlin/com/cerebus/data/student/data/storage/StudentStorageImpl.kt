@@ -25,6 +25,10 @@ class StudentStorageImpl(
         return runCatching { dao.hasAnyStudents() }.getOrDefault(false)
     }
 
+    override suspend fun getFirstStudentId(): String? {
+        return runCatching { dao.getFirstStudentId() }.getOrNull()
+    }
+
     override suspend fun getActiveLettersById(id: String): String? {
         return runCatching { dao.getActiveLettersById(id) }.getOrNull()
     }

@@ -55,6 +55,8 @@ kotlin {
                 implementation(project(":core:utils"))
                 implementation(project(":data:decks"))
                 implementation(project(":data:flashcards"))
+                implementation(project(":data:preferences"))
+                implementation(project(":data:student-deck"))
             }
         }
 

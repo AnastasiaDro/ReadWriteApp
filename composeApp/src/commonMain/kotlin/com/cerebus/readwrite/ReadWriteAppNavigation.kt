@@ -5,12 +5,15 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.game_screen.presentation.GameScreenWrapper
 import com.cerebus.readwrite.view.CreateScreenRoute
+import com.cerebus.readwrite.view.CreateStudentRoute
 import com.cerebus.readwrite.view.DeckScreenRoute
 import com.cerebus.readwrite.view.HomeScreen
 import com.cerebus.readwrite.view.AppStartRoute
+import com.cerebus.readwrite.view.ActiveStudentRoute
 import com.cerebus.readwrite.view.NoStudentsScreen
 import com.cerebus.tutube.navigation.Screens
 
@@ -31,13 +34,33 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 }
             )
         }
+        composable(Screens.ACTIVE_STUDENT.route) {
+            ActiveStudentRoute(
+                onOpenDeck = {
+                    navController.navigate(Screens.DECK.route)
+                },
+                onOpenDeckList = { openCreateDialog ->
+                    if (openCreateDialog) {
+                        CreateNavigationState.requestOpenCreateDialog()
+                    }
+                    navController.navigate(Screens.CREATE.route)
+                },
+            )
+        }
         composable(Screens.NO_STUDENTS.route) {
             NoStudentsScreen(
                 onAddStudentClick = {
-                    onAddStudentClicked()
+                    navController.navigate(Screens.CREATE_STUDENT.route)
                 },
                 onTryDemoClick = {
                     onTryDemoClicked()
+                },
+            )
+        }
+        composable(Screens.CREATE_STUDENT.route) {
+            CreateStudentRoute(
+                onNavigateToDeckList = {
+                    navController.navigate(Screens.CREATE.route)
                 },
             )
         }
@@ -53,7 +76,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
         composable(Screens.DECK.route) {
             DeckScreenRoute(
                 deckId = DeckNavigationState.selectedDeckId,
-                onBackClick = { navController.popBackStack() },
+                onBackClick = { navController.openActiveStudentFromDeck() },
             )
         }
         composable(Screens.GAME.route) {
@@ -62,10 +85,16 @@ fun ReadWriteAppNavigation() = MaterialTheme {
     }
 }
 
-private fun onAddStudentClicked() {
-    // TODO: Navigate to student creation flow.
-}
-
 private fun onTryDemoClicked() {
     // TODO: Navigate to demo flow.
+}
+
+private fun androidx.navigation.NavHostController.openActiveStudentFromDeck() {
+    val openedFromActiveStack = popBackStack(Screens.ACTIVE_STUDENT.route, inclusive = false)
+    if (openedFromActiveStack) return
+
+    navigate(Screens.ACTIVE_STUDENT.route) {
+        popUpTo(Screens.NO_STUDENTS.route) { inclusive = true }
+        launchSingleTop = true
+    }
 }

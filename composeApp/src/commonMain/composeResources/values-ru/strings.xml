@@ -27,6 +27,7 @@
     <string name="save">Сохранить</string>
     <string name="unnamed_deck">Без названия</string>
     <string name="add_card">Добавить карточку</string>
+    <string name="start_training">Начать тренировку</string>
     <string name="add_card_title">Создать карточку</string>
     <string name="edit_card_title">Изменить карточку</string>
     <string name="card_name_label">Название карточки</string>
@@ -49,4 +50,18 @@
     <string name="no_students_subtitle">Для каждого ученика сохраняется свой прогресс и колоды</string>
     <string name="add_student_cta">+ Добавить ученика</string>
     <string name="try_demo_cta">Попробовать демо</string>
+    <string name="create_student_title">Добавим ученика</string>
+    <string name="add_photo">Добавить фото</string>
+    <string name="create_student_name_subtitle">Имя ученика</string>
+    <string name="create_student_name_hint">Ученик 1</string>
+    <string name="add_student_next">Далее</string>
+    <string name="create_student_avatar_placeholder">👤</string>
+    <string name="active_student_change">Сменить</string>
+    <string name="active_student_fallback_name">Ученик</string>
+    <string name="active_student_last_lesson">Последнее занятие</string>
+    <string name="active_student_start">▶ Начать</string>
+    <string name="active_student_other_decks">Другие колоды:</string>
+    <string name="active_student_no_decks">Пока нет колод</string>
+    <string name="active_student_more">Еще</string>
+    <string name="active_student_create">Создать</string>
 </resources>

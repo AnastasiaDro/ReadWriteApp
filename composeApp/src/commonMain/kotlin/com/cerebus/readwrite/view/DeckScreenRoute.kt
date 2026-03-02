@@ -42,6 +42,7 @@ import readwriteapp.composeapp.generated.resources.error_update_name_failed
 import readwriteapp.composeapp.generated.resources.no_cover
 import readwriteapp.composeapp.generated.resources.save
 import readwriteapp.composeapp.generated.resources.selected_count
+import readwriteapp.composeapp.generated.resources.start_training
 import readwriteapp.composeapp.generated.resources.take_photo
 import readwriteapp.composeapp.generated.resources.unnamed_deck
 import readwriteapp.composeapp.generated.resources.delete
@@ -84,6 +85,7 @@ fun DeckScreenRoute(
     val strings = DeckScreenStrings(
         back = stringResource(Res.string.back),
         addCard = stringResource(Res.string.add_card),
+        startTraining = stringResource(Res.string.start_training),
         addCardTitle = stringResource(Res.string.add_card_title),
         editCardTitle = stringResource(Res.string.edit_card_title),
         cards = stringResource(Res.string.cards),

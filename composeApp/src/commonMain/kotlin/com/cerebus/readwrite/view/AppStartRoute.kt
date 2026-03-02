@@ -47,8 +47,7 @@ fun AppStartRoute(
 }
 
 private fun NavHostController.openFlowForExistingStudents() {
-    // TODO: Open the main learning flow for users that already have at least one student profile.
-    navigate(Screens.HOME.route) {
+    navigate(Screens.ACTIVE_STUDENT.route) {
         popUpTo(graph.startDestinationId) { inclusive = true }
         launchSingleTop = true
     }
