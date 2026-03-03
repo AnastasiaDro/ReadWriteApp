@@ -60,8 +60,8 @@
     <string name="active_student_fallback_name">Student</string>
     <string name="active_student_last_lesson">Last lesson</string>
     <string name="active_student_start">▶ Start</string>
-    <string name="active_student_other_decks">Other decks:</string>
+    <string name="active_student_other_decks">Your other decks:</string>
     <string name="active_student_no_decks">No decks yet</string>
-    <string name="active_student_more">More</string>
+    <string name="active_student_more">More decks</string>
     <string name="active_student_create">Create</string>
 </resources>

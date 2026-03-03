@@ -17,6 +17,9 @@ interface StudentDao {
     @Query("SELECT * FROM students WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): StudentEntity?
 
+    @Query("SELECT * FROM students ORDER BY rowid DESC")
+    suspend fun getAllOrderedByCreation(): List<StudentEntity>
+
     @Query("SELECT activeLetters FROM students WHERE id = :id LIMIT 1")
     suspend fun getActiveLettersById(id: String): String?
 

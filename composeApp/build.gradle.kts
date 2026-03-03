@@ -1,4 +1,6 @@
+import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.tasks.Copy
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -62,7 +64,9 @@ kotlin {
             implementation(project(":core:utils"))
             implementation(project(":core:ui"))
             implementation(project(":feature:create_screen"))
+            implementation(project(":feature:student"))
             implementation(libs.coil)
+            implementation(libs.compose.icons)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -95,6 +99,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
 }
 
 dependencies {
@@ -102,4 +107,28 @@ dependencies {
     add("kspIosSimulatorArm64", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
     debugImplementation(libs.compose.uiTooling)
+}
+
+val featureStudentResourcesOutput = layout.buildDirectory.dir("generated/featureStudentComposeResources")
+
+val copyFeatureStudentComposeResources by tasks.registering(Copy::class) {
+    dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
+    from(
+        project(":feature:student")
+            .layout
+            .buildDirectory
+            .dir("generated/compose/resourceGenerator/preparedResources/commonMain/composeResources")
+    )
+    into(featureStudentResourcesOutput.map {
+        it.dir("composeResources/readwriteapp.feature.student.generated.resources")
+    })
+}
+
+android.sourceSets.getByName("main").assets.srcDir(featureStudentResourcesOutput)
+
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(copyFeatureStudentComposeResources)
+    dependsOn(":feature:student:convertXmlValueResourcesForCommonMain")
+    dependsOn(":feature:student:copyNonXmlValueResourcesForCommonMain")
+    dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
 }

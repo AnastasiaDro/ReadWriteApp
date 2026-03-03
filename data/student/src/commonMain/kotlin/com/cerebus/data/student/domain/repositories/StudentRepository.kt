@@ -6,6 +6,7 @@ interface StudentRepository {
     suspend fun createStudent(student: Student): Boolean
     suspend fun deleteStudent(id: String): Boolean
     suspend fun getStudentById(id: String): Student?
+    suspend fun getAllStudentsOrderedByCreation(): List<Student>
     suspend fun hasAnyStudents(): Boolean
     suspend fun getFirstStudentId(): String?
     suspend fun getActiveLettersById(id: String): String?

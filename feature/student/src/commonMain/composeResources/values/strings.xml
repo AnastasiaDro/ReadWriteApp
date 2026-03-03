@@ -1,0 +1,28 @@
+<resources>
+    <string name="no_students_title">Add a student to start a lesson</string>
+    <string name="no_students_subtitle">Each student has their own saved progress and decks</string>
+    <string name="add_student_cta">+ Add student</string>
+    <string name="try_demo_cta">Try demo</string>
+    <string name="create_student_title">Let’s add a student</string>
+    <string name="add_photo">Add photo</string>
+    <string name="create_student_name_subtitle">Student name</string>
+    <string name="create_student_name_hint">Student 1</string>
+    <string name="add_student_next">Next</string>
+    <string name="create_student_avatar_placeholder">👤</string>
+    <string name="choose_source">Choose source</string>
+    <string name="choose_from_gallery">Choose from gallery</string>
+    <string name="take_photo">Take photo</string>
+    <string name="close">Close</string>
+    <string name="active_student_change">Change</string>
+    <string name="active_student_fallback_name">Student</string>
+    <string name="active_student_last_lesson">Last lesson</string>
+    <string name="active_student_start">▶ Start</string>
+    <string name="active_student_other_decks">Your other decks:</string>
+    <string name="active_student_no_decks">No decks yet</string>
+    <string name="active_student_more">More decks</string>
+    <string name="active_student_create">Create</string>
+    <string name="change_student_back">Back</string>
+    <string name="change_student_title">Change student</string>
+    <string name="change_student_last_deck">Last deck:</string>
+    <string name="change_student_create">Create student</string>
+</resources>

@@ -4,9 +4,7 @@ import com.cerebus.data.student.data.StudentRepositoryImpl
 import com.cerebus.data.student.data.storage.StudentStorage
 import com.cerebus.data.student.data.storage.StudentStorageImpl
 import com.cerebus.data.student.domain.repositories.StudentRepository
-import com.cerebus.readwrite.view.ActiveStudentViewModel
 import com.cerebus.readwrite.view.AppStartViewModel
-import com.cerebus.readwrite.view.CreateStudentViewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -20,6 +18,4 @@ val studentsModule = module {
     }
 
     viewModelOf(::AppStartViewModel)
-    viewModelOf(::ActiveStudentViewModel)
-    viewModelOf(::CreateStudentViewModel)
 }

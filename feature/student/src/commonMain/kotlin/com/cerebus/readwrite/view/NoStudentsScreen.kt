@@ -21,11 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
-import readwriteapp.composeapp.generated.resources.Res
-import readwriteapp.composeapp.generated.resources.add_student_cta
-import readwriteapp.composeapp.generated.resources.no_students_subtitle
-import readwriteapp.composeapp.generated.resources.no_students_title
-import readwriteapp.composeapp.generated.resources.try_demo_cta
+import readwriteapp.feature.student.generated.resources.Res
+import readwriteapp.feature.student.generated.resources.add_student_cta
+import readwriteapp.feature.student.generated.resources.no_students_subtitle
+import readwriteapp.feature.student.generated.resources.no_students_title
+import readwriteapp.feature.student.generated.resources.try_demo_cta
 
 @Composable
 fun NoStudentsScreen(

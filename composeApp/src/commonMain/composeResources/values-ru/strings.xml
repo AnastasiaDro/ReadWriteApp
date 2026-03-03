@@ -60,8 +60,8 @@
     <string name="active_student_fallback_name">Ученик</string>
     <string name="active_student_last_lesson">Последнее занятие</string>
     <string name="active_student_start">▶ Начать</string>
-    <string name="active_student_other_decks">Другие колоды:</string>
+    <string name="active_student_other_decks">Ваши другие колоды:</string>
     <string name="active_student_no_decks">Пока нет колод</string>
-    <string name="active_student_more">Еще</string>
+    <string name="active_student_more">Больше колод</string>
     <string name="active_student_create">Создать</string>
 </resources>

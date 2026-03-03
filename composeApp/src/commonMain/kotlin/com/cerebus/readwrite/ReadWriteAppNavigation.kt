@@ -8,12 +8,14 @@ import androidx.navigation.compose.rememberNavController
 import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.game_screen.presentation.GameScreenWrapper
+import com.cerebus.readwrite.navigation.CreateStudentNavigationState
 import com.cerebus.readwrite.view.CreateScreenRoute
 import com.cerebus.readwrite.view.CreateStudentRoute
 import com.cerebus.readwrite.view.DeckScreenRoute
 import com.cerebus.readwrite.view.HomeScreen
 import com.cerebus.readwrite.view.AppStartRoute
 import com.cerebus.readwrite.view.ActiveStudentRoute
+import com.cerebus.readwrite.view.ChangeStudentRoute
 import com.cerebus.readwrite.view.NoStudentsScreen
 import com.cerebus.tutube.navigation.Screens
 
@@ -45,11 +47,27 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     }
                     navController.navigate(Screens.CREATE.route)
                 },
+                onOpenChangeStudent = {
+                    navController.navigate(Screens.CHANGE_STUDENT.route)
+                },
+            )
+        }
+        composable(Screens.CHANGE_STUDENT.route) {
+            ChangeStudentRoute(
+                onBackClick = { navController.popBackStack() },
+                onOpenDeck = {
+                    navController.navigate(Screens.DECK.route)
+                },
+                onOpenCreateStudent = {
+                    CreateStudentNavigationState.setReturnToActiveStudent(true)
+                    navController.navigate(Screens.CREATE_STUDENT.route)
+                },
             )
         }
         composable(Screens.NO_STUDENTS.route) {
             NoStudentsScreen(
                 onAddStudentClick = {
+                    CreateStudentNavigationState.setReturnToActiveStudent(false)
                     navController.navigate(Screens.CREATE_STUDENT.route)
                 },
                 onTryDemoClick = {
@@ -61,6 +79,15 @@ fun ReadWriteAppNavigation() = MaterialTheme {
             CreateStudentRoute(
                 onNavigateToDeckList = {
                     navController.navigate(Screens.CREATE.route)
+                },
+                onNavigateToActiveStudent = {
+                    val openedFromActiveStack =
+                        navController.popBackStack(Screens.ACTIVE_STUDENT.route, inclusive = false)
+                    if (!openedFromActiveStack) {
+                        navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                            launchSingleTop = true
+                        }
+                    }
                 },
             )
         }

@@ -21,6 +21,10 @@ class StudentRepositoryImpl(
         return storage.getById(id)?.toDomain()
     }
 
+    override suspend fun getAllStudentsOrderedByCreation(): List<Student> {
+        return storage.getAllOrderedByCreation().map { it.toDomain() }
+    }
+
     override suspend fun hasAnyStudents(): Boolean {
         return storage.hasAnyStudents()
     }

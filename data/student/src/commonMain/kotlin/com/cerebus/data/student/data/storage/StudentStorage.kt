@@ -6,6 +6,7 @@ interface StudentStorage {
     suspend fun create(student: StudentEntity): Boolean
     suspend fun delete(id: String): Boolean
     suspend fun getById(id: String): StudentEntity?
+    suspend fun getAllOrderedByCreation(): List<StudentEntity>
     suspend fun hasAnyStudents(): Boolean
     suspend fun getFirstStudentId(): String?
     suspend fun getActiveLettersById(id: String): String?

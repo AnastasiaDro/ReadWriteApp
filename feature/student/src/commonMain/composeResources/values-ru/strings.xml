@@ -1,0 +1,28 @@
+<resources>
+    <string name="no_students_title">Добавьте ученика, чтобы начать занятие</string>
+    <string name="no_students_subtitle">Для каждого ученика сохраняется свой прогресс и колоды</string>
+    <string name="add_student_cta">+ Добавить ученика</string>
+    <string name="try_demo_cta">Попробовать демо</string>
+    <string name="create_student_title">Добавим ученика</string>
+    <string name="add_photo">Добавить фото</string>
+    <string name="create_student_name_subtitle">Имя ученика</string>
+    <string name="create_student_name_hint">Ученик 1</string>
+    <string name="add_student_next">Далее</string>
+    <string name="create_student_avatar_placeholder">👤</string>
+    <string name="choose_source">Выберите источник</string>
+    <string name="choose_from_gallery">Выбрать из галереи</string>
+    <string name="take_photo">Сделать фото</string>
+    <string name="close">Закрыть</string>
+    <string name="active_student_change">Сменить</string>
+    <string name="active_student_fallback_name">Ученик</string>
+    <string name="active_student_last_lesson">Последнее занятие</string>
+    <string name="active_student_start">▶ Начать</string>
+    <string name="active_student_other_decks">Ваши другие колоды:</string>
+    <string name="active_student_no_decks">Пока нет колод</string>
+    <string name="active_student_more">Больше колод</string>
+    <string name="active_student_create">Создать</string>
+    <string name="change_student_back">Назад</string>
+    <string name="change_student_title">Сменить ученика</string>
+    <string name="change_student_last_deck">Последняя колода:</string>
+    <string name="change_student_create">Создать ученика</string>
+</resources>

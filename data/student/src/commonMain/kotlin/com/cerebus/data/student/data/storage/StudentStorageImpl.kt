@@ -21,6 +21,10 @@ class StudentStorageImpl(
         return runCatching { dao.getById(id) }.getOrNull()
     }
 
+    override suspend fun getAllOrderedByCreation(): List<StudentEntity> {
+        return runCatching { dao.getAllOrderedByCreation() }.getOrDefault(emptyList())
+    }
+
     override suspend fun hasAnyStudents(): Boolean {
         return runCatching { dao.hasAnyStudents() }.getOrDefault(false)
     }
