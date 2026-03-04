@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -60,6 +60,10 @@ fun GameScreenWrapper(
                 navigator.openActiveStudent()
                 viewModel.consumeEffect()
             }
+            GameScreenEffect.CloseGame -> {
+                navigator.closeGame()
+                viewModel.consumeEffect()
+            }
             null -> Unit
         }
     }
@@ -75,33 +79,44 @@ fun GameScreen(
     state: GameUiState,
     onAction: (GameScreenAction) -> Unit,
 ) {
-    when (state) {
-        GameUiState.Loading -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Загрузка...",
-                    style = MaterialTheme.typography.headlineSmall,
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (state) {
+            GameUiState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Загрузка...",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                }
+            }
+
+            is GameUiState.Active -> {
+                ActiveGameContent(
+                    state = state,
+                    onAction = onAction,
+                )
+            }
+
+            is GameUiState.Finished -> {
+                FinishedGameContent(
+                    state = state,
+                    onAction = onAction,
                 )
             }
         }
 
-        is GameUiState.Active -> {
-            ActiveGameContent(
-                state = state,
-                onAction = onAction,
-            )
-        }
-
-        is GameUiState.Finished -> {
-            FinishedGameContent(
-                state = state,
-                onAction = onAction,
-            )
+        TextButton(
+            onClick = { onAction(GameScreenAction.OnCloseClick) },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp),
+        ) {
+            Text("✕")
         }
     }
 }
@@ -254,6 +269,8 @@ private fun Hint(
     visible: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    if (!visible) return
+
     Text(
         text = text,
         modifier = modifier
@@ -264,8 +281,7 @@ private fun Hint(
                 color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(10.dp),
             )
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .alpha(if (visible) 1f else 0f),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,

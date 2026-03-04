@@ -14,4 +14,11 @@ class GameScreenNavigatorImpl(
             launchSingleTop = true
         }
     }
+
+    override fun closeGame() {
+        val closed = navController.popBackStack()
+        if (closed) return
+
+        openActiveStudent()
+    }
 }

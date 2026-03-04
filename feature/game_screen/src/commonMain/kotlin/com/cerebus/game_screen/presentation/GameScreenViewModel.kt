@@ -40,6 +40,9 @@ class GameScreenViewModel(
             GameScreenAction.OnBackToStudentClick -> {
                 _effects.value = GameScreenEffect.OpenActiveStudent
             }
+            GameScreenAction.OnCloseClick -> {
+                _effects.value = GameScreenEffect.CloseGame
+            }
         }
     }
 
