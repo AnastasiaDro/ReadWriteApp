@@ -7,9 +7,11 @@ import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -24,10 +26,13 @@ class DeckScreenViewModel(
 
     private val _uiState = MutableStateFlow(DeckUiState())
     val uiState: StateFlow<DeckUiState> = _uiState.asStateFlow()
+    private val _effects = MutableStateFlow<DeckScreenEffect?>(null)
+    val effects: StateFlow<DeckScreenEffect?> = _effects.asStateFlow()
+    private var observeDeckJob: Job? = null
 
     fun onAction(action: DeckScreenAction) {
         when (action) {
-            is DeckScreenAction.Initialize -> loadDeck(action.deckId)
+            is DeckScreenAction.Initialize -> startObservingDeck(action.deckId)
             DeckScreenAction.OnEditNameClick -> {
                 _uiState.update {
                     it.copy(
@@ -56,6 +61,12 @@ class DeckScreenViewModel(
                     )
                 }
             }
+            DeckScreenAction.OnStartTrainingClick -> {
+                val deckId = _uiState.value.deckId
+                if (deckId.isNotBlank()) {
+                    _effects.value = DeckScreenEffect.OpenGame(deckId)
+                }
+            }
 
             DeckScreenAction.OnSaveNameClick -> updateDeckName()
             DeckScreenAction.OnEditCoverClick -> {
@@ -66,31 +77,23 @@ class DeckScreenViewModel(
                 _uiState.update { it.copy(isEditCoverSourceDialogVisible = false) }
             }
 
-            DeckScreenAction.OnPickCoverFromGalleryClick -> {
-                _uiState.update {
-                    it.copy(
-                        isEditCoverSourceDialogVisible = false,
-                        pendingPickerRequest = DeckPickerRequest.GALLERY,
-                        pendingPickerTarget = DeckPickerTarget.DECK_COVER,
-                    )
-                }
-            }
-
-            DeckScreenAction.OnTakeCoverPhotoClick -> {
-                _uiState.update {
-                    it.copy(
-                        isEditCoverSourceDialogVisible = false,
-                        pendingPickerRequest = DeckPickerRequest.CAMERA,
-                        pendingPickerTarget = DeckPickerTarget.DECK_COVER,
-                    )
-                }
-            }
+            is DeckScreenAction.OnPickImageFromGallery -> openPicker(
+                request = DeckPickerRequest.GALLERY,
+                target = action.target,
+            )
+            is DeckScreenAction.OnTakeImagePhoto -> openPicker(
+                request = DeckPickerRequest.CAMERA,
+                target = action.target,
+            )
 
             DeckScreenAction.OnPickerRequestConsumed -> {
                 _uiState.update { it.copy(pendingPickerRequest = null) }
             }
 
-            is DeckScreenAction.OnImagePicked -> onImagePicked(action.uri)
+            is DeckScreenAction.OnImagePicked -> onImagePicked(
+                uri = action.uri,
+                target = action.target,
+            )
             DeckScreenAction.OnAddCardClick -> {
                 _uiState.update {
                     it.copy(
@@ -136,26 +139,6 @@ class DeckScreenViewModel(
                 _uiState.update { it.copy(isCardCoverSourceDialogVisible = false) }
             }
 
-            DeckScreenAction.OnPickCardCoverFromGalleryClick -> {
-                _uiState.update {
-                    it.copy(
-                        isCardCoverSourceDialogVisible = false,
-                        pendingPickerRequest = DeckPickerRequest.GALLERY,
-                        pendingPickerTarget = DeckPickerTarget.CARD_IMAGE,
-                    )
-                }
-            }
-
-            DeckScreenAction.OnTakeCardCoverPhotoClick -> {
-                _uiState.update {
-                    it.copy(
-                        isCardCoverSourceDialogVisible = false,
-                        pendingPickerRequest = DeckPickerRequest.CAMERA,
-                        pendingPickerTarget = DeckPickerTarget.CARD_IMAGE,
-                    )
-                }
-            }
-
             DeckScreenAction.OnConfirmAddCard -> saveCard()
             is DeckScreenAction.OnCardLongPress -> toggleCardSelection(action.cardId)
             is DeckScreenAction.OnCardClick -> onCardClick(action.cardId)
@@ -177,38 +160,57 @@ class DeckScreenViewModel(
         }
     }
 
-    private fun loadDeck(deckId: String) {
-        if (_uiState.value.deckId == deckId && !_uiState.value.isLoading) return
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, deckId = deckId) }
-            val deck = deckRepository.getDeckById(deckId)
-            if (deck != null) {
-                _uiState.update {
-                    it.copy(
-                        deckName = deck.name,
-                        coverUri = deck.coverUri,
-                        editingName = deck.name,
-                        isLoading = false,
-                        validationError = null,
-                    )
-                }
-                loadFlashcards(deckId)
-            } else {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        validationError = DeckValidationError.DECK_NOT_FOUND,
-                    )
-                }
-            }
-        }
+    fun consumeEffect() {
+        _effects.value = null
     }
 
-    private fun loadFlashcards(deckId: String) {
-        viewModelScope.launch {
-            val flashcards = flashcardRepository.getFlashcardsByDeckId(deckId)
-            _uiState.update { it.copy(flashcards = flashcards) }
+    private fun startObservingDeck(deckId: String) {
+        if (_uiState.value.deckId == deckId && observeDeckJob?.isActive == true) return
+
+        observeDeckJob?.cancel()
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                deckId = deckId,
+                validationError = null,
+            )
+        }
+
+        observeDeckJob = viewModelScope.launch {
+            combine(
+                deckRepository.observeDeckById(deckId),
+                flashcardRepository.observeFlashcardsByDeckId(deckId),
+            ) { deck, flashcards ->
+                deck to flashcards
+            }.collect { (deck, flashcards) ->
+                _uiState.update { state ->
+                    if (deck == null) {
+                        state.copy(
+                            deckName = "",
+                            coverUri = null,
+                            flashcards = emptyList(),
+                            selectedCardIds = emptySet(),
+                            isLoading = false,
+                            validationError = DeckValidationError.DECK_NOT_FOUND,
+                        )
+                    } else {
+                        val existingCardIds = flashcards.asSequence().map { it.id }.toSet()
+                        state.copy(
+                            deckName = deck.name,
+                            coverUri = deck.coverUri,
+                            editingName = if (state.isEditNameDialogVisible) state.editingName else deck.name,
+                            flashcards = flashcards,
+                            selectedCardIds = state.selectedCardIds.filterTo(mutableSetOf()) { it in existingCardIds },
+                            isLoading = false,
+                            validationError = if (state.validationError == DeckValidationError.DECK_NOT_FOUND) {
+                                null
+                            } else {
+                                state.validationError
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -232,7 +234,6 @@ class DeckScreenViewModel(
             if (created) {
                 _uiState.update {
                     it.copy(
-                        flashcards = it.flashcards + newCard,
                         isCardSaving = false,
                         isAddCardDialogVisible = false,
                         cardEditorMode = CardEditorMode.CREATE,
@@ -274,9 +275,6 @@ class DeckScreenViewModel(
             if (updated) {
                 _uiState.update {
                     it.copy(
-                        flashcards = it.flashcards.map { card ->
-                            if (card.id == cardId) updatedCard else card
-                        },
                         isCardSaving = false,
                         isAddCardDialogVisible = false,
                         cardEditorMode = CardEditorMode.CREATE,
@@ -366,7 +364,6 @@ class DeckScreenViewModel(
                 val hasFailures = deletedIds.size != selectedIds.size
                 val remainingSelection = state.selectedCardIds - deletedIds
                 state.copy(
-                    flashcards = state.flashcards.filterNot { it.id in deletedIds },
                     selectedCardIds = remainingSelection,
                     isDeletingSelectedCards = false,
                     isDeleteSelectedDialogVisible = false,
@@ -376,19 +373,35 @@ class DeckScreenViewModel(
         }
     }
 
-    private fun onImagePicked(uri: String) {
-        when (_uiState.value.pendingPickerTarget) {
-            DeckPickerTarget.DECK_COVER -> updateDeckCover(uri)
-            DeckPickerTarget.CARD_IMAGE -> _uiState.update {
-                it.copy(
-                    cardImageUrl = uri,
-                    pendingPickerTarget = null,
-                    validationError = null,
-                )
-            }
+    private fun onImagePicked(
+        uri: String,
+        target: DeckPickerTarget?,
+    ) {
+        val resolvedTarget = target ?: _uiState.value.pendingPickerTarget
+        when (resolvedTarget) {
+            DeckPickerTarget.DECK_COVER -> applyPickedImage(
+                uri = uri,
+                stateTransform = { state, value ->
+                    state.copy(
+                        coverUri = value,
+                        pendingPickerTarget = null,
+                        validationError = null,
+                    )
+                },
+                afterApply = { persistDeckCover(uri) },
+            )
+            DeckPickerTarget.CARD_IMAGE -> applyPickedImage(
+                uri = uri,
+                stateTransform = { state, value ->
+                    state.copy(
+                        cardImageUrl = value,
+                        pendingPickerTarget = null,
+                        validationError = null,
+                    )
+                },
+            )
             null -> Unit
         }
-        _uiState.update { it.copy(pendingPickerTarget = null) }
     }
 
     private fun updateDeckName() {
@@ -417,22 +430,54 @@ class DeckScreenViewModel(
         }
     }
 
-    private fun updateDeckCover(uri: String) {
+    private fun persistDeckCover(uri: String) {
         val state = _uiState.value
+        if (state.deckId.isBlank()) {
+            _uiState.update { it.copy(validationError = DeckValidationError.UPDATE_COVER_FAILED) }
+            return
+        }
+
         viewModelScope.launch {
             val updated = deckRepository.updateDeckCoverUri(state.deckId, uri)
             if (updated) {
                 DeckNavigationState.notifyDeckChanged()
-                _uiState.update {
-                    it.copy(
-                        coverUri = uri,
-                        pendingPickerTarget = null,
-                        validationError = null,
-                    )
-                }
             } else {
                 _uiState.update { it.copy(validationError = DeckValidationError.UPDATE_COVER_FAILED) }
             }
         }
     }
+
+    private fun applyPickedImage(
+        uri: String,
+        stateTransform: (DeckUiState, String) -> DeckUiState,
+        afterApply: (() -> Unit)? = null,
+    ) {
+        _uiState.update { current ->
+            stateTransform(current, uri)
+        }
+        afterApply?.invoke()
+    }
+
+    private fun openPicker(
+        request: DeckPickerRequest,
+        target: DeckPickerTarget,
+    ) {
+        _uiState.update {
+            it.copy(
+                isEditCoverSourceDialogVisible = false,
+                isCardCoverSourceDialogVisible = false,
+                pendingPickerRequest = request,
+                pendingPickerTarget = target,
+            )
+        }
+    }
+
+    override fun onCleared() {
+        observeDeckJob?.cancel()
+        super.onCleared()
+    }
+}
+
+sealed interface DeckScreenEffect {
+    data class OpenGame(val deckId: String) : DeckScreenEffect
 }

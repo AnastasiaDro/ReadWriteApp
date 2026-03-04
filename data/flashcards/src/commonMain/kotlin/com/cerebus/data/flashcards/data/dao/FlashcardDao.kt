@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.cerebus.data.flashcards.data.entity.FlashcardEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FlashcardDao {
@@ -20,6 +21,9 @@ interface FlashcardDao {
 
     @Query("SELECT * FROM flashcards WHERE deckId = :deckId")
     suspend fun getByDeckId(deckId: String): List<FlashcardEntity>
+
+    @Query("SELECT * FROM flashcards WHERE deckId = :deckId")
+    fun observeByDeckId(deckId: String): Flow<List<FlashcardEntity>>
 
     @Query("SELECT * FROM flashcards WHERE name LIKE '%' || :query || '%'")
     suspend fun searchByName(query: String): List<FlashcardEntity>

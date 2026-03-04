@@ -3,6 +3,7 @@ package com.cerebus.create_screen.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,6 +87,7 @@ fun DeckScreen(
         topBar = {
             TopAppBar(
                 title = { Text("") },
+                windowInsets = WindowInsets(0.dp),
                 navigationIcon = {
                     TextButton(
                         onClick = {
@@ -127,9 +129,7 @@ fun DeckScreen(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Button(
-                        onClick = {
-                            TODO("Start training action is not implemented yet")
-                        },
+                        onClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
                     ) {
                         Text(strings.startTraining)
                     }
@@ -247,16 +247,28 @@ fun DeckScreen(
         )
     }
 
-    AppAnimatedDialog(visible = state.isEditCoverSourceDialogVisible) {
+    if (state.isEditCoverSourceDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(DeckScreenAction.OnDismissEditCoverSourceDialog) },
             title = { Text(strings.editCover) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { onAction(DeckScreenAction.OnPickCoverFromGalleryClick) }) {
+                    TextButton(
+                        onClick = {
+                            onAction(
+                                DeckScreenAction.OnPickImageFromGallery(DeckPickerTarget.DECK_COVER)
+                            )
+                        }
+                    ) {
                         Text(strings.chooseFromGallery)
                     }
-                    TextButton(onClick = { onAction(DeckScreenAction.OnTakeCoverPhotoClick) }) {
+                    TextButton(
+                        onClick = {
+                            onAction(
+                                DeckScreenAction.OnTakeImagePhoto(DeckPickerTarget.DECK_COVER)
+                            )
+                        }
+                    ) {
                         Text(strings.takePhoto)
                     }
                 }
@@ -304,16 +316,28 @@ fun DeckScreen(
         },
     )
 
-    AppAnimatedDialog(visible = state.isCardCoverSourceDialogVisible) {
+    if (state.isCardCoverSourceDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(DeckScreenAction.OnDismissCardCoverSourceDialog) },
             title = { Text(strings.chooseSource) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { onAction(DeckScreenAction.OnPickCardCoverFromGalleryClick) }) {
+                    TextButton(
+                        onClick = {
+                            onAction(
+                                DeckScreenAction.OnPickImageFromGallery(DeckPickerTarget.CARD_IMAGE)
+                            )
+                        }
+                    ) {
                         Text(strings.chooseFromGallery)
                     }
-                    TextButton(onClick = { onAction(DeckScreenAction.OnTakeCardCoverPhotoClick) }) {
+                    TextButton(
+                        onClick = {
+                            onAction(
+                                DeckScreenAction.OnTakeImagePhoto(DeckPickerTarget.CARD_IMAGE)
+                            )
+                        }
+                    ) {
                         Text(strings.takePhoto)
                     }
                 }
@@ -543,6 +567,7 @@ private fun DeckCover(
         if (coverUri.isNullOrBlank() || imageLoadFailed) {
             Text(noCoverText)
         } else {
+            Text(noCoverText)
             AsyncImage(
                 model = coverUri,
                 imageLoader = imageLoader,

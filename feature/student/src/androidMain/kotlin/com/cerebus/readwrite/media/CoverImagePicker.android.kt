@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -29,6 +30,8 @@ actual fun rememberCoverImagePicker(
     onError: (String) -> Unit,
 ): CoverImagePicker {
     val context = LocalContext.current
+    val onImagePickedState = rememberUpdatedState(onImagePicked)
+    val onErrorState = rememberUpdatedState(onError)
 
     var cameraOutputUri by remember { mutableStateOf<Uri?>(null) }
     var pendingAction by remember { mutableStateOf<PendingMediaAction?>(null) }
@@ -36,20 +39,20 @@ actual fun rememberCoverImagePicker(
     val galleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
-        if (uri != null) onImagePicked(uri.toString())
+        if (uri != null) onImagePickedState.value(uri.toString())
     }
 
     val legacyGalleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
-        if (uri != null) onImagePicked(uri.toString())
+        if (uri != null) onImagePickedState.value(uri.toString())
     }
 
     val cameraCapture = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
     ) { success ->
         if (success) {
-            cameraOutputUri?.let { onImagePicked(it.toString()) }
+            cameraOutputUri?.let { onImagePickedState.value(it.toString()) }
         }
     }
 
@@ -67,7 +70,7 @@ actual fun rememberCoverImagePicker(
                 if (granted) {
                     legacyGalleryPicker.launch("image/*")
                 } else {
-                    onError("Gallery permission denied")
+                    onErrorState.value("Gallery permission denied")
                 }
             }
 
@@ -78,7 +81,7 @@ actual fun rememberCoverImagePicker(
                     cameraOutputUri = uri
                     cameraCapture.launch(uri)
                 } else {
-                    onError("Camera permission denied")
+                    onErrorState.value("Camera permission denied")
                 }
             }
 

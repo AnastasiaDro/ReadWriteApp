@@ -3,12 +3,14 @@ package com.cerebus.data.flashcards.domain.repositories
 import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.flashcards.domain.models.BulkInsertResult
 import com.cerebus.data.flashcards.domain.models.Flashcard
+import kotlinx.coroutines.flow.Flow
 
 interface FlashcardRepository {
 
     suspend fun getFlashcard(id: String): Flashcard?
 
     suspend fun getFlashcardsByDeckId(id: String): List<Flashcard>
+    fun observeFlashcardsByDeckId(id: String): Flow<List<Flashcard>>
     suspend fun getAllCardsOfDeck(deckId: String): List<Flashcard>
     suspend fun getFlashcardsByIds(ids: List<String>): List<Flashcard>
 

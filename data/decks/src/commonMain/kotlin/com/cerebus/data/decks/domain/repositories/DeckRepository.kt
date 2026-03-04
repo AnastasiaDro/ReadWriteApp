@@ -4,10 +4,13 @@ import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.decks.domain.models.BulkDeleteResult
 import com.cerebus.data.decks.domain.models.BulkInsertResult
 import com.cerebus.data.decks.domain.models.Deck
+import kotlinx.coroutines.flow.Flow
 
 interface DeckRepository {
     suspend fun getAllDecks(): List<Deck>
     suspend fun getDeckById(id: String): Deck?
+    fun observeAllDecks(): Flow<List<Deck>>
+    fun observeDeckById(id: String): Flow<Deck?>
 
     suspend fun addDeck(deck: Deck): Boolean
     suspend fun addDecks(decks: List<Deck>): CustomResult<BulkInsertResult>

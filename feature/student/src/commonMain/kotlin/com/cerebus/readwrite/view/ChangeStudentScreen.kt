@@ -101,7 +101,12 @@ private fun ChangeStudentScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 10.dp,
+                bottom = 10.dp,
+            ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         TextButton(onClick = onBackClick) {

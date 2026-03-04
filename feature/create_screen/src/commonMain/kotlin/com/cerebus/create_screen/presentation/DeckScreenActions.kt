@@ -6,21 +6,23 @@ sealed interface DeckScreenAction {
     data object OnDismissEditNameDialog : DeckScreenAction
     data class OnNameChanged(val value: String) : DeckScreenAction
     data object OnSaveNameClick : DeckScreenAction
+    data object OnStartTrainingClick : DeckScreenAction
 
     data object OnEditCoverClick : DeckScreenAction
     data object OnDismissEditCoverSourceDialog : DeckScreenAction
-    data object OnPickCoverFromGalleryClick : DeckScreenAction
-    data object OnTakeCoverPhotoClick : DeckScreenAction
+    data class OnPickImageFromGallery(val target: DeckPickerTarget) : DeckScreenAction
+    data class OnTakeImagePhoto(val target: DeckPickerTarget) : DeckScreenAction
     data object OnPickerRequestConsumed : DeckScreenAction
-    data class OnImagePicked(val uri: String) : DeckScreenAction
+    data class OnImagePicked(
+        val uri: String,
+        val target: DeckPickerTarget? = null,
+    ) : DeckScreenAction
 
     data object OnAddCardClick : DeckScreenAction
     data object OnDismissAddCardDialog : DeckScreenAction
     data class OnCardNameChanged(val value: String) : DeckScreenAction
     data object OnCardCoverButtonClick : DeckScreenAction
     data object OnDismissCardCoverSourceDialog : DeckScreenAction
-    data object OnPickCardCoverFromGalleryClick : DeckScreenAction
-    data object OnTakeCardCoverPhotoClick : DeckScreenAction
     data object OnConfirmAddCard : DeckScreenAction
 
     data class OnCardLongPress(val cardId: String) : DeckScreenAction

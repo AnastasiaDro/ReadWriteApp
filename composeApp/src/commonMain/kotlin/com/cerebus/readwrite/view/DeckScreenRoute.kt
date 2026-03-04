@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.create_screen.presentation.DeckPickerRequest
+import com.cerebus.create_screen.presentation.DeckScreenEffect
 import com.cerebus.create_screen.presentation.DeckScreen
 import com.cerebus.create_screen.presentation.DeckScreenAction
 import com.cerebus.create_screen.presentation.DeckScreenStrings
@@ -51,13 +53,15 @@ import readwriteapp.composeapp.generated.resources.delete
 fun DeckScreenRoute(
     deckId: String,
     onBackClick: () -> Unit,
+    onOpenGame: (String) -> Unit,
 ) {
     val viewModel = koinViewModel<DeckScreenViewModel>()
     val state by viewModel.uiState.collectAsState()
+    val effect by viewModel.effects.collectAsState()
 
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
-            viewModel.onAction(DeckScreenAction.OnImagePicked(uri))
+            viewModel.onAction(DeckScreenAction.OnImagePicked(uri = uri))
         },
         onError = {
             // Placeholder for future snackbar/toast integration.
@@ -68,7 +72,26 @@ fun DeckScreenRoute(
         viewModel.onAction(DeckScreenAction.Initialize(deckId))
     }
 
-    LaunchedEffect(state.pendingPickerRequest) {
+    LaunchedEffect(effect) {
+        when (val current = effect) {
+            is DeckScreenEffect.OpenGame -> {
+                DeckNavigationState.selectedDeckId = current.deckId
+                onOpenGame(current.deckId)
+                viewModel.consumeEffect()
+            }
+            null -> Unit
+        }
+    }
+
+    LaunchedEffect(
+        state.pendingPickerRequest,
+        state.isEditCoverSourceDialogVisible,
+        state.isCardCoverSourceDialogVisible,
+    ) {
+        if (state.isEditCoverSourceDialogVisible || state.isCardCoverSourceDialogVisible) {
+            return@LaunchedEffect
+        }
+
         when (state.pendingPickerRequest) {
             DeckPickerRequest.GALLERY -> {
                 picker.openGallery()

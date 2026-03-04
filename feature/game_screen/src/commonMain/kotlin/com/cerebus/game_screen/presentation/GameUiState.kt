@@ -4,12 +4,30 @@ sealed interface GameUiState {
 
     data object Loading : GameUiState
 
-    data object StartGame : GameUiState
+    data class Active(
+        val deckTitle: String,
+        val currentCard: CardUi,
+        val cardIndex: Int,
+        val totalCards: Int,
+        val answerInput: String,
+        val isHintVisible: Boolean,
+        val feedback: FeedbackUi? = null,
+    ) : GameUiState
 
-    data class ActiveGame(
-        val pictureUrl: String,
-        val currentAnswer: String,
-        val validAnswer: String,
-        val isKeyboardActive: Boolean,
+    data class Finished(
+        val deckTitle: String,
+        val totalCards: Int,
+        val correctAnswers: Int,
     ) : GameUiState
 }
+
+data class CardUi(
+    val id: String,
+    val answer: String,
+    val imagePath: String?,
+)
+
+data class FeedbackUi(
+    val message: String,
+    val emoji: String,
+)

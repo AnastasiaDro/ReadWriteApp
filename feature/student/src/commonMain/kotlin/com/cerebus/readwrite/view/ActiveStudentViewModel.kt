@@ -30,6 +30,7 @@ sealed interface ActiveStudentAction {
 
 sealed interface ActiveStudentEffect {
     data class OpenDeck(val deckId: String) : ActiveStudentEffect
+    data class OpenGame(val deckId: String) : ActiveStudentEffect
     data class OpenDeckList(val openCreateDialog: Boolean) : ActiveStudentEffect
     data object OpenChangeStudent : ActiveStudentEffect
 }
@@ -52,7 +53,7 @@ class ActiveStudentViewModel(
         when (action) {
             ActiveStudentAction.OnStartClick -> {
                 val deckId = _uiState.value.lastLessonDeck?.id ?: return
-                _effects.value = ActiveStudentEffect.OpenDeck(deckId)
+                _effects.value = ActiveStudentEffect.OpenGame(deckId)
             }
 
             ActiveStudentAction.OnChangeStudentClick -> {

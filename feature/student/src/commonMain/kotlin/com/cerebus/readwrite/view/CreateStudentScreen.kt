@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
-import com.cerebus.core.ui.components.AppAnimatedDialog
 import com.cerebus.readwrite.media.rememberCoverImagePicker
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
 import org.jetbrains.compose.resources.stringResource
@@ -68,7 +67,14 @@ fun CreateStudentRoute(
         },
     )
 
-    LaunchedEffect(state.pendingPickerRequest) {
+    LaunchedEffect(
+        state.pendingPickerRequest,
+        state.isPhotoSourceDialogVisible,
+    ) {
+        if (state.isPhotoSourceDialogVisible) {
+            return@LaunchedEffect
+        }
+
         when (state.pendingPickerRequest) {
             StudentPickerRequest.GALLERY -> {
                 picker.openGallery()
@@ -176,7 +182,7 @@ private fun CreateStudentScreen(
         }
     }
 
-    AppAnimatedDialog(visible = state.isPhotoSourceDialogVisible) {
+    if (state.isPhotoSourceDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(CreateStudentAction.OnDismissPhotoSourceDialog) },
             title = { Text(stringResource(Res.string.choose_source)) },

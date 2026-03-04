@@ -68,7 +68,10 @@ kotlin {
                 implementation(libs.compose.components.resources)
                 implementation(libs.androidx.navigation.compose)
                 implementation(libs.koin.compose.viewmodel)
+                implementation(libs.coil)
                 implementation(project(":core:utils"))
+                implementation(project(":data:decks"))
+                implementation(project(":data:flashcards"))
             }
         }
 

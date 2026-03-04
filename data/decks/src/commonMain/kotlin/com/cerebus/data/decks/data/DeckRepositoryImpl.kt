@@ -7,6 +7,8 @@ import com.cerebus.data.decks.domain.models.BulkDeleteResult
 import com.cerebus.data.decks.domain.models.BulkInsertResult
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class DeckRepositoryImpl(
     private val storage: DeckStorage,
@@ -17,6 +19,14 @@ class DeckRepositoryImpl(
 
     override suspend fun getDeckById(id: String): Deck? {
         return storage.getById(id)?.toDomain()
+    }
+
+    override fun observeAllDecks(): Flow<List<Deck>> {
+        return storage.observeAll().map { decks -> decks.map { it.toDomain() } }
+    }
+
+    override fun observeDeckById(id: String): Flow<Deck?> {
+        return storage.observeById(id).map { it?.toDomain() }
     }
 
     override suspend fun addDeck(deck: Deck): Boolean {

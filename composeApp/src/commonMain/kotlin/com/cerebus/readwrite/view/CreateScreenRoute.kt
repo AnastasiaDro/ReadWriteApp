@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.create_screen.presentation.CreateScreen
@@ -40,6 +43,11 @@ import readwriteapp.composeapp.generated.resources.no_decks_yet
 import readwriteapp.composeapp.generated.resources.selected_count
 import readwriteapp.composeapp.generated.resources.take_photo
 
+private enum class CreatePickerRequest {
+    GALLERY,
+    CAMERA,
+}
+
 @Composable
 fun CreateScreenRoute(
     onBackClick: () -> Unit,
@@ -48,6 +56,7 @@ fun CreateScreenRoute(
     val viewModel = koinViewModel<CreateScreenViewModel>()
     val state by viewModel.uiState.collectAsState()
     val deckChangedVersion by DeckNavigationState.deckChangedVersion.collectAsState()
+    var pendingPickerRequest by remember { mutableStateOf<CreatePickerRequest?>(null) }
 
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
@@ -61,10 +70,26 @@ fun CreateScreenRoute(
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                CreateScreenEffect.OpenGallery -> picker.openGallery()
-                CreateScreenEffect.OpenCamera -> picker.openCamera()
+                CreateScreenEffect.OpenGallery -> pendingPickerRequest = CreatePickerRequest.GALLERY
+                CreateScreenEffect.OpenCamera -> pendingPickerRequest = CreatePickerRequest.CAMERA
                 is CreateScreenEffect.OpenDeck -> onNavigateToDeck(effect.deckId)
             }
+        }
+    }
+
+    LaunchedEffect(pendingPickerRequest, state.isCoverSourceDialogVisible) {
+        if (state.isCoverSourceDialogVisible) return@LaunchedEffect
+
+        when (pendingPickerRequest) {
+            CreatePickerRequest.GALLERY -> {
+                picker.openGallery()
+                pendingPickerRequest = null
+            }
+            CreatePickerRequest.CAMERA -> {
+                picker.openCamera()
+                pendingPickerRequest = null
+            }
+            null -> Unit
         }
     }
 

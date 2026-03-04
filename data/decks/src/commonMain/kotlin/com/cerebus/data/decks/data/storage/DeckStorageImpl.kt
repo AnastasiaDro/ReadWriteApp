@@ -5,6 +5,7 @@ import com.cerebus.data.decks.data.dao.DeckDao
 import com.cerebus.data.decks.data.entity.DeckEntity
 import com.cerebus.data.decks.domain.models.BulkDeleteResult
 import com.cerebus.data.decks.domain.models.BulkInsertResult
+import kotlinx.coroutines.flow.Flow
 
 class DeckStorageImpl(
     private val dao: DeckDao,
@@ -15,6 +16,14 @@ class DeckStorageImpl(
 
     override suspend fun getById(id: String): DeckEntity? {
         return runCatching { dao.getById(id) }.getOrNull()
+    }
+
+    override fun observeAll(): Flow<List<DeckEntity>> {
+        return dao.observeAll()
+    }
+
+    override fun observeById(id: String): Flow<DeckEntity?> {
+        return dao.observeById(id)
     }
 
     override suspend fun add(deck: DeckEntity): Boolean {
@@ -102,7 +111,10 @@ class DeckStorageImpl(
     }
 
     override suspend fun updateCoverUri(id: String, coverUri: String?): Boolean {
-        return runCatching { dao.updateCoverUri(id, coverUri) > 0 }.getOrDefault(false)
+        return runCatching {
+            dao.updateCoverUri(id, coverUri)
+            true
+        }.getOrDefault(false)
     }
 
     override suspend fun downloadStub(id: String): CustomResult<DeckEntity> {

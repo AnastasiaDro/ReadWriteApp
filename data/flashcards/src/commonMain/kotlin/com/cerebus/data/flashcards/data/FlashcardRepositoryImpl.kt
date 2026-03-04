@@ -6,6 +6,8 @@ import com.cerebus.data.flashcards.data.storage.FlashcardStorage
 import com.cerebus.data.flashcards.domain.models.BulkInsertResult
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : FlashcardRepository {
     override suspend fun getFlashcard(id: String): Flashcard? {
@@ -14,6 +16,10 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
 
     override suspend fun getFlashcardsByDeckId(id: String): List<Flashcard> {
         return storage.getByDeckId(id).map { it.toDomain() }
+    }
+
+    override fun observeFlashcardsByDeckId(id: String): Flow<List<Flashcard>> {
+        return storage.observeByDeckId(id).map { cards -> cards.map { it.toDomain() } }
     }
 
     override suspend fun getAllCardsOfDeck(deckId: String): List<Flashcard> {

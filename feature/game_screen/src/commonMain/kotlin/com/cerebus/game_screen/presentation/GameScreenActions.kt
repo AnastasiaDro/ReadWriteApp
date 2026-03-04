@@ -1,10 +1,12 @@
 package com.cerebus.game_screen.presentation
 
-sealed interface GameScreenActions {
+sealed interface GameScreenAction {
+    data class OnAnswerChanged(val value: String) : GameScreenAction
+    data object OnCheckClick : GameScreenAction
+    data object OnRetryClick : GameScreenAction
+    data object OnBackToStudentClick : GameScreenAction
+}
 
-    data object OnBackPress : GameScreenActions
-
-    data object FinishGame : GameScreenActions
-
-    data class StartGame(val gameId: String) : GameScreenActions
+sealed interface GameScreenEffect {
+    data object OpenActiveStudent : GameScreenEffect
 }

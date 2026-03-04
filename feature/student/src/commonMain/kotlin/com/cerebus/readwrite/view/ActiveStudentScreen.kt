@@ -45,6 +45,7 @@ import readwriteapp.feature.student.generated.resources.create_student_avatar_pl
 @Composable
 fun ActiveStudentRoute(
     onOpenDeck: (String) -> Unit,
+    onOpenGame: (String) -> Unit,
     onOpenDeckList: (Boolean) -> Unit,
     onOpenChangeStudent: () -> Unit,
 ) {
@@ -59,6 +60,12 @@ fun ActiveStudentRoute(
             is ActiveStudentEffect.OpenDeck -> {
                 DeckNavigationState.selectedDeckId = current.deckId
                 onOpenDeck(current.deckId)
+                viewModel.consumeEffect()
+            }
+
+            is ActiveStudentEffect.OpenGame -> {
+                DeckNavigationState.selectedDeckId = current.deckId
+                onOpenGame(current.deckId)
                 viewModel.consumeEffect()
             }
 
@@ -119,7 +126,12 @@ private fun ActiveStudentScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = 16.dp,
+                bottom = 16.dp,
+            ),
     ) {
         TextButton(
             onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },

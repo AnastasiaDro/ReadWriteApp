@@ -4,6 +4,7 @@ import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.flashcards.data.dao.FlashcardDao
 import com.cerebus.data.flashcards.data.entity.FlashcardEntity
 import com.cerebus.data.flashcards.domain.models.BulkInsertResult
+import kotlinx.coroutines.flow.Flow
 
 class FlashcardStorageImpl(
     private val dao: FlashcardDao
@@ -19,6 +20,10 @@ class FlashcardStorageImpl(
 
     override suspend fun getByDeckId(deckId: String): List<FlashcardEntity> {
         return dao.getByDeckId(deckId)
+    }
+
+    override fun observeByDeckId(deckId: String): Flow<List<FlashcardEntity>> {
+        return dao.observeByDeckId(deckId)
     }
 
     override suspend fun search(query: String): List<FlashcardEntity> {

@@ -3,6 +3,7 @@ package com.cerebus.data.flashcards.data.storage
 import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.flashcards.data.entity.FlashcardEntity
 import com.cerebus.data.flashcards.domain.models.BulkInsertResult
+import kotlinx.coroutines.flow.Flow
 
 interface FlashcardStorage {
     // Получение одной карточки по ID
@@ -13,6 +14,7 @@ interface FlashcardStorage {
 
     // Получение всех карточек из конкретной колоды
     suspend fun getByDeckId(deckId: String): List<FlashcardEntity>
+    fun observeByDeckId(deckId: String): Flow<List<FlashcardEntity>>
 
     // Поиск карточек по подстроке в подписи (или тегам, если есть)
     suspend fun search(query: String): List<FlashcardEntity>

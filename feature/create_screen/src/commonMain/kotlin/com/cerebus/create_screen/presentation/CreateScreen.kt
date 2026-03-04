@@ -202,7 +202,7 @@ fun CreateScreen(
         },
     )
 
-    AppAnimatedDialog(visible = state.isCoverSourceDialogVisible) {
+    if (state.isCoverSourceDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(CreateScreenAction.OnDismissCoverSourceDialog) },
             title = { Text(strings.chooseSource) },

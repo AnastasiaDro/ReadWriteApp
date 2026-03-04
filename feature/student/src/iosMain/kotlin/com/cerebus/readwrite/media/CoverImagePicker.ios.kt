@@ -6,11 +6,17 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.convert
 import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSFileManager
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
+import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.NSUUID
-import platform.Foundation.NSTemporaryDirectory
+import platform.PhotosUI.PHPickerConfiguration
+import platform.PhotosUI.PHPickerResult
+import platform.PhotosUI.PHPickerViewController
+import platform.PhotosUI.PHPickerViewControllerDelegateProtocol
+import platform.UIKit.UIAlertController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
@@ -18,13 +24,14 @@ import platform.UIKit.UIImagePickerController
 import platform.UIKit.UIImagePickerControllerCameraCaptureMode
 import platform.UIKit.UIImagePickerControllerDelegateProtocol
 import platform.UIKit.UIImagePickerControllerEditedImage
-import platform.UIKit.UIImagePickerControllerImageURL
 import platform.UIKit.UIImagePickerControllerOriginalImage
 import platform.UIKit.UIImagePickerControllerSourceType
 import platform.UIKit.UINavigationControllerDelegateProtocol
 import platform.UIKit.UIViewController
 import platform.UIKit.UIWindow
 import platform.darwin.NSObject
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 import platform.posix.fclose
 import platform.posix.fopen
 import platform.posix.fwrite
@@ -38,27 +45,32 @@ actual fun rememberCoverImagePicker(
     val onImagePickedState = rememberUpdatedState(onImagePicked)
     val onErrorState = rememberUpdatedState(onError)
 
-    val delegate = remember {
-        IOSImagePickerDelegate(
+    val galleryDelegate = remember {
+        IOSGalleryPickerDelegate(
             onImagePicked = { uri -> onImagePickedState.value(uri) },
             onError = { message -> onErrorState.value(message) },
         )
     }
 
-    return remember(delegate) {
+    val cameraDelegate = remember {
+        IOSCameraPickerDelegate(
+            onImagePicked = { uri -> onImagePickedState.value(uri) },
+            onError = { message -> onErrorState.value(message) },
+        )
+    }
+
+    return remember(galleryDelegate, cameraDelegate) {
         object : CoverImagePicker {
             override fun openGallery() {
-                openPicker(
-                    sourceType = UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypePhotoLibrary,
-                    delegate = delegate,
+                openGalleryPicker(
+                    delegate = galleryDelegate,
                     onError = { message -> onErrorState.value(message) },
                 )
             }
 
             override fun openCamera() {
-                openPicker(
-                    sourceType = UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypeCamera,
-                    delegate = delegate,
+                openCameraPicker(
+                    delegate = cameraDelegate,
                     onError = { message -> onErrorState.value(message) },
                 )
             }
@@ -67,7 +79,48 @@ actual fun rememberCoverImagePicker(
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private class IOSImagePickerDelegate(
+private class IOSGalleryPickerDelegate(
+    private val onImagePicked: (String) -> Unit,
+    private val onError: (String) -> Unit,
+) : NSObject(), PHPickerViewControllerDelegateProtocol {
+
+    override fun picker(
+        picker: PHPickerViewController,
+        didFinishPicking: List<*>,
+    ) {
+        picker.dismissViewControllerAnimated(true, completion = null)
+
+        val firstResult = didFinishPicking.firstOrNull() as? PHPickerResult ?: return
+        val itemProvider = firstResult.itemProvider
+
+        if (!itemProvider.hasItemConformingToTypeIdentifier("public.image")) {
+            onError("Selected file is not an image")
+            return
+        }
+
+        itemProvider.loadFileRepresentationForTypeIdentifier("public.image") { fileUrl, _ ->
+            val localPath = fileUrl?.path
+            val image = localPath?.let { UIImage.imageWithContentsOfFile(it) }
+            val resolvedUri = image?.let(::saveImageToLocalFile)
+
+            // Clean temporary provider copy after importing into app sandbox.
+            if (fileUrl != null) {
+                NSFileManager.defaultManager.removeItemAtURL(fileUrl, error = null)
+            }
+
+            runOnMain {
+                if (resolvedUri != null) {
+                    onImagePicked(resolvedUri)
+                } else {
+                    onError("Failed to import image")
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private class IOSCameraPickerDelegate(
     private val onImagePicked: (String) -> Unit,
     private val onError: (String) -> Unit,
 ) : NSObject(), UIImagePickerControllerDelegateProtocol, UINavigationControllerDelegateProtocol {
@@ -82,16 +135,7 @@ private class IOSImagePickerDelegate(
     ) {
         val image = (didFinishPickingMediaWithInfo[UIImagePickerControllerEditedImage] as? UIImage)
             ?: (didFinishPickingMediaWithInfo[UIImagePickerControllerOriginalImage] as? UIImage)
-        val imageUrl = didFinishPickingMediaWithInfo[UIImagePickerControllerImageURL] as? NSURL
-        val resolvedUri = when {
-            // Prefer library URL when available to avoid app-sandbox-only copies.
-            imageUrl != null &&
-                picker.sourceType == UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypePhotoLibrary ->
-                imageUrl.absoluteString
-            image != null -> saveImageToLocalFile(image)
-            imageUrl != null -> imageUrl.absoluteString
-            else -> null
-        }
+        val resolvedUri = image?.let(::saveImageToLocalFile)
 
         if (resolvedUri != null) {
             onImagePicked(resolvedUri)
@@ -104,17 +148,56 @@ private class IOSImagePickerDelegate(
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun openPicker(
-    sourceType: UIImagePickerControllerSourceType,
-    delegate: IOSImagePickerDelegate,
+private fun openGalleryPicker(
+    delegate: IOSGalleryPickerDelegate,
     onError: (String) -> Unit,
 ) {
+    val top = topViewController()
+    val host = when (top) {
+        is UIAlertController -> top.presentingViewController
+        else -> top
+    }
+
+    if (host == null) {
+        onError("Unable to present image picker")
+        return
+    }
+
+    val configuration = PHPickerConfiguration().apply {
+        selectionLimit = 1
+    }
+
+    val picker = PHPickerViewController(configuration = configuration).apply {
+        this.delegate = delegate
+    }
+
+    if (top is UIAlertController) {
+        top.dismissViewControllerAnimated(
+            false,
+            completion = { host.presentViewController(picker, animated = true, completion = null) },
+        )
+    } else {
+        host.presentViewController(picker, animated = true, completion = null)
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun openCameraPicker(
+    delegate: IOSCameraPickerDelegate,
+    onError: (String) -> Unit,
+) {
+    val sourceType = UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypeCamera
     if (!UIImagePickerController.isSourceTypeAvailable(sourceType)) {
         onError("Source is unavailable on this device")
         return
     }
 
-    val host = topViewController()
+    val top = topViewController()
+    val host = when (top) {
+        is UIAlertController -> top.presentingViewController
+        else -> top
+    }
+
     if (host == null) {
         onError("Unable to present image picker")
         return
@@ -124,13 +207,18 @@ private fun openPicker(
         this.sourceType = sourceType
         this.delegate = delegate
         this.mediaTypes = listOf("public.image")
-
-        if (sourceType == UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypeCamera) {
-            // Restrict camera flow to still images to avoid AVFoundation fallback errors.
-            this.cameraCaptureMode = UIImagePickerControllerCameraCaptureMode.UIImagePickerControllerCameraCaptureModePhoto
-        }
+        this.cameraCaptureMode =
+            UIImagePickerControllerCameraCaptureMode.UIImagePickerControllerCameraCaptureModePhoto
     }
-    host.presentViewController(picker, animated = true, completion = null)
+
+    if (top is UIAlertController) {
+        top.dismissViewControllerAnimated(
+            false,
+            completion = { host.presentViewController(picker, animated = true, completion = null) },
+        )
+    } else {
+        host.presentViewController(picker, animated = true, completion = null)
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -144,6 +232,7 @@ private fun topViewController(): UIViewController? {
     while (top.presentedViewController != null) {
         top = top.presentedViewController!!
     }
+
     return top
 }
 
@@ -165,4 +254,8 @@ private fun saveImageToLocalFile(image: UIImage): String? {
     }
 
     return NSURL.fileURLWithPath(filePath).absoluteString
+}
+
+private fun runOnMain(block: () -> Unit) {
+    dispatch_async(dispatch_get_main_queue(), block)
 }
