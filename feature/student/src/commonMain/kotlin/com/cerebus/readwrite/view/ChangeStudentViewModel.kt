@@ -4,12 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
-import com.cerebus.data.student.domain.repositories.StudentRepository
+import com.cerebus.data.studentdeck.domain.models.StudentWithDecks
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
-import com.cerebus.readwrite.navigation.StudentNavigationState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -38,7 +38,6 @@ sealed interface ChangeStudentEffect {
 }
 
 class ChangeStudentViewModel(
-    private val studentRepository: StudentRepository,
     private val studentDeckRepository: StudentDeckRepository,
     private val preferencesRepository: PreferencesRepository,
 ) : ViewModel() {
@@ -47,9 +46,10 @@ class ChangeStudentViewModel(
 
     private val _effects = MutableStateFlow<ChangeStudentEffect?>(null)
     val effects: StateFlow<ChangeStudentEffect?> = _effects.asStateFlow()
+    private val activeStudentId = MutableStateFlow<String?>(preferencesRepository.getLastActiveStudentId())
 
     init {
-        loadStudents()
+        observeStudents()
     }
 
     fun onAction(action: ChangeStudentAction) {
@@ -72,35 +72,55 @@ class ChangeStudentViewModel(
         _effects.value = null
     }
 
-    private fun loadStudents() {
+    private fun observeStudents() {
         viewModelScope.launch {
-            val activeStudentId = preferencesRepository.getLastActiveStudentId()
-            val students = studentRepository.getAllStudentsOrderedByCreation()
-            val orderedStudents = if (activeStudentId.isNullOrBlank()) {
-                students
-            } else {
-                students.sortedByDescending { it.id == activeStudentId }
-            }
-
-            val items = orderedStudents.map { student ->
-                val lastDeck = studentDeckRepository
-                    .getStudentWithDecks(student.id)
-                    ?.decks
-                    ?.firstOrNull()
-
-                ChangeStudentListItem(
-                    studentId = student.id,
-                    studentName = student.name,
-                    lastLessonDeck = lastDeck,
+            combine(
+                studentDeckRepository.observeStudentsWithDecksOrderedByCreation(),
+                activeStudentId,
+            ) { studentsWithDecks, preferredId ->
+                val resolvedActiveId = resolveActiveStudentId(
+                    students = studentsWithDecks,
+                    preferredId = preferredId,
                 )
-            }
-
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    students = items,
-                    activeStudentId = activeStudentId,
+                val orderedStudents = if (resolvedActiveId.isNullOrBlank()) {
+                    studentsWithDecks
+                } else {
+                    studentsWithDecks.sortedByDescending { it.student.id == resolvedActiveId }
+                }
+                ChangeStudentSnapshot(
+                    activeStudentId = resolvedActiveId,
+                    students = orderedStudents.map { relation ->
+                        ChangeStudentListItem(
+                            studentId = relation.student.id,
+                            studentName = relation.student.name,
+                            lastLessonDeck = relation.decks.firstOrNull(),
+                        )
+                    },
                 )
+            }.collect { snapshot ->
+                if (snapshot.activeStudentId != activeStudentId.value) {
+                    activeStudentId.value = snapshot.activeStudentId
+                }
+
+                when {
+                    snapshot.activeStudentId.isNullOrBlank() -> {
+                        if (!preferencesRepository.getLastActiveStudentId().isNullOrBlank()) {
+                            preferencesRepository.clearLastActiveStudentId()
+                        }
+                    }
+
+                    preferencesRepository.getLastActiveStudentId() != snapshot.activeStudentId -> {
+                        preferencesRepository.setLastActiveStudentId(snapshot.activeStudentId)
+                    }
+                }
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        students = snapshot.students,
+                        activeStudentId = snapshot.activeStudentId,
+                    )
+                }
             }
         }
     }
@@ -108,7 +128,7 @@ class ChangeStudentViewModel(
     private fun selectStudent(studentId: String, deckIdToOpen: String?) {
         viewModelScope.launch {
             preferencesRepository.setLastActiveStudentId(studentId)
-            StudentNavigationState.notifyStudentChanged()
+            activeStudentId.value = studentId
             _effects.value = if (deckIdToOpen == null) {
                 ChangeStudentEffect.NavigateBack
             } else {
@@ -116,4 +136,23 @@ class ChangeStudentViewModel(
             }
         }
     }
+
+    private fun resolveActiveStudentId(
+        students: List<StudentWithDecks>,
+        preferredId: String?,
+    ): String? {
+        if (students.isEmpty()) return null
+        if (!preferredId.isNullOrBlank()) {
+            if (students.any { it.student.id == preferredId }) {
+                return preferredId
+            }
+            return students.first().student.id
+        }
+        return null
+    }
 }
+
+private data class ChangeStudentSnapshot(
+    val activeStudentId: String?,
+    val students: List<ChangeStudentListItem>,
+)

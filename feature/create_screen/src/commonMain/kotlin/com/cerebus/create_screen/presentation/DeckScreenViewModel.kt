@@ -3,7 +3,6 @@ package com.cerebus.create_screen.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.utils.UniqueIdGenerator
-import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
@@ -415,7 +414,6 @@ class DeckScreenViewModel(
         viewModelScope.launch {
             val updated = deckRepository.updateDeckName(state.deckId, normalizedName)
             if (updated) {
-                DeckNavigationState.notifyDeckChanged()
                 _uiState.update {
                     it.copy(
                         deckName = normalizedName,
@@ -440,7 +438,6 @@ class DeckScreenViewModel(
         viewModelScope.launch {
             val updated = deckRepository.updateDeckCoverUri(state.deckId, uri)
             if (updated) {
-                DeckNavigationState.notifyDeckChanged()
             } else {
                 _uiState.update { it.copy(validationError = DeckValidationError.UPDATE_COVER_FAILED) }
             }

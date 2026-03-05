@@ -3,7 +3,6 @@ package com.cerebus.create_screen.presentation
 sealed interface CreateScreenAction {
     data object OnCreateDeckClick : CreateScreenAction
     data object OnDismissCreateDialog : CreateScreenAction
-    data object OnRefreshDecks : CreateScreenAction
 
     data class OnDeckNameChanged(val value: String) : CreateScreenAction
     data class OnCoverUriSelected(val uri: String) : CreateScreenAction

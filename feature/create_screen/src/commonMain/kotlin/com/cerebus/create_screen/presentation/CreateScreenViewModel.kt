@@ -3,7 +3,6 @@ package com.cerebus.create_screen.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.utils.UniqueIdGenerator
-import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
@@ -14,6 +13,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -33,7 +33,7 @@ class CreateScreenViewModel(
     val effects: SharedFlow<CreateScreenEffect> = _effects.asSharedFlow()
 
     init {
-        loadDecks()
+        observeDecks()
     }
 
     fun onAction(action: CreateScreenAction) {
@@ -46,8 +46,6 @@ class CreateScreenViewModel(
                     )
                 }
             }
-            CreateScreenAction.OnRefreshDecks -> loadDecks()
-
             CreateScreenAction.OnDismissCreateDialog -> {
                 _uiState.update {
                     it.copy(
@@ -170,8 +168,6 @@ class CreateScreenViewModel(
                     return@launch
                 }
 
-                DeckNavigationState.notifyDeckChanged()
-                loadDecks()
                 _uiState.update {
                     it.copy(
                         isSaving = false,
@@ -195,14 +191,15 @@ class CreateScreenViewModel(
         }
     }
 
-    private fun loadDecks() {
+    private fun observeDecks() {
         viewModelScope.launch {
-            val decks = deckRepository.getAllDecks()
-            _uiState.update { state ->
-                state.copy(
-                    decks = decks,
-                    selectedDeckIds = state.selectedDeckIds.intersect(decks.map { it.id }.toSet()),
-                )
+            deckRepository.observeAllDecks().collect { decks ->
+                _uiState.update { state ->
+                    state.copy(
+                        decks = decks,
+                        selectedDeckIds = state.selectedDeckIds.intersect(decks.map { it.id }.toSet()),
+                    )
+                }
             }
         }
     }
@@ -242,7 +239,6 @@ class CreateScreenViewModel(
             if (deletedCount == selectedIds.size) {
                 _uiState.update {
                     it.copy(
-                        decks = it.decks.filterNot { item -> item.id in selectedIds },
                         selectedDeckIds = emptySet(),
                         isDeleteSelectedDialogVisible = false,
                         isDeletingSelectedDecks = false,

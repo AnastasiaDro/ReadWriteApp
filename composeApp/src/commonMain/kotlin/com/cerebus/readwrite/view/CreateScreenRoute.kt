@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.cerebus.create_screen.navigation.CreateNavigationState
-import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.create_screen.presentation.CreateScreen
 import com.cerebus.create_screen.presentation.CreateScreenAction
 import com.cerebus.create_screen.presentation.CreateScreenEffect
@@ -55,7 +54,6 @@ fun CreateScreenRoute(
 ) {
     val viewModel = koinViewModel<CreateScreenViewModel>()
     val state by viewModel.uiState.collectAsState()
-    val deckChangedVersion by DeckNavigationState.deckChangedVersion.collectAsState()
     var pendingPickerRequest by remember { mutableStateOf<CreatePickerRequest?>(null) }
 
     val picker = rememberCoverImagePicker(
@@ -90,12 +88,6 @@ fun CreateScreenRoute(
                 pendingPickerRequest = null
             }
             null -> Unit
-        }
-    }
-
-    LaunchedEffect(deckChangedVersion) {
-        if (deckChangedVersion > 0) {
-            viewModel.onAction(CreateScreenAction.OnRefreshDecks)
         }
     }
 

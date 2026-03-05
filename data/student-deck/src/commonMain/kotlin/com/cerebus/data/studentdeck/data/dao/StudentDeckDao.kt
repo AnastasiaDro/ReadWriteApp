@@ -7,12 +7,21 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.cerebus.data.studentdeck.data.entity.StudentDeckCrossRef
 import com.cerebus.data.studentdeck.data.entity.StudentWithDecks
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StudentDeckDao {
     @Transaction
     @Query("SELECT * FROM students WHERE id = :studentId LIMIT 1")
     suspend fun getStudentWithDecks(studentId: String): StudentWithDecks?
+
+    @Transaction
+    @Query("SELECT * FROM students WHERE id = :studentId LIMIT 1")
+    fun observeStudentWithDecks(studentId: String): Flow<StudentWithDecks?>
+
+    @Transaction
+    @Query("SELECT * FROM students ORDER BY rowid DESC")
+    fun observeStudentsWithDecksOrderedByCreation(): Flow<List<StudentWithDecks>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCrossRef(crossRef: StudentDeckCrossRef): Long

@@ -7,12 +7,24 @@ import com.cerebus.data.studentdeck.domain.models.BulkAssignResult
 import com.cerebus.data.studentdeck.domain.models.BulkUnassignResult
 import com.cerebus.data.studentdeck.domain.models.StudentWithDecks
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class StudentDeckRepositoryImpl(
     private val storage: StudentDeckStorage,
 ) : StudentDeckRepository {
     override suspend fun getStudentWithDecks(studentId: String): StudentWithDecks? {
         return storage.getStudentWithDecks(studentId)?.toDomain()
+    }
+
+    override fun observeStudentWithDecks(studentId: String): Flow<StudentWithDecks?> {
+        return storage.observeStudentWithDecks(studentId).map { it?.toDomain() }
+    }
+
+    override fun observeStudentsWithDecksOrderedByCreation(): Flow<List<StudentWithDecks>> {
+        return storage.observeStudentsWithDecksOrderedByCreation().map { students ->
+            students.map { it.toDomain() }
+        }
     }
 
     override suspend fun assignDeckToStudent(studentId: String, deckId: String): Boolean {

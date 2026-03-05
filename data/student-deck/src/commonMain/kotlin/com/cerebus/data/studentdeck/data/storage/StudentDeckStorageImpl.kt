@@ -6,12 +6,21 @@ import com.cerebus.data.studentdeck.data.entity.StudentDeckCrossRef
 import com.cerebus.data.studentdeck.data.entity.StudentWithDecks
 import com.cerebus.data.studentdeck.domain.models.BulkAssignResult
 import com.cerebus.data.studentdeck.domain.models.BulkUnassignResult
+import kotlinx.coroutines.flow.Flow
 
 class StudentDeckStorageImpl(
     private val dao: StudentDeckDao,
 ) : StudentDeckStorage {
     override suspend fun getStudentWithDecks(studentId: String): StudentWithDecks? {
         return runCatching { dao.getStudentWithDecks(studentId) }.getOrNull()
+    }
+
+    override fun observeStudentWithDecks(studentId: String): Flow<StudentWithDecks?> {
+        return dao.observeStudentWithDecks(studentId)
+    }
+
+    override fun observeStudentsWithDecksOrderedByCreation(): Flow<List<StudentWithDecks>> {
+        return dao.observeStudentsWithDecksOrderedByCreation()
     }
 
     override suspend fun assignDeckToStudent(studentId: String, deckId: String): Boolean {

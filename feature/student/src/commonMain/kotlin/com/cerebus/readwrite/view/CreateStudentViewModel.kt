@@ -6,7 +6,6 @@ import com.cerebus.core.utils.UniqueIdGenerator
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.student.domain.models.Student
 import com.cerebus.data.student.domain.repositories.StudentRepository
-import com.cerebus.readwrite.navigation.StudentNavigationState
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -117,7 +116,6 @@ class CreateStudentViewModel(
             if (!created) return@launch
 
             preferencesRepository.setLastActiveStudentId(newStudentId)
-            StudentNavigationState.notifyStudentChanged()
             _effects.emit(CreateStudentEffect.NavigateToDeckList)
         }
     }

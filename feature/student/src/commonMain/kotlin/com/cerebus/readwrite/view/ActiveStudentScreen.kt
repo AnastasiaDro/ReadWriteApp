@@ -28,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebus.create_screen.navigation.DeckNavigationState
-import com.cerebus.readwrite.navigation.StudentNavigationState
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import readwriteapp.feature.student.generated.resources.Res
@@ -52,8 +51,10 @@ fun ActiveStudentRoute(
     val viewModel = koinViewModel<ActiveStudentViewModel>()
     val state by viewModel.uiState.collectAsState()
     val effect by viewModel.effects.collectAsState()
-    val deckChangedVersion by DeckNavigationState.deckChangedVersion.collectAsState()
-    val studentChangedVersion by StudentNavigationState.studentChangedVersion.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.onScreenShown()
+    }
 
     LaunchedEffect(effect) {
         when (val current = effect) {
@@ -80,18 +81,6 @@ fun ActiveStudentRoute(
             }
 
             null -> Unit
-        }
-    }
-
-    LaunchedEffect(deckChangedVersion) {
-        if (deckChangedVersion > 0) {
-            viewModel.refresh()
-        }
-    }
-
-    LaunchedEffect(studentChangedVersion) {
-        if (studentChangedVersion > 0) {
-            viewModel.refresh()
         }
     }
 

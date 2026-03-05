@@ -1,5 +1,9 @@
 package com.cerebus.game_screen.presentation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -38,6 +43,7 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.cerebus.game_screen.navigation.GameScreenNavigatorImpl
+import kotlinx.coroutines.handleCoroutineException
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -141,12 +147,18 @@ private fun ActiveGameContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        state.feedback?.let { feedback ->
-            FeedbackBanner(
-                feedback = feedback,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-        }
+
+        FeedbackBanner(
+            feedback = state.feedback,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+
+        Text(
+            text = "${state.cardIndex} / ${state.totalCards}",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
 
         Box(
             modifier = Modifier
@@ -186,13 +198,6 @@ private fun ActiveGameContent(
                     .padding(bottom = 12.dp),
             )
         }
-
-        Text(
-            text = "${state.cardIndex} / ${state.totalCards}",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.padding(top = 10.dp),
-        )
 
         BoxWithConstraints(
             modifier = Modifier
@@ -239,27 +244,44 @@ private fun FeedbackBanner(
     feedback: FeedbackUi?,
     modifier: Modifier = Modifier,
 ) {
-    if (feedback == null) return
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(126.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        Text(
-            text = feedback.emoji,
-            style = MaterialTheme.typography.displayLarge,
-        )
-        Text(
-            text = feedback.message,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        )
+        AnimatedVisibility(
+            visible = feedback != null,
+            enter = fadeIn(
+                initialAlpha = 0f,
+                animationSpec = tween(durationMillis = 500),
+            ),
+            exit = fadeOut(
+                targetAlpha = 0f,
+                animationSpec = tween(durationMillis = 500),
+            ),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = feedback?.emoji ?: "",
+                    style = MaterialTheme.typography.displayLarge,
+                )
+                Text(
+                    text = feedback?.message ?: "",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+            }
+        }
     }
 }
 
@@ -281,7 +303,7 @@ private fun Hint(
                 color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(10.dp),
             )
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
