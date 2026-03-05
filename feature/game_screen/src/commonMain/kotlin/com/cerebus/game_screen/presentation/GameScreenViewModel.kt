@@ -2,22 +2,32 @@ package com.cerebus.game_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.game_engine.domain.model.Grade
+import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerAndRescheduleUseCase
+import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerCommand
+import com.cerebus.core.utils.nowMillis
+import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
+import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 private const val FEEDBACK_DURATION_MS = 1200L
 
 class GameScreenViewModel(
-    private val deckId: String,
+    deckIds: List<String>,
     private val flashcardRepository: FlashcardRepository,
     private val deckRepository: DeckRepository,
+    private val preferencesRepository: PreferencesRepository,
+    private val submitAnswerAndRescheduleUseCase: SubmitAnswerAndRescheduleUseCase,
 ) : ViewModel() {
+    private val selectedDeckIds = deckIds.filter { it.isNotBlank() }.distinct()
 
     private val _uiState = MutableStateFlow<GameUiState>(GameUiState.Loading)
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
@@ -54,7 +64,7 @@ class GameScreenViewModel(
         viewModelScope.launch {
             _uiState.value = GameUiState.Loading
 
-            if (deckId.isBlank()) {
+            if (selectedDeckIds.isEmpty()) {
                 _uiState.value = GameUiState.Finished(
                     deckTitle = "Колода",
                     totalCards = 0,
@@ -63,28 +73,29 @@ class GameScreenViewModel(
                 return@launch
             }
 
-            val deck = deckRepository.getDeckById(deckId)
+            val decksById = selectedDeckIds.associateWith { deckId ->
+                deckRepository.getDeckById(deckId)
+            }
             val deckData = GameDeckData(
-                id = deckId,
-                title = deck?.name?.ifBlank { "Колода" } ?: "Колода",
+                title = buildDeckTitle(selectedDeckIds, decksById),
             )
+            val activeStudentId = preferencesRepository.getLastActiveStudentId().orEmpty()
 
-            val cards = flashcardRepository.getFlashcardsByDeckId(deckId)
-                .map { card ->
-                    GameCardData(
-                        id = card.id,
-                        answer = card.name,
-                        imagePath = card.imageUrl.ifBlank { null },
-                    )
-                }
+            val mixedCards = buildMixedCards(
+                deckIds = selectedDeckIds,
+                flashcardRepository = flashcardRepository,
+            )
 
             val initialSession = GameSessionData(
                 deck = deckData,
-                cards = cards,
+                cards = mixedCards,
+                studentId = activeStudentId,
+                cardShownAtEpochMillis = nowMillis(),
+                attemptIndex = 1,
             )
             session = initialSession
 
-            _uiState.value = if (cards.isEmpty()) {
+            _uiState.value = if (mixedCards.isEmpty()) {
                 initialSession.toFinishedUiState()
             } else {
                 initialSession.toActiveUiState()
@@ -109,12 +120,38 @@ class GameScreenViewModel(
         if (current.isFinished) return
 
         val card = current.currentCard ?: return
-        val isCorrect = current.answerInput.trim().equals(card.answer.trim(), ignoreCase = true)
+        val studentId = current.studentId
 
-        if (isCorrect) {
-            handleCorrectAnswer(current)
-        } else {
-            handleWrongAnswer(current)
+        if (studentId.isBlank()) {
+            val isCorrect = current.answerInput.trim().equals(card.answer.trim(), ignoreCase = true)
+            if (isCorrect) handleCorrectAnswer(current) else handleWrongAnswer(current)
+            return
+        }
+
+        viewModelScope.launch {
+            val submitResult = submitAnswerAndRescheduleUseCase(
+                SubmitAnswerCommand(
+                    studentId = studentId,
+                    cardId = card.id,
+                    expectedAnswers = listOf(card.answer),
+                    userInput = current.answerInput,
+                    shownAtEpochMillis = current.cardShownAtEpochMillis,
+                    submittedAtEpochMillis = nowMillis(),
+                    usedHint = current.isHintVisible,
+                    attemptIndex = current.attemptIndex,
+                )
+            )
+
+            val actual = session ?: return@launch
+            if (actual.currentCard?.id != card.id) return@launch
+
+            if (submitResult.grade == Grade.AGAIN) {
+                handleWrongAnswer(
+                    actual.copy(attemptIndex = actual.attemptIndex + 1),
+                )
+            } else {
+                handleCorrectAnswer(actual)
+            }
         }
     }
 
@@ -138,6 +175,8 @@ class GameScreenViewModel(
                 answerInput = "",
                 isHintVisible = false,
                 feedback = null,
+                cardShownAtEpochMillis = nowMillis(),
+                attemptIndex = 1,
             )
             session = progressed
 
@@ -177,6 +216,8 @@ class GameScreenViewModel(
             answerInput = "",
             isHintVisible = false,
             feedback = null,
+            cardShownAtEpochMillis = nowMillis(),
+            attemptIndex = 1,
         )
         session = restarted
 
@@ -189,7 +230,6 @@ class GameScreenViewModel(
 }
 
 private data class GameDeckData(
-    val id: String,
     val title: String,
 )
 
@@ -202,10 +242,13 @@ private data class GameCardData(
 private data class GameSessionData(
     val deck: GameDeckData,
     val cards: List<GameCardData>,
+    val studentId: String,
     val currentIndex: Int = 0,
     val correctAnswers: Int = 0,
     val answerInput: String = "",
     val isHintVisible: Boolean = false,
+    val cardShownAtEpochMillis: Long,
+    val attemptIndex: Int,
     val feedback: GameFeedbackData? = null,
 ) {
     val currentCard: GameCardData?
@@ -218,6 +261,47 @@ private data class GameSessionData(
 private data class GameFeedbackData(
     val isCorrect: Boolean,
 )
+
+private suspend fun GameScreenViewModel.buildMixedCards(
+    deckIds: List<String>,
+    flashcardRepository: FlashcardRepository,
+): List<GameCardData> {
+    val random = Random(nowMillis())
+    val perDeckQueues = deckIds.associateWith { deckId ->
+        flashcardRepository.getFlashcardsByDeckId(deckId)
+            .shuffled(random)
+            .map { card ->
+                GameCardData(
+                    id = card.id,
+                    answer = card.name,
+                    imagePath = card.imageUrl.ifBlank { null },
+                )
+            }
+            .toMutableList()
+    }.toMutableMap()
+
+    val result = mutableListOf<GameCardData>()
+    while (perDeckQueues.values.any { it.isNotEmpty() }) {
+        deckIds.forEach { deckId ->
+            val queue = perDeckQueues[deckId] ?: return@forEach
+            if (queue.isNotEmpty()) {
+                result += queue.removeFirst()
+            }
+        }
+    }
+    return result
+}
+
+private fun buildDeckTitle(
+    deckIds: List<String>,
+    decksById: Map<String, Deck?>,
+): String {
+    if (deckIds.size == 1) {
+        val singleDeck = decksById[deckIds.first()]
+        return singleDeck?.name?.ifBlank { "Колода" } ?: "Колода"
+    }
+    return "Смешанная сессия"
+}
 
 private fun GameSessionData.toActiveUiState(): GameUiState.Active {
     val card = requireNotNull(currentCard)

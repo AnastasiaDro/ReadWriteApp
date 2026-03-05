@@ -13,6 +13,7 @@ import com.cerebus.core.ui.insets.bottomSystemBarPadding
 import com.cerebus.core.ui.insets.topSystemBarPadding
 import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
+import com.cerebus.game_screen.navigation.GameSessionNavigationState
 import com.cerebus.game_screen.presentation.GameScreenWrapper
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
 import com.cerebus.readwrite.view.CreateScreenRoute
@@ -23,6 +24,8 @@ import com.cerebus.readwrite.view.AppStartRoute
 import com.cerebus.readwrite.view.ActiveStudentRoute
 import com.cerebus.readwrite.view.ChangeStudentRoute
 import com.cerebus.readwrite.view.NoStudentsScreen
+import com.cerebus.session_settings.navigation.SessionSettingsNavigationState
+import com.cerebus.session_settings.presentation.SessionSettingsRoute
 import com.cerebus.tutube.navigation.Screens
 
 @Composable
@@ -59,6 +62,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                         navController.navigate(Screens.DECK.route)
                     },
                     onOpenGame = {
+                        GameSessionNavigationState.selectedDeckIds = it
                         navController.navigate(Screens.GAME.route)
                     },
                     onOpenDeckList = { openCreateDialog ->
@@ -69,6 +73,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     },
                     onOpenChangeStudent = {
                         navController.navigate(Screens.CHANGE_STUDENT.route)
+                    },
+                    onOpenSessionSettings = { studentId ->
+                        SessionSettingsNavigationState.selectedStudentId = studentId
+                        navController.navigate(Screens.SESSION_SETTINGS.route)
                     },
                 )
             }
@@ -125,6 +133,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     deckId = DeckNavigationState.selectedDeckId,
                     onBackClick = { navController.openActiveStudentFromDeck() },
                     onOpenGame = {
+                        GameSessionNavigationState.selectedDeckIds = listOf(it)
                         navController.navigate(Screens.GAME.route)
                     },
                 )
@@ -132,7 +141,24 @@ fun ReadWriteAppNavigation() = MaterialTheme {
             composable(Screens.GAME.route) {
                 GameScreenWrapper(
                     navController = navController,
-                    deckId = DeckNavigationState.selectedDeckId,
+                    deckIds = GameSessionNavigationState.selectedDeckIds.ifEmpty {
+                        listOfNotNull(DeckNavigationState.selectedDeckId.takeIf { it.isNotBlank() })
+                    },
+                )
+            }
+            composable(Screens.SESSION_SETTINGS.route) {
+                val studentId = SessionSettingsNavigationState.selectedStudentId
+                if (studentId.isNullOrBlank()) {
+                    SessionSettingsNavigationState.selectedStudentId = null
+                    navController.popBackStack()
+                    return@composable
+                }
+                SessionSettingsRoute(
+                    studentId = studentId,
+                    onClose = {
+                        SessionSettingsNavigationState.selectedStudentId = null
+                        navController.popBackStack()
+                    },
                 )
             }
         }

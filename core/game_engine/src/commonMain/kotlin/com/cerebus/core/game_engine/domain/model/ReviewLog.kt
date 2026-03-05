@@ -1,0 +1,25 @@
+package com.cerebus.core.game_engine.domain.model
+
+data class ReviewLog(
+    val studentId: String,
+    val cardId: String,
+    val shownAtEpochMillis: Long,
+    val submittedAtEpochMillis: Long,
+    val userInputRaw: String,
+    val userInputNormalized: String,
+    val bestExpectedNormalized: String,
+    val similarity: Double,
+    val isExact: Boolean,
+    val matchType: MatchType,
+    val usedHint: Boolean,
+    val attemptIndex: Int,
+    val stateBefore: CardState,
+    val stateAfter: CardState,
+    val grade: Grade,
+    val scheduledDueAtBeforeEpochMillis: Long,
+    val dueAtAfterEpochMillis: Long,
+    val intervalBeforeDays: Double,
+    val intervalAfterDays: Double,
+    val easeBefore: Double,
+    val easeAfter: Double,
+)

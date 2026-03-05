@@ -32,21 +32,25 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import readwriteapp.feature.student.generated.resources.Res
 import readwriteapp.feature.student.generated.resources.active_student_change
-import readwriteapp.feature.student.generated.resources.active_student_create
+import readwriteapp.feature.student.generated.resources.active_student_create_in_other
 import readwriteapp.feature.student.generated.resources.active_student_fallback_name
-import readwriteapp.feature.student.generated.resources.active_student_last_lesson
+import readwriteapp.feature.student.generated.resources.active_student_active_decks
+import readwriteapp.feature.student.generated.resources.active_student_learning_settings
 import readwriteapp.feature.student.generated.resources.active_student_more
+import readwriteapp.feature.student.generated.resources.active_student_no_active_decks
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
 import readwriteapp.feature.student.generated.resources.active_student_other_decks
 import readwriteapp.feature.student.generated.resources.active_student_start
+import readwriteapp.feature.student.generated.resources.active_student_studied_decks
 import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
 
 @Composable
 fun ActiveStudentRoute(
     onOpenDeck: (String) -> Unit,
-    onOpenGame: (String) -> Unit,
+    onOpenGame: (List<String>) -> Unit,
     onOpenDeckList: (Boolean) -> Unit,
     onOpenChangeStudent: () -> Unit,
+    onOpenSessionSettings: (String) -> Unit,
 ) {
     val viewModel = koinViewModel<ActiveStudentViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -65,8 +69,8 @@ fun ActiveStudentRoute(
             }
 
             is ActiveStudentEffect.OpenGame -> {
-                DeckNavigationState.selectedDeckId = current.deckId
-                onOpenGame(current.deckId)
+                DeckNavigationState.selectedDeckId = current.deckIds.firstOrNull().orEmpty()
+                onOpenGame(current.deckIds)
                 viewModel.consumeEffect()
             }
 
@@ -87,6 +91,7 @@ fun ActiveStudentRoute(
     ActiveStudentScreen(
         state = state,
         onAction = viewModel::onAction,
+        onOpenSessionSettings = onOpenSessionSettings,
     )
 }
 
@@ -94,6 +99,7 @@ fun ActiveStudentRoute(
 private fun ActiveStudentScreen(
     state: ActiveStudentUiState,
     onAction: (ActiveStudentAction) -> Unit,
+    onOpenSessionSettings: (String) -> Unit,
 ) {
     if (state.isLoading) {
         Box(
@@ -129,6 +135,16 @@ private fun ActiveStudentScreen(
             Text(text = stringResource(Res.string.active_student_change))
         }
 
+        TextButton(
+            onClick = {
+                state.studentId?.let(onOpenSessionSettings)
+            },
+            enabled = state.studentId != null,
+            modifier = Modifier.align(Alignment.TopEnd),
+        ) {
+            Text(text = stringResource(Res.string.active_student_learning_settings))
+        }
+
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -159,14 +175,14 @@ private fun ActiveStudentScreen(
             )
 
             Text(
-                text = stringResource(Res.string.active_student_last_lesson),
+                text = stringResource(Res.string.active_student_active_decks),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
 
-            if (state.lastLessonDeck == null) {
+            if (state.activeDecks.isEmpty()) {
                 Text(
-                    text = stringResource(Res.string.active_student_no_decks),
+                    text = stringResource(Res.string.active_student_no_active_decks),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             } else {
@@ -175,14 +191,40 @@ private fun ActiveStudentScreen(
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    DeckInlineItem(
-                        deck = state.lastLessonDeck,
-                        onClick = { onAction(ActiveStudentAction.OnDeckClick(state.lastLessonDeck.id)) },
-                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(state.activeDecks) { deck ->
+                            DeckInlineItem(
+                                deck = deck,
+                                onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.id)) },
+                            )
+                        }
+                    }
                     Button(
                         onClick = { onAction(ActiveStudentAction.OnStartClick) },
                     ) {
                         Text(text = stringResource(Res.string.active_student_start))
+                    }
+                }
+            }
+
+            Text(
+                text = stringResource(Res.string.active_student_studied_decks),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            if (state.studiedDecks.isEmpty()) {
+                Text(
+                    text = stringResource(Res.string.active_student_no_decks),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            } else {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(state.studiedDecks) { deck ->
+                        DeckInlineItem(
+                            deck = deck,
+                            onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.id)) },
+                        )
                     }
                 }
             }
@@ -193,22 +235,19 @@ private fun ActiveStudentScreen(
                 fontWeight = FontWeight.SemiBold,
             )
 
-            if (state.decks.isEmpty()) {
+            if (state.otherDecks.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.active_student_no_decks),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Button(onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) }) {
-                    Text(text = stringResource(Res.string.active_student_create))
+                    Text(text = stringResource(Res.string.active_student_create_in_other))
                 }
             } else {
                 LazyRow(
-                   // modifier = Modifier
-                        //.wrapContentSize()
-                       // .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.decks) { deck ->
+                    items(state.otherDecks.take(5)) { deck ->
                         DeckInlineItem(
                             deck = deck,
                             onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.id)) },

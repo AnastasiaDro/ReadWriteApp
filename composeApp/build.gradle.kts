@@ -62,9 +62,11 @@ kotlin {
             implementation(project(":data:preferences"))
             implementation(project(":data:study_progress"))
             implementation(project(":core:utils"))
+            implementation(project(":core:game_engine"))
             implementation(project(":core:ui"))
             implementation(project(":feature:create_screen"))
             implementation(project(":feature:student"))
+            implementation(project(":feature:session_settings"))
             implementation(libs.coil)
             implementation(libs.compose.icons)
         }

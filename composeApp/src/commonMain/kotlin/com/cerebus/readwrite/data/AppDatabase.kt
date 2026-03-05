@@ -13,6 +13,8 @@ import com.cerebus.data.student.data.entity.StudentEntity
 import com.cerebus.data.studentdeck.data.dao.StudentDeckDao
 import com.cerebus.data.studentdeck.data.entity.StudentDeckCrossRef
 import com.cerebus.data.studyprogress.data.dao.StudyProgressDao
+import com.cerebus.data.studyprogress.data.entity.ReviewLogEntity
+import com.cerebus.data.studyprogress.data.entity.StudentSrsPrefsEntity
 import com.cerebus.data.studyprogress.data.entity.StudyProgressEntity
 
 @Database(
@@ -22,8 +24,10 @@ import com.cerebus.data.studyprogress.data.entity.StudyProgressEntity
         StudentEntity::class,
         StudentDeckCrossRef::class,
         StudyProgressEntity::class,
+        ReviewLogEntity::class,
+        StudentSrsPrefsEntity::class,
     ],
-    version = 2,
+    version = 4,
 )
 @ConstructedBy(ReadWriteDatabaseConstructor::class)
 abstract class ReadWriteDatabase : RoomDatabase() {

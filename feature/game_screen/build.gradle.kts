@@ -70,8 +70,11 @@ kotlin {
                 implementation(libs.koin.compose.viewmodel)
                 implementation(libs.coil)
                 implementation(project(":core:utils"))
+                implementation(project(":core:game_engine"))
                 implementation(project(":data:decks"))
                 implementation(project(":data:flashcards"))
+                implementation(project(":data:preferences"))
+                implementation(project(":data:study_progress"))
             }
         }
 

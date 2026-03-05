@@ -50,11 +50,11 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun GameScreenWrapper(
     navController: NavHostController,
-    deckId: String,
+    deckIds: List<String>,
 ) {
     val navigator = remember(navController) { GameScreenNavigatorImpl(navController) }
     val viewModel = koinViewModel<GameScreenViewModel>(
-        parameters = { parametersOf(deckId) }
+        parameters = { parametersOf(deckIds) }
     )
 
     val state by viewModel.uiState.collectAsState()
@@ -233,7 +233,7 @@ private fun ActiveGameContent(
                     .width(checkButtonWidth)
                     .heightIn(min = 72.dp),
             ) {
-                Text("Проверить")
+                Text("Отправить")
             }
         }
     }

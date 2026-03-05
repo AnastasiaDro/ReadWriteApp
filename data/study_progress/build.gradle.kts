@@ -45,6 +45,7 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.stdlib)
                 implementation(project(":core:utils"))
+                implementation(project(":core:game_engine"))
                 implementation(project(":data:database"))
                 implementation(project(":data:student"))
                 implementation(project(":data:flashcards"))

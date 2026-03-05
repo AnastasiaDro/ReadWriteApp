@@ -6,6 +6,7 @@ import com.cerebus.readwrite.di.feature.decksModule
 import com.cerebus.readwrite.di.feature.flashcardsModule
 import com.cerebus.readwrite.di.feature.gameScreenModule
 import com.cerebus.readwrite.di.feature.preferencesModule
+import com.cerebus.readwrite.di.feature.sessionSettingsModule
 import com.cerebus.readwrite.di.feature.studyProgressModule
 import com.cerebus.readwrite.di.feature.studentDecksModule
 import com.cerebus.readwrite.di.feature.studentFeatureModule
@@ -21,6 +22,7 @@ val modules = listOf<Module>(
     studentDecksModule,
     preferencesModule,
     studyProgressModule,
+    sessionSettingsModule,
     createScreenModule,
     studentFeatureModule,
 )

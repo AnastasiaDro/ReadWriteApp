@@ -1,0 +1,15 @@
+<resources>
+    <string name="session_settings_title">Настройки обучения</string>
+    <string name="session_settings_new_cards">Новых карточек за занятие</string>
+    <string name="session_settings_reviews">Повторений за занятие</string>
+    <string name="session_settings_learn_more_step">Шаг &quot;Учить ещё&quot;</string>
+    <string name="session_settings_max_new_per_day">Максимум новых карточек в день</string>
+    <string name="session_settings_allow_near_match">Разрешать небольшие ошибки в ответе</string>
+    <string name="session_settings_active_decks">Активные колоды</string>
+    <string name="session_settings_no_decks">Нет доступных колод</string>
+    <string name="session_settings_save">Сохранить</string>
+    <string name="session_settings_saving">Сохранение...</string>
+    <string name="session_settings_cancel">Отмена</string>
+    <string name="session_settings_load_error">Не удалось загрузить настройки</string>
+    <string name="session_settings_save_error">Не удалось сохранить настройки</string>
+</resources>
