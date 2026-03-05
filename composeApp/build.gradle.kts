@@ -112,6 +112,7 @@ dependencies {
 }
 
 val featureStudentResourcesOutput = layout.buildDirectory.dir("generated/featureStudentComposeResources")
+val featureSessionSettingsResourcesOutput = layout.buildDirectory.dir("generated/featureSessionSettingsComposeResources")
 
 val copyFeatureStudentComposeResources by tasks.registering(Copy::class) {
     dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
@@ -126,11 +127,29 @@ val copyFeatureStudentComposeResources by tasks.registering(Copy::class) {
     })
 }
 
+val copyFeatureSessionSettingsComposeResources by tasks.registering(Copy::class) {
+    dependsOn(":feature:session_settings:prepareComposeResourcesTaskForCommonMain")
+    from(
+        project(":feature:session_settings")
+            .layout
+            .buildDirectory
+            .dir("generated/compose/resourceGenerator/preparedResources/commonMain/composeResources")
+    )
+    into(featureSessionSettingsResourcesOutput.map {
+        it.dir("composeResources/readwriteapp.feature.session_settings.generated.resources")
+    })
+}
+
 android.sourceSets.getByName("main").assets.srcDir(featureStudentResourcesOutput)
+android.sourceSets.getByName("main").assets.srcDir(featureSessionSettingsResourcesOutput)
 
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(copyFeatureStudentComposeResources)
+    dependsOn(copyFeatureSessionSettingsComposeResources)
     dependsOn(":feature:student:convertXmlValueResourcesForCommonMain")
     dependsOn(":feature:student:copyNonXmlValueResourcesForCommonMain")
     dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
+    dependsOn(":feature:session_settings:convertXmlValueResourcesForCommonMain")
+    dependsOn(":feature:session_settings:copyNonXmlValueResourcesForCommonMain")
+    dependsOn(":feature:session_settings:prepareComposeResourcesTaskForCommonMain")
 }
