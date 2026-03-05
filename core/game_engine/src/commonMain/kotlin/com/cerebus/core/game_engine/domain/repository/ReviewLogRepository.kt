@@ -11,4 +11,10 @@ interface ReviewLogRepository {
         cardId: String,
         limit: Int,
     ): List<Grade>
+
+    suspend fun getRecentGradesByCards(
+        studentId: String,
+        cardIds: List<String>,
+        limitPerCard: Int,
+    ): Map<String, List<Grade>>
 }

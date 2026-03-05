@@ -2,7 +2,13 @@ package com.cerebus.game_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.game_engine.domain.logic.interleaveReviewAndNewCards
+import com.cerebus.core.game_engine.domain.logic.selectBalancedNewCardsByDeck
+import com.cerebus.core.game_engine.domain.logic.takeRoundRobinByDeck
+import com.cerebus.core.game_engine.domain.model.CardState
 import com.cerebus.core.game_engine.domain.model.Grade
+import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
+import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerAndRescheduleUseCase
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerCommand
 import com.cerebus.core.utils.nowMillis
@@ -15,16 +21,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 private const val FEEDBACK_DURATION_MS = 1200L
+private const val REVIEW_TO_NEW_RATIO = 3
 
 class GameScreenViewModel(
     deckIds: List<String>,
     private val flashcardRepository: FlashcardRepository,
     private val deckRepository: DeckRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val studentPrefsRepository: StudentPrefsRepository,
+    private val cardProgressRepository: CardProgressRepository,
     private val submitAnswerAndRescheduleUseCase: SubmitAnswerAndRescheduleUseCase,
 ) : ViewModel() {
     private val selectedDeckIds = deckIds.filter { it.isNotBlank() }.distinct()
@@ -81,21 +91,24 @@ class GameScreenViewModel(
             )
             val activeStudentId = preferencesRepository.getLastActiveStudentId().orEmpty()
 
-            val mixedCards = buildMixedCards(
+            val sessionCards = buildSessionCards(
                 deckIds = selectedDeckIds,
+                studentId = activeStudentId,
                 flashcardRepository = flashcardRepository,
+                cardProgressRepository = cardProgressRepository,
+                studentPrefsRepository = studentPrefsRepository,
             )
 
             val initialSession = GameSessionData(
                 deck = deckData,
-                cards = mixedCards,
+                cards = sessionCards,
                 studentId = activeStudentId,
                 cardShownAtEpochMillis = nowMillis(),
                 attemptIndex = 1,
             )
             session = initialSession
 
-            _uiState.value = if (mixedCards.isEmpty()) {
+            _uiState.value = if (sessionCards.isEmpty()) {
                 initialSession.toFinishedUiState()
             } else {
                 initialSession.toActiveUiState()
@@ -234,6 +247,7 @@ private data class GameDeckData(
 )
 
 private data class GameCardData(
+    val deckId: String,
     val id: String,
     val answer: String,
     val imagePath: String?,
@@ -262,34 +276,71 @@ private data class GameFeedbackData(
     val isCorrect: Boolean,
 )
 
-private suspend fun GameScreenViewModel.buildMixedCards(
+private suspend fun buildSessionCards(
     deckIds: List<String>,
+    studentId: String,
     flashcardRepository: FlashcardRepository,
+    cardProgressRepository: CardProgressRepository,
+    studentPrefsRepository: StudentPrefsRepository,
 ): List<GameCardData> {
     val random = Random(nowMillis())
-    val perDeckQueues = deckIds.associateWith { deckId ->
+    val cardsByDeck = deckIds.associateWith { deckId ->
         flashcardRepository.getFlashcardsByDeckId(deckId)
             .shuffled(random)
             .map { card ->
                 GameCardData(
+                    deckId = deckId,
                     id = card.id,
                     answer = card.name,
                     imagePath = card.imageUrl.ifBlank { null },
                 )
             }
-            .toMutableList()
-    }.toMutableMap()
+    }
 
-    val result = mutableListOf<GameCardData>()
-    while (perDeckQueues.values.any { it.isNotEmpty() }) {
-        deckIds.forEach { deckId ->
-            val queue = perDeckQueues[deckId] ?: return@forEach
-            if (queue.isNotEmpty()) {
-                result += queue.removeFirst()
+    if (studentId.isBlank()) {
+        return takeRoundRobinByDeck(
+            cardsByDeck = cardsByDeck,
+            limit = cardsByDeck.values.sumOf { it.size },
+        )
+    }
+
+    val prefs = runCatching { studentPrefsRepository.getPrefs(studentId) }.getOrNull()
+        ?: return takeRoundRobinByDeck(
+            cardsByDeck = cardsByDeck,
+            limit = cardsByDeck.values.sumOf { it.size },
+        )
+    val progressByCardId = cardProgressRepository.observeProgress(studentId)
+        .first()
+        .associateBy { it.cardId }
+    val now = nowMillis()
+
+    val newByDeck = mutableMapOf<String, MutableList<GameCardData>>()
+    val reviewByDeck = mutableMapOf<String, MutableList<GameCardData>>()
+    cardsByDeck.forEach { (deckId, cards) ->
+        cards.forEach { card ->
+            val progress = progressByCardId[card.id]
+            if (progress == null || progress.state == CardState.NEW) {
+                newByDeck.getOrPut(deckId) { mutableListOf() }.add(card)
+            } else if (progress.dueAtEpochMillis <= now) {
+                reviewByDeck.getOrPut(deckId) { mutableListOf() }.add(card)
             }
         }
     }
-    return result
+
+    val selectedReview = takeRoundRobinByDeck(
+        cardsByDeck = reviewByDeck,
+        limit = prefs.reviewsPerSession.coerceAtLeast(0),
+    )
+    val selectedNew = selectBalancedNewCardsByDeck(
+        newCardsByDeck = newByDeck,
+        newLimit = prefs.newCardsPerSession.coerceAtLeast(0),
+    )
+
+    return interleaveReviewAndNewCards(
+        reviewCards = selectedReview,
+        newCards = selectedNew,
+        reviewToNewRatio = REVIEW_TO_NEW_RATIO,
+    )
 }
 
 private fun buildDeckTitle(

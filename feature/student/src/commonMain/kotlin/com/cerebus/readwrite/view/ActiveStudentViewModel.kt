@@ -2,8 +2,11 @@ package com.cerebus.readwrite.view
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.game_engine.domain.model.CardProgress
 import com.cerebus.core.game_engine.domain.model.CardState
+import com.cerebus.core.game_engine.domain.model.Grade
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
+import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
@@ -22,6 +25,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+
+private const val MIN_MASTERED_INTERVAL_DAYS = 3.0
+private const val MIN_SUCCESS_STREAK = 3
 
 data class ActiveStudentUiState(
     val isLoading: Boolean = true,
@@ -52,6 +58,7 @@ class ActiveStudentViewModel(
     private val deckRepository: DeckRepository,
     private val flashcardRepository: FlashcardRepository,
     private val cardProgressRepository: CardProgressRepository,
+    private val reviewLogRepository: ReviewLogRepository,
     private val preferencesRepository: PreferencesRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ActiveStudentUiState())
@@ -137,8 +144,13 @@ class ActiveStudentViewModel(
                         allDecks = snapshot.allDecks,
                         assignedDeckIds = assignedDeckIds,
                         cardsByDeck = cardsByDeck,
-                        progressStateByCardId = progressList.associate { progress ->
-                            progress.cardId to progress.state
+                        progressByCardId = progressList.associateBy { progress -> progress.cardId },
+                        successStreakByCardId = reviewLogRepository.getRecentGradesByCards(
+                            studentId = relation.student.id,
+                            cardIds = cardsByDeck.values.flatten().map { card -> card.id }.distinct(),
+                            limitPerCard = MIN_SUCCESS_STREAK,
+                        ).mapValues { (_, grades) ->
+                            calculateSuccessStreak(grades)
                         },
                     )
                     ActiveStudentUiState(
@@ -192,7 +204,8 @@ class ActiveStudentViewModel(
         allDecks: List<Deck>,
         assignedDeckIds: Set<String>,
         cardsByDeck: Map<String, List<Flashcard>>,
-        progressStateByCardId: Map<String, CardState>,
+        progressByCardId: Map<String, CardProgress>,
+        successStreakByCardId: Map<String, Int>,
     ): DeckBuckets {
         val active = mutableListOf<Deck>()
         val studied = mutableListOf<Deck>()
@@ -201,7 +214,10 @@ class ActiveStudentViewModel(
         allDecks.forEach { deck ->
             val cards = cardsByDeck[deck.id].orEmpty()
             val isStudied = cards.isNotEmpty() && cards.all { card ->
-                progressStateByCardId[card.id] == CardState.REVIEW
+                val progress = progressByCardId[card.id] ?: return@all false
+                progress.state == CardState.REVIEW &&
+                    progress.intervalDays >= MIN_MASTERED_INTERVAL_DAYS &&
+                    (successStreakByCardId[card.id] ?: 0) >= MIN_SUCCESS_STREAK
             }
 
             when {
@@ -216,6 +232,15 @@ class ActiveStudentViewModel(
             studiedDecks = studied,
             otherDecks = other,
         )
+    }
+
+    private fun calculateSuccessStreak(grades: List<Grade>): Int {
+        var streak = 0
+        for (grade in grades) {
+            if (grade == Grade.AGAIN) break
+            streak++
+        }
+        return streak
     }
 
     private fun resolveActiveStudent(

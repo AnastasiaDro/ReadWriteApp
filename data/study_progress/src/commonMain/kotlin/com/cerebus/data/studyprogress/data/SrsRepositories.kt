@@ -61,6 +61,22 @@ class RoomReviewLogRepository(
             limit = limit,
         ).map { it.toGrade() }
     }
+
+    override suspend fun getRecentGradesByCards(
+        studentId: String,
+        cardIds: List<String>,
+        limitPerCard: Int,
+    ): Map<String, List<Grade>> {
+        if (cardIds.isEmpty() || limitPerCard <= 0) return emptyMap()
+
+        return dao.getRecentGradesForCards(
+            studentId = studentId,
+            cardIds = cardIds,
+        ).groupBy { row -> row.cardId }
+            .mapValues { (_, rows) ->
+                rows.take(limitPerCard).map { row -> row.grade.toGrade() }
+            }
+    }
 }
 
 class RoomStudentPrefsRepository(

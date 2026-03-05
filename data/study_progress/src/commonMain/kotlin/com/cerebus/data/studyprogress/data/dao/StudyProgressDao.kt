@@ -5,10 +5,19 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.ColumnInfo
 import com.cerebus.data.studyprogress.data.entity.ReviewLogEntity
 import com.cerebus.data.studyprogress.data.entity.StudentSrsPrefsEntity
 import com.cerebus.data.studyprogress.data.entity.StudyProgressEntity
 import kotlinx.coroutines.flow.Flow
+
+data class CardGradeRow(
+    @ColumnInfo(name = "card_id")
+    val cardId: String,
+    val grade: Int,
+    @ColumnInfo(name = "submitted_at_epoch_millis")
+    val submittedAtEpochMillis: Long,
+)
 
 @Dao
 interface StudyProgressDao {
@@ -51,6 +60,19 @@ interface StudyProgressDao {
         cardId: String,
         limit: Int,
     ): List<Int>
+
+    @Query(
+        """
+        SELECT card_id, grade, submitted_at_epoch_millis FROM review_log
+        WHERE student_id = :studentId
+          AND card_id IN (:cardIds)
+        ORDER BY submitted_at_epoch_millis DESC
+        """
+    )
+    suspend fun getRecentGradesForCards(
+        studentId: String,
+        cardIds: List<String>,
+    ): List<CardGradeRow>
 
     @Query(
         """

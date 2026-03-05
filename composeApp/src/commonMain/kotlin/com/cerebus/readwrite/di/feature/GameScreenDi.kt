@@ -20,6 +20,8 @@ val gameScreenModule = module {
             flashcardRepository = get(),
             deckRepository = get(),
             preferencesRepository = get(),
+            studentPrefsRepository = get(),
+            cardProgressRepository = get(),
             submitAnswerAndRescheduleUseCase = get(),
         )
     }

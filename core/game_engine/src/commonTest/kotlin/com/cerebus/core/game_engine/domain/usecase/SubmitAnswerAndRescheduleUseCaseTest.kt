@@ -150,6 +150,14 @@ private class FakeReviewLogRepository : ReviewLogRepository {
     ): List<Grade> {
         return emptyList()
     }
+
+    override suspend fun getRecentGradesByCards(
+        studentId: String,
+        cardIds: List<String>,
+        limitPerCard: Int,
+    ): Map<String, List<Grade>> {
+        return emptyMap()
+    }
 }
 
 private class FakeStudentPrefsRepository : StudentPrefsRepository {
