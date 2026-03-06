@@ -2,6 +2,7 @@ package com.cerebus.readwrite
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -150,14 +151,26 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 val studentId = SessionSettingsNavigationState.selectedStudentId
                 if (studentId.isNullOrBlank()) {
                     SessionSettingsNavigationState.selectedStudentId = null
-                    navController.popBackStack()
+                    LaunchedEffect(Unit) {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                                launchSingleTop = true
+                            }
+                        }
+                    }
                     return@composable
                 }
                 SessionSettingsRoute(
                     studentId = studentId,
                     onClose = {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                                launchSingleTop = true
+                            }
+                        }
                         SessionSettingsNavigationState.selectedStudentId = null
-                        navController.popBackStack()
                     },
                 )
             }
