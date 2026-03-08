@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -46,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -188,7 +190,6 @@ fun DeckScreen(
                     FlashcardGridItem(
                         name = card.name,
                         imageUrl = card.imageUrl,
-                        noCoverText = strings.noCover,
                         isSelectionMode = isSelectionMode,
                         isSelected = card.id in state.selectedCardIds,
                         onClick = { onAction(DeckScreenAction.OnCardClick(card.id)) },
@@ -444,7 +445,6 @@ private fun DeckHeader(
 private fun FlashcardGridItem(
     name: String,
     imageUrl: String,
-    noCoverText: String,
     isSelectionMode: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -461,9 +461,9 @@ private fun FlashcardGridItem(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box {
-            DeckCover(
-                coverUri = imageUrl.ifBlank { null },
-                noCoverText = noCoverText,
+            FlashcardPreview(
+                imageUrl = imageUrl,
+                fallbackText = name,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f),
@@ -486,6 +486,70 @@ private fun FlashcardGridItem(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+@Composable
+private fun FlashcardPreview(
+    imageUrl: String,
+    fallbackText: String,
+    modifier: Modifier = Modifier,
+) {
+    val platformContext = LocalPlatformContext.current
+    val imageLoader = remember(platformContext) { ImageLoader.Builder(platformContext).build() }
+    var imageLoadFailed by remember(imageUrl) { mutableStateOf(false) }
+    val normalizedUrl = imageUrl.trim()
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (normalizedUrl.isBlank() || imageLoadFailed) {
+            CardTextFallback(
+                text = fallbackText,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            AsyncImage(
+                model = normalizedUrl,
+                imageLoader = imageLoader,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                onSuccess = { imageLoadFailed = false },
+                onError = { imageLoadFailed = true },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CardTextFallback(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val normalizedText = text.trim().ifBlank { "?" }
+    val textStyle = when {
+        normalizedText.length <= 2 -> MaterialTheme.typography.displayLarge
+        normalizedText.length <= 6 -> MaterialTheme.typography.displayMedium
+        normalizedText.length <= 12 -> MaterialTheme.typography.displaySmall
+        else -> MaterialTheme.typography.headlineLarge
+    }
+
+    Text(
+        text = normalizedText,
+        style = textStyle,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        maxLines = 3,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .wrapContentHeight(align = Alignment.CenterVertically),
+    )
 }
 
 @Composable
