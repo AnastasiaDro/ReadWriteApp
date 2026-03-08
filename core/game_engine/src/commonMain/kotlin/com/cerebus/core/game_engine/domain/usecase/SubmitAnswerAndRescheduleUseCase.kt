@@ -81,6 +81,14 @@ class SubmitAnswerAndRescheduleUseCase(
             submittedAtEpochMillis = command.submittedAtEpochMillis,
             config = config,
         )
+        val updatedGuidedHintSuccessCount = resolveGuidedHintSuccessCount(
+            currentCount = progressBefore.guidedHintSuccessCount,
+            grade = grade,
+            usedHint = command.usedHint,
+        )
+        val updatedProgress = scheduleResult.updatedProgress.copy(
+            guidedHintSuccessCount = updatedGuidedHintSuccessCount,
+        )
 
         val reviewLog = ReviewLog(
             studentId = command.studentId,
@@ -96,38 +104,38 @@ class SubmitAnswerAndRescheduleUseCase(
             usedHint = command.usedHint,
             attemptIndex = command.attemptIndex,
             stateBefore = progressBefore.state,
-            stateAfter = scheduleResult.updatedProgress.state,
+            stateAfter = updatedProgress.state,
             grade = grade,
             scheduledDueAtBeforeEpochMillis = progressBefore.dueAtEpochMillis,
             dueAtAfterEpochMillis = scheduleResult.dueAtEpochMillis,
             intervalBeforeDays = progressBefore.intervalDays,
-            intervalAfterDays = scheduleResult.updatedProgress.intervalDays,
+            intervalAfterDays = updatedProgress.intervalDays,
             easeBefore = progressBefore.ease,
-            easeAfter = scheduleResult.updatedProgress.ease,
+            easeAfter = updatedProgress.ease,
         )
 
         when {
             progressRepository is AtomicProgressLogRepository -> {
                 progressRepository.upsertProgressAndInsertLog(
-                    progress = scheduleResult.updatedProgress,
+                    progress = updatedProgress,
                     log = reviewLog,
                 )
             }
 
             transactionRunner != null -> {
                 transactionRunner.inTransaction {
-                    progressRepository.upsertProgress(scheduleResult.updatedProgress)
+                    progressRepository.upsertProgress(updatedProgress)
                     reviewLogRepository.insertLog(reviewLog)
                 }
             }
 
             else -> {
-                progressRepository.upsertProgress(scheduleResult.updatedProgress)
+                progressRepository.upsertProgress(updatedProgress)
                 reviewLogRepository.insertLog(reviewLog)
             }
         }
 
-        println("SRS progress upsert -> ${scheduleResult.updatedProgress}")
+        println("SRS progress upsert -> $updatedProgress")
         println("SRS review log insert -> $reviewLog")
 
         return SubmitAnswerResult(
@@ -135,7 +143,7 @@ class SubmitAnswerAndRescheduleUseCase(
             matchType = match.matchType,
             similarity = match.similarity,
             nextDueAtEpochMillis = scheduleResult.dueAtEpochMillis,
-            updatedProgress = scheduleResult.updatedProgress,
+            updatedProgress = updatedProgress,
         )
     }
 }
@@ -158,5 +166,15 @@ private fun defaultNewProgress(
         lapses = 0,
         lastReviewedAtEpochMillis = null,
         lastGrade = null,
+        guidedHintSuccessCount = 0,
     )
+}
+
+private fun resolveGuidedHintSuccessCount(
+    currentCount: Int,
+    grade: Grade,
+    usedHint: Boolean,
+): Int {
+    if (grade == Grade.AGAIN) return currentCount
+    return if (usedHint) currentCount + 1 else currentCount
 }

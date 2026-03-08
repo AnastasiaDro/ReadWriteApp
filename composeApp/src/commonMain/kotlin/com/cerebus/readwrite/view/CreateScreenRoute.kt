@@ -50,7 +50,7 @@ private enum class CreatePickerRequest {
 @Composable
 fun CreateScreenRoute(
     onBackClick: () -> Unit,
-    onNavigateToDeck: (String) -> Unit,
+    onNavigateToDeck: (String, Boolean) -> Unit,
 ) {
     val viewModel = koinViewModel<CreateScreenViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -70,7 +70,9 @@ fun CreateScreenRoute(
             when (effect) {
                 CreateScreenEffect.OpenGallery -> pendingPickerRequest = CreatePickerRequest.GALLERY
                 CreateScreenEffect.OpenCamera -> pendingPickerRequest = CreatePickerRequest.CAMERA
-                is CreateScreenEffect.OpenDeck -> onNavigateToDeck(effect.deckId)
+                is CreateScreenEffect.OpenDeck -> {
+                    onNavigateToDeck(effect.deckId, effect.openAddCardDialog)
+                }
             }
         }
     }

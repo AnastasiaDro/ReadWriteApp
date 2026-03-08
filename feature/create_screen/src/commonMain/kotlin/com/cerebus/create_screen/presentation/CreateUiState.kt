@@ -17,6 +17,7 @@ data class CreateUiState(
     val isDeleteSelectedDialogVisible: Boolean = false,
     val selectedDeckIds: Set<String> = emptySet(),
     val isDeletingSelectedDecks: Boolean = false,
+    val createdDeckId: String = "",
     val createdDeckName: String = "",
     val createdDeckCoverUri: String? = null,
     val deckName: String = "",

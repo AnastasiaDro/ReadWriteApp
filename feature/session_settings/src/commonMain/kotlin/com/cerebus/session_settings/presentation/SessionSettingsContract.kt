@@ -4,6 +4,7 @@ data class SessionSettingsState(
     val newCardsPerSession: Int = 5,
     val reviewsPerSession: Int = 15,
     val learnMoreStep: Int = 5,
+    val guidedHintSuccessThreshold: Int = 2,
     val maxNewCardsPerDay: Int = 15,
     val allowNearMatch: Boolean = true,
     val deckOptions: List<SessionDeckOptionUi> = emptyList(),
@@ -22,6 +23,7 @@ sealed interface SessionSettingsIntent {
     data class ChangeNewCards(val value: Int) : SessionSettingsIntent
     data class ChangeReviews(val value: Int) : SessionSettingsIntent
     data class ChangeLearnMoreStep(val value: Int) : SessionSettingsIntent
+    data class ChangeGuidedHintSuccessThreshold(val value: Int) : SessionSettingsIntent
     data class ChangeMaxNewPerDay(val value: Int) : SessionSettingsIntent
     data class ChangeAllowNearMatch(val value: Boolean) : SessionSettingsIntent
     data class ToggleDeck(val deckId: String, val isActive: Boolean) : SessionSettingsIntent

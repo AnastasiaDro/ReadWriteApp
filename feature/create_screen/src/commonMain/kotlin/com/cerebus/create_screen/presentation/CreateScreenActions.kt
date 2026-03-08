@@ -28,5 +28,8 @@ sealed interface CreateScreenAction {
 sealed interface CreateScreenEffect {
     data object OpenGallery : CreateScreenEffect
     data object OpenCamera : CreateScreenEffect
-    data class OpenDeck(val deckId: String) : CreateScreenEffect
+    data class OpenDeck(
+        val deckId: String,
+        val openAddCardDialog: Boolean = false,
+    ) : CreateScreenEffect
 }

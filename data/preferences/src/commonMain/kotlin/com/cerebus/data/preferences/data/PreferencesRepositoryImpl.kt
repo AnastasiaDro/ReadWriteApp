@@ -17,4 +17,36 @@ class PreferencesRepositoryImpl(
     override fun clearLastActiveStudentId() {
         storage.clearLastActiveStudentId()
     }
+
+    override fun getLastSessionCardIds(
+        studentId: String,
+        deckIds: List<String>,
+    ): List<String>? {
+        return storage.getLastSessionCardIds(
+            studentId = studentId,
+            deckIds = deckIds,
+        )
+    }
+
+    override fun setLastSessionCardIds(
+        studentId: String,
+        deckIds: List<String>,
+        cardIds: List<String>,
+    ) {
+        storage.setLastSessionCardIds(
+            studentId = studentId,
+            deckIds = deckIds,
+            cardIds = cardIds,
+        )
+    }
+
+    override fun clearLastSessionCardIds(
+        studentId: String,
+        deckIds: List<String>,
+    ) {
+        storage.clearLastSessionCardIds(
+            studentId = studentId,
+            deckIds = deckIds,
+        )
+    }
 }

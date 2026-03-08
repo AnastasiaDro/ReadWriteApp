@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +34,7 @@ import readwriteapp.feature.session_settings.generated.resources.Res
 import readwriteapp.feature.session_settings.generated.resources.session_settings_active_decks
 import readwriteapp.feature.session_settings.generated.resources.session_settings_allow_near_match
 import readwriteapp.feature.session_settings.generated.resources.session_settings_cancel
+import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold
 import readwriteapp.feature.session_settings.generated.resources.session_settings_learn_more_step
 import readwriteapp.feature.session_settings.generated.resources.session_settings_load_error
 import readwriteapp.feature.session_settings.generated.resources.session_settings_max_new_per_day
@@ -43,6 +45,7 @@ import readwriteapp.feature.session_settings.generated.resources.session_setting
 import readwriteapp.feature.session_settings.generated.resources.session_settings_save_error
 import readwriteapp.feature.session_settings.generated.resources.session_settings_saving
 import readwriteapp.feature.session_settings.generated.resources.session_settings_title
+import kotlin.math.roundToInt
 
 @Composable
 fun SessionSettingsRoute(
@@ -124,6 +127,13 @@ fun SessionSettingsScreen(
             label = stringResource(Res.string.session_settings_learn_more_step),
             value = state.learnMoreStep,
             onValueChanged = { onIntent(SessionSettingsIntent.ChangeLearnMoreStep(it)) },
+        )
+
+        DiscreteSliderField(
+            label = stringResource(Res.string.session_settings_guided_hint_threshold),
+            value = state.guidedHintSuccessThreshold,
+            valueRange = 0..5,
+            onValueChanged = { onIntent(SessionSettingsIntent.ChangeGuidedHintSuccessThreshold(it)) },
         )
 
         NumericField(
@@ -238,4 +248,34 @@ private fun NumericField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,
     )
+}
+
+@Composable
+private fun DiscreteSliderField(
+    label: String,
+    value: Int,
+    valueRange: IntRange,
+    onValueChanged: (Int) -> Unit,
+) {
+    val min = valueRange.first
+    val max = valueRange.last
+    val safeValue = value.coerceIn(min, max)
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "$label: $safeValue",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Slider(
+            value = safeValue.toFloat(),
+            onValueChange = { raw ->
+                onValueChanged(raw.roundToInt().coerceIn(min, max))
+            },
+            valueRange = min.toFloat()..max.toFloat(),
+            steps = (max - min - 1).coerceAtLeast(0),
+        )
+    }
 }

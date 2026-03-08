@@ -58,7 +58,7 @@ fun ChangeStudentRoute(
             }
 
             is ChangeStudentEffect.OpenDeck -> {
-                DeckNavigationState.selectedDeckId = current.deckId
+                DeckNavigationState.selectDeck(deckId = current.deckId)
                 onOpenDeck(current.deckId)
                 viewModel.consumeEffect()
             }

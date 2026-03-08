@@ -40,4 +40,6 @@ data class StudentSrsPrefsEntity(
     val similarityThreshold: Double,
     @ColumnInfo(name = "easy_streak_required")
     val easyStreakRequired: Int,
+    @ColumnInfo(name = "guided_hint_success_threshold")
+    val guidedHintSuccessThreshold: Int,
 )

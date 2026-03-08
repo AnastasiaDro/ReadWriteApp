@@ -9,4 +9,5 @@ data class StudentSrsPrefs(
     val allowNearMatch: Boolean = true,
     val similarityThreshold: Double = 0.85,
     val easyStreakRequired: Int = 2,
+    val guidedHintSuccessThreshold: Int = 2,
 )

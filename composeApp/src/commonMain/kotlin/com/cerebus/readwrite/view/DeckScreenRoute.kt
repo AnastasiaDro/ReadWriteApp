@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.create_screen.presentation.DeckPickerRequest
 import com.cerebus.create_screen.presentation.DeckScreenEffect
@@ -58,6 +61,7 @@ fun DeckScreenRoute(
     val viewModel = koinViewModel<DeckScreenViewModel>()
     val state by viewModel.uiState.collectAsState()
     val effect by viewModel.effects.collectAsState()
+    var shouldOpenAddCardDialog by remember(deckId) { mutableStateOf(false) }
 
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
@@ -69,18 +73,40 @@ fun DeckScreenRoute(
     )
 
     LaunchedEffect(deckId) {
+        shouldOpenAddCardDialog = DeckNavigationState.consumeOpenAddCardDialogOnNextOpen()
         viewModel.onAction(DeckScreenAction.Initialize(deckId))
     }
 
     LaunchedEffect(effect) {
         when (val current = effect) {
             is DeckScreenEffect.OpenGame -> {
-                DeckNavigationState.selectedDeckId = current.deckId
+                DeckNavigationState.selectDeck(deckId = current.deckId)
                 onOpenGame(current.deckId)
                 viewModel.consumeEffect()
             }
             null -> Unit
         }
+    }
+
+    LaunchedEffect(
+        shouldOpenAddCardDialog,
+        state.isLoading,
+        state.deckId,
+        state.validationError,
+    ) {
+        if (!shouldOpenAddCardDialog) return@LaunchedEffect
+        if (state.isLoading) return@LaunchedEffect
+        if (state.deckId != deckId) return@LaunchedEffect
+
+        if (state.validationError == DeckValidationError.DECK_NOT_FOUND) {
+            shouldOpenAddCardDialog = false
+            return@LaunchedEffect
+        }
+
+        if (!state.isAddCardDialogVisible) {
+            viewModel.onAction(DeckScreenAction.OnAddCardClick)
+        }
+        shouldOpenAddCardDialog = false
     }
 
     LaunchedEffect(

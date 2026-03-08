@@ -81,6 +81,60 @@ class SubmitAnswerAndRescheduleUseCaseTest {
         assertNotNull(progressRepository.atomicLog)
         assertEquals(0, reviewLogRepository.insertCalls)
     }
+
+    @Test
+    fun submitAnswerAndReschedule_incrementsGuidedHintSuccessCount_whenAnswerCorrectWithHint() = runTest {
+        val progressRepository = FakeCardProgressRepository()
+        val reviewLogRepository = FakeReviewLogRepository()
+        val prefsRepository = FakeStudentPrefsRepository()
+        val useCase = SubmitAnswerAndRescheduleUseCase(
+            progressRepository = progressRepository,
+            studentPrefsRepository = prefsRepository,
+            reviewLogRepository = reviewLogRepository,
+        )
+
+        useCase(
+            SubmitAnswerCommand(
+                studentId = "student1",
+                cardId = "card1",
+                expectedAnswers = listOf("мама"),
+                userInput = "мама",
+                shownAtEpochMillis = 1000L,
+                submittedAtEpochMillis = 2000L,
+                usedHint = true,
+                attemptIndex = 1,
+            )
+        )
+
+        assertEquals(1, progressRepository.storedProgress?.guidedHintSuccessCount)
+    }
+
+    @Test
+    fun submitAnswerAndReschedule_doesNotIncrementGuidedHintSuccessCount_whenHintNotUsed() = runTest {
+        val progressRepository = FakeCardProgressRepository()
+        val reviewLogRepository = FakeReviewLogRepository()
+        val prefsRepository = FakeStudentPrefsRepository()
+        val useCase = SubmitAnswerAndRescheduleUseCase(
+            progressRepository = progressRepository,
+            studentPrefsRepository = prefsRepository,
+            reviewLogRepository = reviewLogRepository,
+        )
+
+        useCase(
+            SubmitAnswerCommand(
+                studentId = "student1",
+                cardId = "card1",
+                expectedAnswers = listOf("мама"),
+                userInput = "мама",
+                shownAtEpochMillis = 1000L,
+                submittedAtEpochMillis = 2000L,
+                usedHint = false,
+                attemptIndex = 1,
+            )
+        )
+
+        assertEquals(0, progressRepository.storedProgress?.guidedHintSuccessCount)
+    }
 }
 
 private class FakeCardProgressRepository : CardProgressRepository {

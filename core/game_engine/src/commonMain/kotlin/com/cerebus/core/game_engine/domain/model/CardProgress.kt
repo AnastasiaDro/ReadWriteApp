@@ -12,4 +12,5 @@ data class CardProgress(
     val lapses: Int,
     val lastReviewedAtEpochMillis: Long?,
     val lastGrade: Grade?,
+    val guidedHintSuccessCount: Int = 0,
 )

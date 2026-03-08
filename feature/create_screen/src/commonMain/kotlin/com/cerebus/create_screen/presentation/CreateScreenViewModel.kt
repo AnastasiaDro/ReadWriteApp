@@ -119,9 +119,21 @@ class CreateScreenViewModel(
             CreateScreenAction.OnAddCardsClick,
             CreateScreenAction.OnCloseSuccessDialog,
             -> {
+                val createdDeckId = _uiState.value.createdDeckId
+                if (action == CreateScreenAction.OnAddCardsClick && createdDeckId.isNotBlank()) {
+                    viewModelScope.launch {
+                        _effects.emit(
+                            CreateScreenEffect.OpenDeck(
+                                deckId = createdDeckId,
+                                openAddCardDialog = true,
+                            )
+                        )
+                    }
+                }
                 _uiState.update {
                     it.copy(
                         isSuccessDialogVisible = false,
+                        createdDeckId = "",
                         createdDeckName = "",
                         createdDeckCoverUri = null,
                         deckName = "",
@@ -174,6 +186,7 @@ class CreateScreenViewModel(
                         isCreateDialogVisible = false,
                         isCoverSourceDialogVisible = false,
                         isSuccessDialogVisible = true,
+                        createdDeckId = newDeckId,
                         createdDeckName = normalizedName,
                         createdDeckCoverUri = current.coverUri,
                         deckName = "",

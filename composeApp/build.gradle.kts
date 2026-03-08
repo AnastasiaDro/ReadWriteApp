@@ -113,6 +113,7 @@ dependencies {
 
 val featureStudentResourcesOutput = layout.buildDirectory.dir("generated/featureStudentComposeResources")
 val featureSessionSettingsResourcesOutput = layout.buildDirectory.dir("generated/featureSessionSettingsComposeResources")
+val featureGameScreenResourcesOutput = layout.buildDirectory.dir("generated/featureGameScreenComposeResources")
 
 val copyFeatureStudentComposeResources by tasks.registering(Copy::class) {
     dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
@@ -140,16 +141,34 @@ val copyFeatureSessionSettingsComposeResources by tasks.registering(Copy::class)
     })
 }
 
+val copyFeatureGameScreenComposeResources by tasks.registering(Copy::class) {
+    dependsOn(":feature:game_screen:prepareComposeResourcesTaskForCommonMain")
+    from(
+        project(":feature:game_screen")
+            .layout
+            .buildDirectory
+            .dir("generated/compose/resourceGenerator/preparedResources/commonMain/composeResources")
+    )
+    into(featureGameScreenResourcesOutput.map {
+        it.dir("composeResources/readwriteapp.feature.game_screen.generated.resources")
+    })
+}
+
 android.sourceSets.getByName("main").assets.srcDir(featureStudentResourcesOutput)
 android.sourceSets.getByName("main").assets.srcDir(featureSessionSettingsResourcesOutput)
+android.sourceSets.getByName("main").assets.srcDir(featureGameScreenResourcesOutput)
 
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(copyFeatureStudentComposeResources)
     dependsOn(copyFeatureSessionSettingsComposeResources)
+    dependsOn(copyFeatureGameScreenComposeResources)
     dependsOn(":feature:student:convertXmlValueResourcesForCommonMain")
     dependsOn(":feature:student:copyNonXmlValueResourcesForCommonMain")
     dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
     dependsOn(":feature:session_settings:convertXmlValueResourcesForCommonMain")
     dependsOn(":feature:session_settings:copyNonXmlValueResourcesForCommonMain")
     dependsOn(":feature:session_settings:prepareComposeResourcesTaskForCommonMain")
+    dependsOn(":feature:game_screen:convertXmlValueResourcesForCommonMain")
+    dependsOn(":feature:game_screen:copyNonXmlValueResourcesForCommonMain")
+    dependsOn(":feature:game_screen:prepareComposeResourcesTaskForCommonMain")
 }

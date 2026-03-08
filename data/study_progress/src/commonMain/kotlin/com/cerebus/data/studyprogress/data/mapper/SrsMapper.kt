@@ -23,6 +23,7 @@ fun StudyProgressEntity.toDomain(): CardProgress {
         lapses = lapses,
         lastReviewedAtEpochMillis = lastReviewedAtEpochMillis,
         lastGrade = lastGrade?.let { Grade.entries[it] },
+        guidedHintSuccessCount = guidedHintSuccessCount,
     )
 }
 
@@ -39,6 +40,7 @@ fun CardProgress.toEntity(): StudyProgressEntity {
         lapses = lapses,
         lastReviewedAtEpochMillis = lastReviewedAtEpochMillis,
         lastGrade = lastGrade?.ordinal,
+        guidedHintSuccessCount = guidedHintSuccessCount,
     )
 }
 
@@ -78,6 +80,7 @@ fun StudentSrsPrefsEntity.toDomain(): StudentSrsPrefs {
         allowNearMatch = allowNearMatch,
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
+        guidedHintSuccessThreshold = guidedHintSuccessThreshold,
     )
 }
 
@@ -91,6 +94,7 @@ fun StudentSrsPrefs.toEntity(): StudentSrsPrefsEntity {
         allowNearMatch = allowNearMatch,
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
+        guidedHintSuccessThreshold = guidedHintSuccessThreshold,
     )
 }
 

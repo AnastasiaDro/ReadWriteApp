@@ -50,4 +50,6 @@ data class StudyProgressEntity(
     val lastReviewedAtEpochMillis: Long?,
     @ColumnInfo(name = "last_grade")
     val lastGrade: Int?,
+    @ColumnInfo(name = "guided_hint_success_count")
+    val guidedHintSuccessCount: Int,
 )

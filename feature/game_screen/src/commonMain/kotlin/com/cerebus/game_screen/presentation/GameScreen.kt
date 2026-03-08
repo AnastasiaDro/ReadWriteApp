@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil3.ImageLoader
@@ -44,8 +46,15 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.cerebus.game_screen.navigation.GameScreenNavigatorImpl
 import kotlinx.coroutines.handleCoroutineException
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import readwriteapp.feature.game_screen.generated.resources.game_back_to_student
+import readwriteapp.feature.game_screen.generated.resources.game_learn_more
+import readwriteapp.feature.game_screen.generated.resources.game_learn_more_hint
+import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session_hint
+import readwriteapp.feature.game_screen.generated.resources.Res
+import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session
 
 @Composable
 fun GameScreenWrapper(
@@ -182,11 +191,9 @@ private fun ActiveGameContent(
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                Text(
-                    text = "No image",
-                    style = MaterialTheme.typography.headlineSmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                CardTextFallback(
+                    text = state.currentCard.answer,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
 
@@ -237,6 +244,33 @@ private fun ActiveGameContent(
             }
         }
     }
+}
+
+@Composable
+private fun CardTextFallback(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val normalizedText = text.trim().ifBlank { "?" }
+    val textStyle = when {
+        normalizedText.length <= 2 -> MaterialTheme.typography.displayLarge
+        normalizedText.length <= 6 -> MaterialTheme.typography.displayMedium
+        normalizedText.length <= 12 -> MaterialTheme.typography.displaySmall
+        else -> MaterialTheme.typography.headlineLarge
+    }
+
+    Text(
+        text = normalizedText,
+        style = textStyle,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        maxLines = 3,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .wrapContentHeight(align = Alignment.CenterVertically)
+            .fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -343,13 +377,40 @@ private fun FinishedGameContent(
         )
 
         Button(
-            onClick = { onAction(GameScreenAction.OnRetryClick) },
+            onClick = { onAction(GameScreenAction.OnLearnMoreClick) },
             modifier = Modifier
                 .padding(top = 24.dp)
                 .fillMaxWidth(0.86f),
         ) {
-            Text("Пройти ещё раз")
+            Text(stringResource(Res.string.game_learn_more))
         }
+
+        Text(
+            text = stringResource(Res.string.game_learn_more_hint),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .fillMaxWidth(0.86f),
+        )
+
+        Button(
+            onClick = { onAction(GameScreenAction.OnRetryClick) },
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .fillMaxWidth(0.86f),
+        ) {
+            Text(stringResource(Res.string.game_repeat_last_session))
+        }
+
+        Text(
+            text = stringResource(Res.string.game_repeat_last_session_hint),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .fillMaxWidth(0.86f),
+        )
 
         Button(
             onClick = { onAction(GameScreenAction.OnBackToStudentClick) },
@@ -357,7 +418,7 @@ private fun FinishedGameContent(
                 .padding(top = 12.dp)
                 .fillMaxWidth(0.86f),
         ) {
-            Text("Вернуться на экран пользователя")
+            Text(stringResource(Res.string.game_back_to_student))
         }
     }
 }

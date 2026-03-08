@@ -41,6 +41,9 @@ class SessionSettingsViewModel(
             is SessionSettingsIntent.ChangeLearnMoreStep -> {
                 _state.update { it.copy(learnMoreStep = intent.value.coerceAtLeast(0)) }
             }
+            is SessionSettingsIntent.ChangeGuidedHintSuccessThreshold -> {
+                _state.update { it.copy(guidedHintSuccessThreshold = intent.value.coerceIn(0, 5)) }
+            }
             is SessionSettingsIntent.ChangeMaxNewPerDay -> {
                 _state.update { it.copy(maxNewCardsPerDay = intent.value.coerceAtLeast(0)) }
             }
@@ -74,6 +77,7 @@ class SessionSettingsViewModel(
                     newCardsPerSession = prefs.newCardsPerSession,
                     reviewsPerSession = prefs.reviewsPerSession,
                     learnMoreStep = prefs.learnMoreStep,
+                    guidedHintSuccessThreshold = prefs.guidedHintSuccessThreshold,
                     maxNewCardsPerDay = prefs.maxNewCardsPerDay,
                     allowNearMatch = prefs.allowNearMatch,
                     deckOptions = allDecks.map { deck ->
@@ -136,6 +140,7 @@ class SessionSettingsViewModel(
                 newCardsPerSession = snapshot.newCardsPerSession,
                 reviewsPerSession = snapshot.reviewsPerSession,
                 learnMoreStep = snapshot.learnMoreStep,
+                guidedHintSuccessThreshold = snapshot.guidedHintSuccessThreshold,
                 maxNewCardsPerDay = snapshot.maxNewCardsPerDay,
                 allowNearMatch = snapshot.allowNearMatch,
             )

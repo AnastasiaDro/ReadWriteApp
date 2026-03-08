@@ -3,6 +3,7 @@
     <string name="session_settings_new_cards">Новых карточек за занятие</string>
     <string name="session_settings_reviews">Повторений за занятие</string>
     <string name="session_settings_learn_more_step">Шаг &quot;Учить ещё&quot;</string>
+    <string name="session_settings_guided_hint_threshold">Сколько успешных ответов с подсказкой перед скрытием</string>
     <string name="session_settings_max_new_per_day">Максимум новых карточек в день</string>
     <string name="session_settings_allow_near_match">Разрешать небольшие ошибки в ответе</string>
     <string name="session_settings_active_decks">Активные колоды</string>

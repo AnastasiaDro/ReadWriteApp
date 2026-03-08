@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.cerebus.core.game_engine.domain.logic.interleaveReviewAndNewCards
 import com.cerebus.core.game_engine.domain.logic.selectBalancedNewCardsByDeck
 import com.cerebus.core.game_engine.domain.logic.takeRoundRobinByDeck
+import com.cerebus.core.game_engine.domain.model.CardProgress
 import com.cerebus.core.game_engine.domain.model.CardState
 import com.cerebus.core.game_engine.domain.model.Grade
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
@@ -27,6 +28,9 @@ import kotlin.random.Random
 
 private const val FEEDBACK_DURATION_MS = 1200L
 private const val REVIEW_TO_NEW_RATIO = 3
+private const val DEFAULT_LEARN_MORE_STEP = 5
+private const val MIN_GUIDED_HINT_THRESHOLD = 0
+private const val MAX_GUIDED_HINT_THRESHOLD = 5
 
 class GameScreenViewModel(
     deckIds: List<String>,
@@ -47,6 +51,7 @@ class GameScreenViewModel(
 
     private var session: GameSessionData? = null
     private var feedbackJob: Job? = null
+    private var dailyLimitIncrease: Int = 0
 
     init {
         loadDeckCards()
@@ -56,7 +61,8 @@ class GameScreenViewModel(
         when (action) {
             is GameScreenAction.OnAnswerChanged -> updateAnswer(action.value)
             GameScreenAction.OnCheckClick -> checkAnswer()
-            GameScreenAction.OnRetryClick -> restart()
+            GameScreenAction.OnRetryClick -> repeatLastSession()
+            GameScreenAction.OnLearnMoreClick -> learnMore()
             GameScreenAction.OnBackToStudentClick -> {
                 _effects.value = GameScreenEffect.OpenActiveStudent
             }
@@ -97,12 +103,20 @@ class GameScreenViewModel(
                 flashcardRepository = flashcardRepository,
                 cardProgressRepository = cardProgressRepository,
                 studentPrefsRepository = studentPrefsRepository,
+                dailyLimitIncrease = dailyLimitIncrease,
+            )
+            saveLastSessionCardsSnapshot(
+                studentId = activeStudentId,
+                deckIds = selectedDeckIds,
+                sessionCards = sessionCards,
+                preferencesRepository = preferencesRepository,
             )
 
             val initialSession = GameSessionData(
                 deck = deckData,
                 cards = sessionCards,
                 studentId = activeStudentId,
+                isHintVisible = initialHintVisible(sessionCards),
                 cardShownAtEpochMillis = nowMillis(),
                 attemptIndex = 1,
             )
@@ -182,11 +196,12 @@ class GameScreenViewModel(
             delay(FEEDBACK_DURATION_MS)
 
             val nextIndex = withFeedback.currentIndex + 1
+            val nextCard = withFeedback.cards.getOrNull(nextIndex)
             val progressed = withFeedback.copy(
                 currentIndex = nextIndex,
                 correctAnswers = withFeedback.correctAnswers + 1,
                 answerInput = "",
-                isHintVisible = false,
+                isHintVisible = nextCard?.showHintInitially == true,
                 feedback = null,
                 cardShownAtEpochMillis = nowMillis(),
                 attemptIndex = 1,
@@ -219,26 +234,91 @@ class GameScreenViewModel(
         }
     }
 
-    private fun restart() {
+    private fun repeatLastSession() {
         feedbackJob?.cancel()
 
         val current = session ?: return
-        val restarted = current.copy(
+        viewModelScope.launch {
+            val restoredCards = restoreLastSessionCards(
+                studentId = current.studentId,
+                deckIds = selectedDeckIds,
+                flashcardRepository = flashcardRepository,
+                cardProgressRepository = cardProgressRepository,
+                studentPrefsRepository = studentPrefsRepository,
+                preferencesRepository = preferencesRepository,
+            ).ifEmpty { current.cards }
+
+            val restarted = restartSessionWithCards(
+                current = current,
+                cards = restoredCards,
+            )
+            session = restarted
+
+            _uiState.value = if (restarted.cards.isEmpty()) {
+                restarted.toFinishedUiState()
+            } else {
+                restarted.toActiveUiState()
+            }
+        }
+    }
+
+    private fun learnMore() {
+        feedbackJob?.cancel()
+
+        val current = session ?: return
+        viewModelScope.launch {
+            val learnMoreStep = resolveLearnMoreStep(current.studentId)
+            dailyLimitIncrease += learnMoreStep
+
+            val sessionCards = buildSessionCards(
+                deckIds = selectedDeckIds,
+                studentId = current.studentId,
+                flashcardRepository = flashcardRepository,
+                cardProgressRepository = cardProgressRepository,
+                studentPrefsRepository = studentPrefsRepository,
+                dailyLimitIncrease = dailyLimitIncrease,
+            )
+            saveLastSessionCardsSnapshot(
+                studentId = current.studentId,
+                deckIds = selectedDeckIds,
+                sessionCards = sessionCards,
+                preferencesRepository = preferencesRepository,
+            )
+
+            val restarted = restartSessionWithCards(
+                current = current,
+                cards = sessionCards,
+            )
+            session = restarted
+            _uiState.value = if (restarted.cards.isEmpty()) {
+                restarted.toFinishedUiState()
+            } else {
+                restarted.toActiveUiState()
+            }
+        }
+    }
+
+    private suspend fun resolveLearnMoreStep(studentId: String): Int {
+        if (studentId.isBlank()) return DEFAULT_LEARN_MORE_STEP
+        return runCatching { studentPrefsRepository.getPrefs(studentId).learnMoreStep }
+            .getOrDefault(DEFAULT_LEARN_MORE_STEP)
+            .coerceAtLeast(1)
+    }
+
+    private fun restartSessionWithCards(
+        current: GameSessionData,
+        cards: List<GameCardData>,
+    ): GameSessionData {
+        return current.copy(
+            cards = cards,
             currentIndex = 0,
             correctAnswers = 0,
             answerInput = "",
-            isHintVisible = false,
+            isHintVisible = initialHintVisible(cards),
             feedback = null,
             cardShownAtEpochMillis = nowMillis(),
             attemptIndex = 1,
         )
-        session = restarted
-
-        _uiState.value = if (restarted.cards.isEmpty()) {
-            restarted.toFinishedUiState()
-        } else {
-            restarted.toActiveUiState()
-        }
     }
 }
 
@@ -251,6 +331,7 @@ private data class GameCardData(
     val id: String,
     val answer: String,
     val imagePath: String?,
+    val showHintInitially: Boolean = false,
 )
 
 private data class GameSessionData(
@@ -282,6 +363,7 @@ private suspend fun buildSessionCards(
     flashcardRepository: FlashcardRepository,
     cardProgressRepository: CardProgressRepository,
     studentPrefsRepository: StudentPrefsRepository,
+    dailyLimitIncrease: Int = 0,
 ): List<GameCardData> {
     val random = Random(nowMillis())
     val cardsByDeck = deckIds.associateWith { deckId ->
@@ -293,6 +375,7 @@ private suspend fun buildSessionCards(
                     id = card.id,
                     answer = card.name,
                     imagePath = card.imageUrl.ifBlank { null },
+                    showHintInitially = false,
                 )
             }
     }
@@ -309,6 +392,11 @@ private suspend fun buildSessionCards(
             cardsByDeck = cardsByDeck,
             limit = cardsByDeck.values.sumOf { it.size },
         )
+    val normalizedDailyIncrease = dailyLimitIncrease.coerceAtLeast(0)
+    val reviewLimit = prefs.reviewsPerSession.coerceAtLeast(0) + normalizedDailyIncrease
+    val newLimit = prefs.newCardsPerSession.coerceAtLeast(0) + normalizedDailyIncrease
+    val guidedHintThreshold = prefs.guidedHintSuccessThreshold
+        .coerceIn(MIN_GUIDED_HINT_THRESHOLD, MAX_GUIDED_HINT_THRESHOLD)
     val progressByCardId = cardProgressRepository.observeProgress(studentId)
         .first()
         .associateBy { it.cardId }
@@ -319,21 +407,27 @@ private suspend fun buildSessionCards(
     cardsByDeck.forEach { (deckId, cards) ->
         cards.forEach { card ->
             val progress = progressByCardId[card.id]
+            val cardWithHintMode = card.copy(
+                showHintInitially = shouldShowHintInitially(
+                    progress = progress,
+                    guidedHintThreshold = guidedHintThreshold,
+                ),
+            )
             if (progress == null || progress.state == CardState.NEW) {
-                newByDeck.getOrPut(deckId) { mutableListOf() }.add(card)
+                newByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
             } else if (progress.dueAtEpochMillis <= now) {
-                reviewByDeck.getOrPut(deckId) { mutableListOf() }.add(card)
+                reviewByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
             }
         }
     }
 
     val selectedReview = takeRoundRobinByDeck(
         cardsByDeck = reviewByDeck,
-        limit = prefs.reviewsPerSession.coerceAtLeast(0),
+        limit = reviewLimit,
     )
     val selectedNew = selectBalancedNewCardsByDeck(
         newCardsByDeck = newByDeck,
-        newLimit = prefs.newCardsPerSession.coerceAtLeast(0),
+        newLimit = newLimit,
     )
 
     return interleaveReviewAndNewCards(
@@ -341,6 +435,73 @@ private suspend fun buildSessionCards(
         newCards = selectedNew,
         reviewToNewRatio = REVIEW_TO_NEW_RATIO,
     )
+}
+
+private fun saveLastSessionCardsSnapshot(
+    studentId: String,
+    deckIds: List<String>,
+    sessionCards: List<GameCardData>,
+    preferencesRepository: PreferencesRepository,
+) {
+    val cardIds = sessionCards.map { it.id }
+    if (cardIds.isEmpty()) return
+    preferencesRepository.setLastSessionCardIds(
+        studentId = studentId,
+        deckIds = deckIds,
+        cardIds = cardIds,
+    )
+}
+
+private suspend fun restoreLastSessionCards(
+    studentId: String,
+    deckIds: List<String>,
+    flashcardRepository: FlashcardRepository,
+    cardProgressRepository: CardProgressRepository,
+    studentPrefsRepository: StudentPrefsRepository,
+    preferencesRepository: PreferencesRepository,
+): List<GameCardData> {
+    val savedCardIds = preferencesRepository.getLastSessionCardIds(
+        studentId = studentId,
+        deckIds = deckIds,
+    ).orEmpty()
+    if (savedCardIds.isEmpty()) return emptyList()
+
+    val progressByCardId: Map<String, CardProgress> = if (studentId.isBlank()) {
+        emptyMap()
+    } else {
+        cardProgressRepository.observeProgress(studentId)
+            .first()
+            .associateBy { it.cardId }
+    }
+    val guidedHintThreshold = if (studentId.isBlank()) {
+        MIN_GUIDED_HINT_THRESHOLD
+    } else {
+        runCatching { studentPrefsRepository.getPrefs(studentId).guidedHintSuccessThreshold }
+            .getOrDefault(2)
+            .coerceIn(MIN_GUIDED_HINT_THRESHOLD, MAX_GUIDED_HINT_THRESHOLD)
+    }
+
+    val cardsById = buildMap {
+        deckIds.forEach { deckId ->
+            flashcardRepository.getFlashcardsByDeckId(deckId).forEach { card ->
+                val progress = progressByCardId[card.id]
+                put(
+                    card.id,
+                    GameCardData(
+                        deckId = deckId,
+                        id = card.id,
+                        answer = card.name,
+                        imagePath = card.imageUrl.ifBlank { null },
+                        showHintInitially = shouldShowHintInitially(
+                            progress = progress,
+                            guidedHintThreshold = guidedHintThreshold,
+                        ),
+                    )
+                )
+            }
+        }
+    }
+    return savedCardIds.mapNotNull { cardId -> cardsById[cardId] }
 }
 
 private fun buildDeckTitle(
@@ -391,4 +552,19 @@ private fun GameFeedbackData.toUi(): FeedbackUi {
             emoji = "😞",
         )
     }
+}
+
+private fun initialHintVisible(cards: List<GameCardData>): Boolean {
+    return cards.firstOrNull()?.showHintInitially == true
+}
+
+private fun shouldShowHintInitially(
+    progress: CardProgress?,
+    guidedHintThreshold: Int,
+): Boolean {
+    if (guidedHintThreshold <= 0) return false
+    if (progress == null) return true
+    val isGuidedStage = progress.state == CardState.NEW || progress.state == CardState.LEARNING
+    if (!isGuidedStage) return false
+    return progress.guidedHintSuccessCount < guidedHintThreshold
 }

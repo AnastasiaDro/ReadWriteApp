@@ -123,8 +123,11 @@ fun ReadWriteAppNavigation() = MaterialTheme {
             composable(Screens.CREATE.route) {
                 CreateScreenRoute(
                     onBackClick = { navController.popBackStack() },
-                    onNavigateToDeck = { deckId ->
-                        DeckNavigationState.selectedDeckId = deckId
+                    onNavigateToDeck = { deckId, openAddCardDialog ->
+                        DeckNavigationState.selectDeck(
+                            deckId = deckId,
+                            openAddCardDialog = openAddCardDialog,
+                        )
                         navController.navigate(Screens.DECK.route)
                     }
                 )

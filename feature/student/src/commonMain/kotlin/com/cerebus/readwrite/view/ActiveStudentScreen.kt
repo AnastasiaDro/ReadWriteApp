@@ -63,13 +63,13 @@ fun ActiveStudentRoute(
     LaunchedEffect(effect) {
         when (val current = effect) {
             is ActiveStudentEffect.OpenDeck -> {
-                DeckNavigationState.selectedDeckId = current.deckId
+                DeckNavigationState.selectDeck(deckId = current.deckId)
                 onOpenDeck(current.deckId)
                 viewModel.consumeEffect()
             }
 
             is ActiveStudentEffect.OpenGame -> {
-                DeckNavigationState.selectedDeckId = current.deckIds.firstOrNull().orEmpty()
+                DeckNavigationState.selectDeck(deckId = current.deckIds.firstOrNull().orEmpty())
                 onOpenGame(current.deckIds)
                 viewModel.consumeEffect()
             }
