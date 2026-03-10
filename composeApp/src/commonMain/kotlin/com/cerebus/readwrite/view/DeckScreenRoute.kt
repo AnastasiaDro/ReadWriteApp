@@ -15,6 +15,8 @@ import com.cerebus.create_screen.presentation.DeckScreenAction
 import com.cerebus.create_screen.presentation.DeckScreenStrings
 import com.cerebus.create_screen.presentation.DeckScreenViewModel
 import com.cerebus.create_screen.presentation.DeckValidationError
+import com.cerebus.readwrite.media.rememberDeckArchiveShareLauncher
+import com.cerebus.readwrite.media.rememberPlatformMessenger
 import com.cerebus.readwrite.media.rememberCoverImagePicker
 import org.koin.compose.viewmodel.koinViewModel
 import org.jetbrains.compose.resources.stringResource
@@ -41,10 +43,13 @@ import readwriteapp.composeapp.generated.resources.error_delete_cards_failed
 import readwriteapp.composeapp.generated.resources.error_deck_not_found
 import readwriteapp.composeapp.generated.resources.error_empty_card_name
 import readwriteapp.composeapp.generated.resources.error_empty_deck_name
+import readwriteapp.composeapp.generated.resources.error_export_deck_failed
+import readwriteapp.composeapp.generated.resources.error_share_deck_failed
 import readwriteapp.composeapp.generated.resources.error_update_card_failed
 import readwriteapp.composeapp.generated.resources.error_update_cover_failed
 import readwriteapp.composeapp.generated.resources.error_update_name_failed
 import readwriteapp.composeapp.generated.resources.no_cover
+import readwriteapp.composeapp.generated.resources.export_deck
 import readwriteapp.composeapp.generated.resources.save
 import readwriteapp.composeapp.generated.resources.selected_count
 import readwriteapp.composeapp.generated.resources.start_training
@@ -62,6 +67,9 @@ fun DeckScreenRoute(
     val state by viewModel.uiState.collectAsState()
     val effect by viewModel.effects.collectAsState()
     var shouldOpenAddCardDialog by remember(deckId) { mutableStateOf(false) }
+    val messenger = rememberPlatformMessenger()
+    val exportDeckErrorText = stringResource(Res.string.error_export_deck_failed)
+    val shareDeckErrorText = stringResource(Res.string.error_share_deck_failed)
 
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
@@ -69,6 +77,11 @@ fun DeckScreenRoute(
         },
         onError = {
             // Placeholder for future snackbar/toast integration.
+        },
+    )
+    val deckShareLauncher = rememberDeckArchiveShareLauncher(
+        onError = {
+            messenger.showMessage(shareDeckErrorText)
         },
     )
 
@@ -82,6 +95,17 @@ fun DeckScreenRoute(
             is DeckScreenEffect.OpenGame -> {
                 DeckNavigationState.selectDeck(deckId = current.deckId)
                 onOpenGame(current.deckId)
+                viewModel.consumeEffect()
+            }
+            DeckScreenEffect.ShowExportDeckFailed -> {
+                messenger.showMessage(exportDeckErrorText)
+                viewModel.consumeEffect()
+            }
+            is DeckScreenEffect.ShareDeckArchive -> {
+                deckShareLauncher.shareArchive(
+                    filePath = current.filePath,
+                    fileName = current.fileName,
+                )
                 viewModel.consumeEffect()
             }
             null -> Unit
@@ -133,6 +157,7 @@ fun DeckScreenRoute(
 
     val strings = DeckScreenStrings(
         back = stringResource(Res.string.back),
+        exportDeck = stringResource(Res.string.export_deck),
         addCard = stringResource(Res.string.add_card),
         startTraining = stringResource(Res.string.start_training),
         addCardTitle = stringResource(Res.string.add_card_title),

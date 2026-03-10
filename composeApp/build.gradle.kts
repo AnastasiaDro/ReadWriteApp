@@ -53,6 +53,7 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
+            implementation(libs.kotlinx.serialization.json)
             implementation(project(":data:database"))
             implementation(project(":feature:game_screen"))
             implementation(project(":data:flashcards"))
@@ -63,6 +64,7 @@ kotlin {
             implementation(project(":data:study_progress"))
             implementation(project(":core:utils"))
             implementation(project(":core:game_engine"))
+            implementation(project(":core:deck_package"))
             implementation(project(":core:ui"))
             implementation(project(":feature:create_screen"))
             implementation(project(":feature:student"))
@@ -72,6 +74,9 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+        }
+        iosMain.dependencies {
+            implementation(libs.kmp.zip)
         }
     }
 }

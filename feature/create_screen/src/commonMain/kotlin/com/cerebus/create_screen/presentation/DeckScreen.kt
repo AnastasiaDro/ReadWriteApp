@@ -103,6 +103,14 @@ fun DeckScreen(
                         Text(strings.back)
                     }
                 },
+                actions = {
+                    TextButton(
+                        onClick = { onAction(DeckScreenAction.OnExportDeckClick) },
+                        enabled = !state.isExporting && !state.isLoading,
+                    ) {
+                        Text(strings.exportDeck)
+                    }
+                },
             )
         },
         floatingActionButton = {

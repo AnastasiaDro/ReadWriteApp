@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="deck_covers" path="deck_covers/" />
+    <cache-path name="deck_packages" path="deck_packages/" />
+    <files-path name="deck_packages_files" path="deck_packages/" />
+    <external-files-path name="deck_packages_downloads" path="Download/deck_packages/" />
 </paths>

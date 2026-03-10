@@ -14,6 +14,8 @@ import com.cerebus.create_screen.presentation.CreateScreenEffect
 import com.cerebus.create_screen.presentation.CreateScreenStrings
 import com.cerebus.create_screen.presentation.CreateScreenViewModel
 import com.cerebus.create_screen.presentation.CreateValidationError
+import com.cerebus.readwrite.media.rememberDeckArchivePicker
+import com.cerebus.readwrite.media.rememberPlatformMessenger
 import com.cerebus.readwrite.media.rememberCoverImagePicker
 import org.koin.compose.viewmodel.koinViewModel
 import org.jetbrains.compose.resources.stringResource
@@ -33,9 +35,12 @@ import readwriteapp.composeapp.generated.resources.deck_created_message
 import readwriteapp.composeapp.generated.resources.deck_name_label
 import readwriteapp.composeapp.generated.resources.delete
 import readwriteapp.composeapp.generated.resources.edit_cover
+import readwriteapp.composeapp.generated.resources.import_deck
 import readwriteapp.composeapp.generated.resources.error_create_deck_failed
 import readwriteapp.composeapp.generated.resources.error_delete_decks_failed
 import readwriteapp.composeapp.generated.resources.error_empty_deck_name
+import readwriteapp.composeapp.generated.resources.error_import_deck_failed
+import readwriteapp.composeapp.generated.resources.error_open_archive_picker_failed
 import readwriteapp.composeapp.generated.resources.my_decks
 import readwriteapp.composeapp.generated.resources.no_cover
 import readwriteapp.composeapp.generated.resources.no_decks_yet
@@ -54,7 +59,11 @@ fun CreateScreenRoute(
 ) {
     val viewModel = koinViewModel<CreateScreenViewModel>()
     val state by viewModel.uiState.collectAsState()
+    val pendingImportDeckArchiveUri by CreateNavigationState.pendingImportDeckArchiveUri.collectAsState()
     var pendingPickerRequest by remember { mutableStateOf<CreatePickerRequest?>(null) }
+    val messenger = rememberPlatformMessenger()
+    val archivePickerErrorText = stringResource(Res.string.error_open_archive_picker_failed)
+    val importDeckErrorText = stringResource(Res.string.error_import_deck_failed)
 
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
@@ -64,12 +73,22 @@ fun CreateScreenRoute(
             // Placeholder for future snackbar/toast integration.
         },
     )
+    val archivePicker = rememberDeckArchivePicker(
+        onArchivePicked = { uri ->
+            viewModel.onAction(CreateScreenAction.OnImportDeckFilePicked(uri))
+        },
+        onError = {
+            messenger.showMessage(archivePickerErrorText)
+        },
+    )
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 CreateScreenEffect.OpenGallery -> pendingPickerRequest = CreatePickerRequest.GALLERY
                 CreateScreenEffect.OpenCamera -> pendingPickerRequest = CreatePickerRequest.CAMERA
+                CreateScreenEffect.OpenImportDeckPicker -> archivePicker.openArchivePicker()
+                CreateScreenEffect.ShowImportDeckFailed -> messenger.showMessage(importDeckErrorText)
                 is CreateScreenEffect.OpenDeck -> {
                     onNavigateToDeck(effect.deckId, effect.openAddCardDialog)
                 }
@@ -99,8 +118,15 @@ fun CreateScreenRoute(
         }
     }
 
+    LaunchedEffect(pendingImportDeckArchiveUri) {
+        val uri = pendingImportDeckArchiveUri ?: return@LaunchedEffect
+        viewModel.onAction(CreateScreenAction.OnImportDeckFilePicked(uri))
+        CreateNavigationState.consumePendingImportDeckArchive(uri)
+    }
+
     val strings = CreateScreenStrings(
         back = stringResource(Res.string.back),
+        importDeck = stringResource(Res.string.import_deck),
         myDecks = stringResource(Res.string.my_decks),
         noDecksYet = stringResource(Res.string.no_decks_yet),
         createDeckTitle = stringResource(Res.string.create_deck),

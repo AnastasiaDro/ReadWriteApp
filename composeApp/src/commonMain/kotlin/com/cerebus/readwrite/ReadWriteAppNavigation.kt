@@ -3,11 +3,13 @@ package com.cerebus.readwrite
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.Modifier
 import com.cerebus.core.ui.insets.bottomSystemBarPadding
@@ -33,8 +35,19 @@ import com.cerebus.tutube.navigation.Screens
 fun ReadWriteAppNavigation() = MaterialTheme {
 
     val navController = rememberNavController()
+    val pendingImportDeckArchiveUri = CreateNavigationState.pendingImportDeckArchiveUri.collectAsState().value
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val containerTopPadding = topSystemBarPadding()
     val containerBottomPadding = bottomSystemBarPadding()
+
+    LaunchedEffect(pendingImportDeckArchiveUri, currentRoute) {
+        if (pendingImportDeckArchiveUri.isNullOrBlank()) return@LaunchedEffect
+        if (currentRoute == null || currentRoute == Screens.SPLASH.route) return@LaunchedEffect
+        if (currentRoute == Screens.CREATE.route) return@LaunchedEffect
+        navController.navigate(Screens.CREATE.route) {
+            launchSingleTop = true
+        }
+    }
 
     Box(
         modifier = Modifier

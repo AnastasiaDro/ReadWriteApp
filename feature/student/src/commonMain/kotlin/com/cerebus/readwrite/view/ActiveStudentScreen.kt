@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebus.create_screen.navigation.DeckNavigationState
+import com.cerebus.readwrite.media.rememberDeckArchivePicker
+import com.cerebus.readwrite.media.rememberPlatformMessenger
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import readwriteapp.feature.student.generated.resources.Res
@@ -35,13 +38,16 @@ import readwriteapp.feature.student.generated.resources.active_student_change
 import readwriteapp.feature.student.generated.resources.active_student_create_in_other
 import readwriteapp.feature.student.generated.resources.active_student_fallback_name
 import readwriteapp.feature.student.generated.resources.active_student_active_decks
+import readwriteapp.feature.student.generated.resources.active_student_all_decks
+import readwriteapp.feature.student.generated.resources.active_student_import
 import readwriteapp.feature.student.generated.resources.active_student_learning_settings
-import readwriteapp.feature.student.generated.resources.active_student_more
 import readwriteapp.feature.student.generated.resources.active_student_no_active_decks
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
 import readwriteapp.feature.student.generated.resources.active_student_other_decks
 import readwriteapp.feature.student.generated.resources.active_student_start
 import readwriteapp.feature.student.generated.resources.active_student_studied_decks
+import readwriteapp.feature.student.generated.resources.active_student_error_import_deck_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_open_archive_picker_failed
 import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
 
 @Composable
@@ -55,6 +61,17 @@ fun ActiveStudentRoute(
     val viewModel = koinViewModel<ActiveStudentViewModel>()
     val state by viewModel.uiState.collectAsState()
     val effect by viewModel.effects.collectAsState()
+    val messenger = rememberPlatformMessenger()
+    val importDeckErrorText = stringResource(Res.string.active_student_error_import_deck_failed)
+    val archivePickerErrorText = stringResource(Res.string.active_student_error_open_archive_picker_failed)
+    val archivePicker = rememberDeckArchivePicker(
+        onArchivePicked = { uri ->
+            viewModel.onAction(ActiveStudentAction.OnImportDeckFilePicked(uri))
+        },
+        onError = {
+            messenger.showMessage(archivePickerErrorText)
+        },
+    )
 
     LaunchedEffect(viewModel) {
         viewModel.onScreenShown()
@@ -76,6 +93,16 @@ fun ActiveStudentRoute(
 
             is ActiveStudentEffect.OpenDeckList -> {
                 onOpenDeckList(current.openCreateDialog)
+                viewModel.consumeEffect()
+            }
+
+            ActiveStudentEffect.OpenImportDeckPicker -> {
+                archivePicker.openArchivePicker()
+                viewModel.consumeEffect()
+            }
+
+            ActiveStudentEffect.ShowImportDeckFailed -> {
+                messenger.showMessage(importDeckErrorText)
                 viewModel.consumeEffect()
             }
 
@@ -133,6 +160,13 @@ private fun ActiveStudentScreen(
             modifier = Modifier.align(Alignment.TopStart),
         ) {
             Text(text = stringResource(Res.string.active_student_change))
+        }
+
+        TextButton(
+            onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            Text(text = stringResource(Res.string.active_student_import))
         }
 
         TextButton(
@@ -240,8 +274,15 @@ private fun ActiveStudentScreen(
                     text = stringResource(Res.string.active_student_no_decks),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Button(onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) }) {
-                    Text(text = stringResource(Res.string.active_student_create_in_other))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Button(onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) }) {
+                        Text(text = stringResource(Res.string.active_student_create_in_other))
+                    }
+                    Button(onClick = { onAction(ActiveStudentAction.OnMoreDecksClick) }) {
+                        Text(text = stringResource(Res.string.active_student_all_decks))
+                    }
                 }
             } else {
                 LazyRow(
@@ -255,7 +296,7 @@ private fun ActiveStudentScreen(
                     }
                 }
                 Button(onClick = { onAction(ActiveStudentAction.OnMoreDecksClick) }) {
-                    Text(text = stringResource(Res.string.active_student_more))
+                    Text(text = stringResource(Res.string.active_student_all_decks))
                 }
             }
         }

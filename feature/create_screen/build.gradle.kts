@@ -53,6 +53,7 @@ kotlin {
                 implementation(libs.koin.compose.viewmodel)
                 implementation(project(":core:ui"))
                 implementation(project(":core:utils"))
+                implementation(project(":core:deck_package"))
                 implementation(project(":data:decks"))
                 implementation(project(":data:flashcards"))
                 implementation(project(":data:preferences"))

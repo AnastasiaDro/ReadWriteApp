@@ -14,6 +14,7 @@
     <string name="take_photo">Take photo</string>
     <string name="close">Close</string>
     <string name="active_student_change">Change</string>
+    <string name="active_student_import">Import deck</string>
     <string name="active_student_learning_settings">⚙ Learning settings</string>
     <string name="active_student_fallback_name">Student</string>
     <string name="active_student_active_decks">Active decks</string>
@@ -23,8 +24,11 @@
     <string name="active_student_no_active_decks">No active decks yet</string>
     <string name="active_student_no_decks">No decks yet</string>
     <string name="active_student_more">More decks</string>
+    <string name="active_student_all_decks">All decks</string>
     <string name="active_student_create">Create</string>
     <string name="active_student_create_in_other">Create deck</string>
+    <string name="active_student_error_open_archive_picker_failed">Unable to open deck file picker</string>
+    <string name="active_student_error_import_deck_failed">Failed to import deck</string>
     <string name="change_student_back">Back</string>
     <string name="change_student_title">Change student</string>
     <string name="change_student_last_deck">Last deck:</string>

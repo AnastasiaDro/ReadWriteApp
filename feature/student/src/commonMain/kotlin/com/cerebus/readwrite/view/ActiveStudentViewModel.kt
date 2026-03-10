@@ -2,11 +2,13 @@ package com.cerebus.readwrite.view
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.deck_package.domain.service.DeckPackageService
 import com.cerebus.core.game_engine.domain.model.CardProgress
 import com.cerebus.core.game_engine.domain.model.CardState
 import com.cerebus.core.game_engine.domain.model.Grade
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
 import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
+import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
@@ -43,6 +45,8 @@ sealed interface ActiveStudentAction {
     data object OnChangeStudentClick : ActiveStudentAction
     data object OnMoreDecksClick : ActiveStudentAction
     data object OnCreateDeckClick : ActiveStudentAction
+    data object OnImportDeckClick : ActiveStudentAction
+    data class OnImportDeckFilePicked(val uri: String) : ActiveStudentAction
     data class OnDeckClick(val deckId: String) : ActiveStudentAction
 }
 
@@ -50,6 +54,8 @@ sealed interface ActiveStudentEffect {
     data class OpenDeck(val deckId: String) : ActiveStudentEffect
     data class OpenGame(val deckIds: List<String>) : ActiveStudentEffect
     data class OpenDeckList(val openCreateDialog: Boolean) : ActiveStudentEffect
+    data object OpenImportDeckPicker : ActiveStudentEffect
+    data object ShowImportDeckFailed : ActiveStudentEffect
     data object OpenChangeStudent : ActiveStudentEffect
 }
 
@@ -60,6 +66,7 @@ class ActiveStudentViewModel(
     private val cardProgressRepository: CardProgressRepository,
     private val reviewLogRepository: ReviewLogRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val deckPackageService: DeckPackageService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ActiveStudentUiState())
     val uiState: StateFlow<ActiveStudentUiState> = _uiState.asStateFlow()
@@ -92,9 +99,33 @@ class ActiveStudentViewModel(
             ActiveStudentAction.OnCreateDeckClick -> {
                 _effects.value = ActiveStudentEffect.OpenDeckList(openCreateDialog = true)
             }
+            ActiveStudentAction.OnImportDeckClick -> {
+                _effects.value = ActiveStudentEffect.OpenImportDeckPicker
+            }
+            is ActiveStudentAction.OnImportDeckFilePicked -> importDeckArchive(action.uri)
 
             is ActiveStudentAction.OnDeckClick -> {
                 _effects.value = ActiveStudentEffect.OpenDeck(action.deckId)
+            }
+        }
+    }
+
+    private fun importDeckArchive(uri: String) {
+        if (uri.isBlank()) return
+        viewModelScope.launch {
+            val studentId = _uiState.value.studentId
+            when (
+                val result = deckPackageService.importDeck(
+                    archiveUri = uri,
+                    assignToStudentId = studentId,
+                )
+            ) {
+                is CustomResult.Success -> {
+                    // Active decks list updates automatically from repository observers.
+                }
+                is CustomResult.Failure -> {
+                    _effects.value = ActiveStudentEffect.ShowImportDeckFailed
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ package com.cerebus.create_screen.presentation
 
 sealed interface DeckScreenAction {
     data class Initialize(val deckId: String) : DeckScreenAction
+    data object OnExportDeckClick : DeckScreenAction
     data object OnEditNameClick : DeckScreenAction
     data object OnDismissEditNameDialog : DeckScreenAction
     data class OnNameChanged(val value: String) : DeckScreenAction

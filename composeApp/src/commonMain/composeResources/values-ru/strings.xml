@@ -25,6 +25,8 @@
     <string name="cards">Карточки</string>
     <string name="edit_name">Изменить название</string>
     <string name="save">Сохранить</string>
+    <string name="export_deck">Экспорт</string>
+    <string name="import_deck">Импорт</string>
     <string name="unnamed_deck">Без названия</string>
     <string name="add_card">Добавить карточку</string>
     <string name="start_training">Начать тренировку</string>
@@ -46,6 +48,10 @@
     <string name="error_add_card_failed">Не удалось создать карточку</string>
     <string name="error_update_card_failed">Не удалось обновить карточку</string>
     <string name="error_delete_cards_failed">Не удалось удалить часть карточек</string>
+    <string name="error_open_archive_picker_failed">Не удалось открыть выбор файла колоды</string>
+    <string name="error_import_deck_failed">Не удалось импортировать колоду</string>
+    <string name="error_export_deck_failed">Не удалось экспортировать колоду</string>
+    <string name="error_share_deck_failed">Не удалось поделиться архивом колоды</string>
     <string name="no_students_title">Добавьте ученика, чтобы начать занятие</string>
     <string name="no_students_subtitle">Для каждого ученика сохраняется свой прогресс и колоды</string>
     <string name="add_student_cta">+ Добавить ученика</string>

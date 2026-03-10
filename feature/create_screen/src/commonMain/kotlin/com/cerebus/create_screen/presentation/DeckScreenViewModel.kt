@@ -2,7 +2,9 @@ package com.cerebus.create_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.deck_package.domain.service.DeckPackageService
 import com.cerebus.core.utils.UniqueIdGenerator
+import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
@@ -17,6 +19,7 @@ import kotlinx.coroutines.launch
 class DeckScreenViewModel(
     private val deckRepository: DeckRepository,
     private val flashcardRepository: FlashcardRepository,
+    private val deckPackageService: DeckPackageService,
 ) : ViewModel() {
 
     private companion object {
@@ -32,6 +35,7 @@ class DeckScreenViewModel(
     fun onAction(action: DeckScreenAction) {
         when (action) {
             is DeckScreenAction.Initialize -> startObservingDeck(action.deckId)
+            DeckScreenAction.OnExportDeckClick -> exportDeck()
             DeckScreenAction.OnEditNameClick -> {
                 _uiState.update {
                     it.copy(
@@ -156,6 +160,27 @@ class DeckScreenViewModel(
                     )
                 }
             }
+        }
+    }
+
+    private fun exportDeck() {
+        val deckId = _uiState.value.deckId
+        if (deckId.isBlank() || _uiState.value.isExporting) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true) }
+            when (val result = deckPackageService.exportDeck(deckId)) {
+                is CustomResult.Success -> {
+                    _effects.value = DeckScreenEffect.ShareDeckArchive(
+                        filePath = result.data.path,
+                        fileName = result.data.fileName,
+                    )
+                }
+                is CustomResult.Failure -> {
+                    _effects.value = DeckScreenEffect.ShowExportDeckFailed
+                }
+            }
+            _uiState.update { it.copy(isExporting = false) }
         }
     }
 
@@ -477,4 +502,9 @@ class DeckScreenViewModel(
 
 sealed interface DeckScreenEffect {
     data class OpenGame(val deckId: String) : DeckScreenEffect
+    data object ShowExportDeckFailed : DeckScreenEffect
+    data class ShareDeckArchive(
+        val filePath: String,
+        val fileName: String,
+    ) : DeckScreenEffect
 }

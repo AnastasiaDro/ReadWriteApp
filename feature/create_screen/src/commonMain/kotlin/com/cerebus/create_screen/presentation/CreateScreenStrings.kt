@@ -2,6 +2,7 @@ package com.cerebus.create_screen.presentation
 
 data class CreateScreenStrings(
     val back: String,
+    val importDeck: String,
     val myDecks: String,
     val noDecksYet: String,
     val createDeckTitle: String,

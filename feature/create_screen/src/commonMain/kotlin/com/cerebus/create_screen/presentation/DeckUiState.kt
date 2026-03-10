@@ -33,6 +33,7 @@ data class DeckUiState(
     val deckName: String = "",
     val coverUri: String? = null,
     val isLoading: Boolean = true,
+    val isExporting: Boolean = false,
     val isEditNameDialogVisible: Boolean = false,
     val isEditCoverSourceDialogVisible: Boolean = false,
     val pendingPickerRequest: DeckPickerRequest? = null,

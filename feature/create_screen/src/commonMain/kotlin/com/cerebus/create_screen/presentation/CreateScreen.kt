@@ -98,6 +98,13 @@ fun CreateScreen(
                         Text(strings.back)
                     }
                 },
+                actions = {
+                    if (!isSelectionMode) {
+                        TextButton(onClick = { onAction(CreateScreenAction.OnImportDeckClick) }) {
+                            Text(strings.importDeck)
+                        }
+                    }
+                },
             )
         },
         floatingActionButton = {

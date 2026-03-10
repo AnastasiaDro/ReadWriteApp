@@ -14,6 +14,7 @@
     <string name="take_photo">Сделать фото</string>
     <string name="close">Закрыть</string>
     <string name="active_student_change">Сменить</string>
+    <string name="active_student_import">Импорт колоды</string>
     <string name="active_student_learning_settings">⚙ Настройки обучения</string>
     <string name="active_student_fallback_name">Ученик</string>
     <string name="active_student_active_decks">Активные колоды</string>
@@ -23,8 +24,11 @@
     <string name="active_student_no_active_decks">Пока нет активных колод</string>
     <string name="active_student_no_decks">Пока нет колод</string>
     <string name="active_student_more">Больше колод</string>
+    <string name="active_student_all_decks">Все колоды</string>
     <string name="active_student_create">Создать</string>
     <string name="active_student_create_in_other">Создать колоду</string>
+    <string name="active_student_error_open_archive_picker_failed">Не удалось открыть выбор файла колоды</string>
+    <string name="active_student_error_import_deck_failed">Не удалось импортировать колоду</string>
     <string name="change_student_back">Назад</string>
     <string name="change_student_title">Сменить ученика</string>
     <string name="change_student_last_deck">Последняя колода:</string>

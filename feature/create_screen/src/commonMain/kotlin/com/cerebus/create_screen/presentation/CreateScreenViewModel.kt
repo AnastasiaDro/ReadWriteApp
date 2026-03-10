@@ -2,6 +2,8 @@ package com.cerebus.create_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.deck_package.domain.service.DeckPackageService
+import com.cerebus.core.utils.CustomResult
 import com.cerebus.core.utils.UniqueIdGenerator
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
@@ -21,6 +23,7 @@ class CreateScreenViewModel(
     private val deckRepository: DeckRepository,
     private val studentDeckRepository: StudentDeckRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val deckPackageService: DeckPackageService,
 ) : ViewModel() {
     private companion object {
         const val MAX_DECK_NAME_LENGTH = 40
@@ -46,6 +49,12 @@ class CreateScreenViewModel(
                     )
                 }
             }
+            CreateScreenAction.OnImportDeckClick -> {
+                viewModelScope.launch {
+                    _effects.emit(CreateScreenEffect.OpenImportDeckPicker)
+                }
+            }
+            is CreateScreenAction.OnImportDeckFilePicked -> importDeckArchive(action.uri)
             CreateScreenAction.OnDismissCreateDialog -> {
                 _uiState.update {
                     it.copy(
@@ -140,6 +149,26 @@ class CreateScreenViewModel(
                         coverUri = null,
                         validationError = null,
                     )
+                }
+            }
+        }
+    }
+
+    private fun importDeckArchive(uri: String) {
+        if (uri.isBlank()) return
+        viewModelScope.launch {
+            val studentId = preferencesRepository.getLastActiveStudentId()
+            when (
+                val result = deckPackageService.importDeck(
+                    archiveUri = uri,
+                    assignToStudentId = studentId,
+                )
+            ) {
+                is CustomResult.Success -> {
+                    // Deck list is observed from repository and updates automatically.
+                }
+                is CustomResult.Failure -> {
+                    _effects.emit(CreateScreenEffect.ShowImportDeckFailed)
                 }
             }
         }

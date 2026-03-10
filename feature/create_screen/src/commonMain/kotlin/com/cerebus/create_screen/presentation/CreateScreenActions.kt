@@ -2,6 +2,8 @@ package com.cerebus.create_screen.presentation
 
 sealed interface CreateScreenAction {
     data object OnCreateDeckClick : CreateScreenAction
+    data object OnImportDeckClick : CreateScreenAction
+    data class OnImportDeckFilePicked(val uri: String) : CreateScreenAction
     data object OnDismissCreateDialog : CreateScreenAction
 
     data class OnDeckNameChanged(val value: String) : CreateScreenAction
@@ -28,6 +30,8 @@ sealed interface CreateScreenAction {
 sealed interface CreateScreenEffect {
     data object OpenGallery : CreateScreenEffect
     data object OpenCamera : CreateScreenEffect
+    data object OpenImportDeckPicker : CreateScreenEffect
+    data object ShowImportDeckFailed : CreateScreenEffect
     data class OpenDeck(
         val deckId: String,
         val openAddCardDialog: Boolean = false,
