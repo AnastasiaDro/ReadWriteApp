@@ -23,8 +23,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
@@ -233,10 +238,35 @@ private fun NumericField(
     value: Int,
     onValueChanged: (Int) -> Unit,
 ) {
+    val valueText = value.toString()
+    var fieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = valueText,
+                selection = TextRange(valueText.length),
+            )
+        )
+    }
+
+    LaunchedEffect(valueText) {
+        if (valueText != fieldValue.text) {
+            val selectionIndex = fieldValue.selection.end.coerceIn(0, valueText.length)
+            fieldValue = TextFieldValue(
+                text = valueText,
+                selection = TextRange(selectionIndex),
+            )
+        }
+    }
+
     OutlinedTextField(
-        value = value.toString(),
-        onValueChange = { raw ->
-            val digitsOnly = raw.filter { it.isDigit() }
+        value = fieldValue,
+        onValueChange = { updated ->
+            val digitsOnly = updated.text.filter { it.isDigit() }
+            val selectionIndex = updated.selection.end.coerceIn(0, digitsOnly.length)
+            fieldValue = updated.copy(
+                text = digitsOnly,
+                selection = TextRange(selectionIndex),
+            )
             if (digitsOnly.isEmpty()) {
                 onValueChanged(0)
                 return@OutlinedTextField

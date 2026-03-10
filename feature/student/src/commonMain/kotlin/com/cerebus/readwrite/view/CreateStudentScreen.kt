@@ -23,13 +23,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
@@ -118,6 +123,24 @@ private fun CreateStudentScreen(
     val isTablet = widthDp >= 840.dp
     val buttonWidthFraction = if (isTablet) 0.62f else 0.86f
     val buttonMinHeight = if (isTablet) (widthDp * 0.08f) else 54.dp
+    var nameFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = state.name,
+                selection = TextRange(state.name.length),
+            )
+        )
+    }
+
+    LaunchedEffect(state.name) {
+        if (state.name != nameFieldValue.text) {
+            val selectionIndex = nameFieldValue.selection.end.coerceIn(0, state.name.length)
+            nameFieldValue = TextFieldValue(
+                text = state.name,
+                selection = TextRange(selectionIndex),
+            )
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -160,8 +183,13 @@ private fun CreateStudentScreen(
         )
 
         OutlinedTextField(
-            value = state.name,
-            onValueChange = { onAction(CreateStudentAction.OnNameChanged(it)) },
+            value = nameFieldValue,
+            onValueChange = { updated ->
+                nameFieldValue = updated
+                if (updated.text != state.name) {
+                    onAction(CreateStudentAction.OnNameChanged(updated.text))
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth(buttonWidthFraction),
             placeholder = {

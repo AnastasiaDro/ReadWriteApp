@@ -15,8 +15,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,6 +55,24 @@ fun AppEntityEditorDialog(
     isSaving: Boolean,
     coverContent: @Composable () -> Unit,
 ) {
+    var fieldValue by remember(visible) {
+        mutableStateOf(
+            TextFieldValue(
+                text = value,
+                selection = TextRange(value.length),
+            )
+        )
+    }
+    LaunchedEffect(value, visible) {
+        if (value != fieldValue.text) {
+            val selectionIndex = fieldValue.selection.end.coerceIn(0, value.length)
+            fieldValue = TextFieldValue(
+                text = value,
+                selection = TextRange(selectionIndex),
+            )
+        }
+    }
+
     AppAnimatedDialog(visible = visible) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -73,8 +98,13 @@ fun AppEntityEditorDialog(
                     }
 
                     OutlinedTextField(
-                        value = value,
-                        onValueChange = onValueChange,
+                        value = fieldValue,
+                        onValueChange = { updated ->
+                            fieldValue = updated
+                            if (updated.text != value) {
+                                onValueChange(updated.text)
+                            }
+                        },
                         label = { Text(fieldLabel) },
                         singleLine = true,
                         modifier = Modifier

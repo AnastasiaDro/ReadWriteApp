@@ -29,14 +29,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -219,10 +223,33 @@ private fun ActiveGameContent(
             val desiredButtonOffset = (fieldWidth / 2) + buttonSpacing + (checkButtonWidth / 2)
             val maxButtonOffset = (maxWidth / 2) - (checkButtonWidth / 2)
             val buttonOffset = minOf(desiredButtonOffset, maxButtonOffset)
+            var answerFieldValue by remember(state.currentCard.id) {
+                mutableStateOf(
+                    TextFieldValue(
+                        text = state.answerInput,
+                        selection = TextRange(state.answerInput.length),
+                    )
+                )
+            }
+
+            LaunchedEffect(state.answerInput, state.currentCard.id) {
+                if (state.answerInput != answerFieldValue.text) {
+                    val selectionIndex = answerFieldValue.selection.end.coerceIn(0, state.answerInput.length)
+                    answerFieldValue = TextFieldValue(
+                        text = state.answerInput,
+                        selection = TextRange(selectionIndex),
+                    )
+                }
+            }
 
             OutlinedTextField(
-                value = state.answerInput,
-                onValueChange = { onAction(GameScreenAction.OnAnswerChanged(it)) },
+                value = answerFieldValue,
+                onValueChange = { updated ->
+                    answerFieldValue = updated
+                    if (updated.text != state.answerInput) {
+                        onAction(GameScreenAction.OnAnswerChanged(updated.text))
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.Center)
                     .width(fieldWidth)
