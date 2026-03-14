@@ -9,6 +9,7 @@ val customKeyboardModule = module {
         KeyboardSettingsViewModel(
             studentId = studentId,
             studentRepository = get(),
+            preferencesRepository = get(),
         )
     }
 }

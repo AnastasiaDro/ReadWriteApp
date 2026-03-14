@@ -4,6 +4,10 @@ interface PreferencesStorage {
     fun getLastActiveStudentId(): String?
     fun setLastActiveStudentId(studentId: String)
     fun clearLastActiveStudentId()
+    fun getKeyboardLanguage(studentId: String): String?
+    fun setKeyboardLanguage(studentId: String, languageCode: String)
+    fun getKeyboardShiftEnabled(studentId: String): Boolean?
+    fun setKeyboardShiftEnabled(studentId: String, isEnabled: Boolean)
     fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

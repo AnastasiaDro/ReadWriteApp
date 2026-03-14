@@ -26,10 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +59,8 @@ private val keyShape = RoundedCornerShape(8.dp)
 private val keyBackgroundColor = Color(0xFFDADADA)
 private val keyTextColor = Color(0xFF000000)
 private val actionTextColor = Color(0xFF818285)
+private val inactiveKeyBackgroundColor = Color(0xFF818285)
+private val inactiveKeyTextColor = Color(0xFFB0B0B3)
 private val shiftAccentColor = Color(0xFF8000FF)
 private val keyboardContainerShape = RoundedCornerShape(18.dp)
 
@@ -69,6 +68,8 @@ private val keyboardContainerShape = RoundedCornerShape(18.dp)
 fun TrainingKeyboard(
     referenceText: String,
     activeSymbols: Set<String>,
+    isShiftEnabled: Boolean,
+    onShiftChanged: (Boolean) -> Unit,
     onSymbolPressed: (String) -> Unit,
     onBackspacePressed: () -> Unit,
     onSpacePressed: () -> Unit,
@@ -87,12 +88,9 @@ fun TrainingKeyboard(
         windowHeightDp * 0.3f
     }.coerceIn(220.dp, 340.dp)
 
-    var isShiftEnabled by remember(referenceText, activeSymbols) { mutableStateOf(false) }
-    val rows = remember(referenceText, activeSymbols) {
-        resolveKeyboardRows(
-            referenceText = referenceText,
-            activeSymbols = activeSymbols,
-        )
+    val rows = remember(referenceText) { resolveKeyboardRows(referenceText = referenceText) }
+    val normalizedActiveSymbols = remember(activeSymbols) {
+        activeSymbols.mapTo(mutableSetOf()) { it.lowercase() }
     }
 
     Surface(
@@ -120,6 +118,11 @@ fun TrainingKeyboard(
                 ) {
                     row.forEach { key ->
                         val keySpec = resolveKeySpec(key)
+                        val isKeyEnabled = isKeyEnabled(
+                            key = key,
+                            keySpec = keySpec,
+                            normalizedActiveSymbols = normalizedActiveSymbols,
+                        )
                         Box(
                             modifier = Modifier
                                 .weight(keySpec.weight)
@@ -133,7 +136,7 @@ fun TrainingKeyboard(
                                 },
                                 onClick = {
                                     when (key) {
-                                        "shift", "abc" -> isShiftEnabled = !isShiftEnabled
+                                        "shift", "abc" -> onShiftChanged(!isShiftEnabled)
                                         "settings" -> onSettingsPressed()
                                         "space" -> onSpacePressed()
                                         "⌫" -> onBackspacePressed()
@@ -144,6 +147,7 @@ fun TrainingKeyboard(
                                 isAction = keySpec.isAction,
                                 icon = keySpec.icon,
                                 isShiftActive = key == "shift" && isShiftEnabled,
+                                isEnabled = isKeyEnabled,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -156,22 +160,8 @@ fun TrainingKeyboard(
 
 private fun resolveKeyboardRows(
     referenceText: String,
-    activeSymbols: Set<String>,
 ): List<List<String>> {
-    val preferredRows = if (containsCyrillic(referenceText)) russianRows else englishRows
-    if (activeSymbols.isEmpty()) return preferredRows
-
-    val normalizedSymbols = activeSymbols.mapTo(mutableSetOf()) { it.lowercase() }
-    return preferredRows.mapIndexed { index, row ->
-        if (index == 0 || index == preferredRows.lastIndex) {
-            row
-        } else {
-            row.filter { symbol ->
-                symbol in setOf("shift", "⌫", "OK", "space", "abc") ||
-                    symbol.lowercase() in normalizedSymbols
-            }
-        }
-    }.filter { row -> row.isNotEmpty() }
+    return if (containsCyrillic(referenceText)) russianRows else englishRows
 }
 
 private fun containsCyrillic(text: String): Boolean {
@@ -228,6 +218,19 @@ private fun resolveKeySpec(key: String): KeySpec {
     }
 }
 
+private fun isKeyEnabled(
+    key: String,
+    keySpec: KeySpec,
+    normalizedActiveSymbols: Set<String>,
+): Boolean {
+    if (keySpec.isAction) return true
+    if (normalizedActiveSymbols.isEmpty()) return true
+    return when {
+        key.length == 1 && key.first().isLetterOrDigit() -> key.lowercase() in normalizedActiveSymbols
+        else -> true
+    }
+}
+
 @Composable
 private fun KeyboardKey(
     label: String,
@@ -235,6 +238,7 @@ private fun KeyboardKey(
     isAction: Boolean,
     icon: ImageVector?,
     isShiftActive: Boolean,
+    isEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -242,8 +246,9 @@ private fun KeyboardKey(
     val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val isLandscape = windowWidthDp > windowHeightDp
-    val backgroundColor = keyBackgroundColor
+    val backgroundColor = if (isEnabled) keyBackgroundColor else inactiveKeyBackgroundColor
     val textColor = when {
+        !isEnabled -> inactiveKeyTextColor
         isShiftActive -> shiftAccentColor
         isAction -> actionTextColor
         else -> keyTextColor
@@ -254,6 +259,7 @@ private fun KeyboardKey(
             .clip(keyShape)
             .background(backgroundColor)
             .clickable(
+                enabled = isEnabled,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick,

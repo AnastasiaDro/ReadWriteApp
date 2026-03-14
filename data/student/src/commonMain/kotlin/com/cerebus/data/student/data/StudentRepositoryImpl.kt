@@ -38,7 +38,7 @@ class StudentRepositoryImpl(
     }
 
     override suspend fun addLetter(id: String, letter: Char): Boolean {
-        if (!letter.isLetter()) return false
+        if (!letter.isLetterOrDigit()) return false
         val current = storage.getById(id) ?: return false
         val normalized = normalizeLetters(current.activeLetters)
         val toAdd = letter.lowercaseChar()
@@ -47,12 +47,16 @@ class StudentRepositoryImpl(
     }
 
     override suspend fun removeLetter(id: String, letter: Char): Boolean {
-        if (!letter.isLetter()) return false
+        if (!letter.isLetterOrDigit()) return false
         val current = storage.getById(id) ?: return false
         val normalized = normalizeLetters(current.activeLetters)
         val toRemove = letter.lowercaseChar()
         val updatedLetters = normalized.filterNot { it == toRemove }
         return storage.updateActiveLetters(id, updatedLetters)
+    }
+
+    override suspend fun updateActiveLetters(id: String, activeLetters: String): Boolean {
+        return storage.updateActiveLetters(id, normalizeLetters(activeLetters))
     }
 
     override suspend fun updateName(id: String, newName: String): Boolean {
@@ -64,7 +68,7 @@ class StudentRepositoryImpl(
     private fun normalizeLetters(value: String): String {
         return value
             .lowercase()
-            .filter { it.isLetter() }
+            .filter { it.isLetterOrDigit() }
             .asSequence()
             .distinct()
             .joinToString(separator = "")

@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -95,8 +96,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                         navController.navigate(Screens.SESSION_SETTINGS.route)
                     },
                     onOpenKeyboardSettings = { studentId ->
-                        KeyboardSettingsNavigationState.selectedStudentId = studentId
-                        navController.navigate(Screens.KEYBOARD_SETTINGS.route)
+                        navController.openKeyboardSettings(
+                            studentId = studentId,
+                            returnRoute = Screens.ACTIVE_STUDENT.route,
+                        )
                     },
                 )
             }
@@ -168,8 +171,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                         listOfNotNull(DeckNavigationState.selectedDeckId.takeIf { it.isNotBlank() })
                     },
                     onOpenKeyboardSettings = { studentId ->
-                        KeyboardSettingsNavigationState.selectedStudentId = studentId
-                        navController.navigate(Screens.KEYBOARD_SETTINGS.route)
+                        navController.openKeyboardSettings(
+                            studentId = studentId,
+                            returnRoute = Screens.GAME.route,
+                        )
                     },
                 )
             }
@@ -190,8 +195,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 SessionSettingsRoute(
                     studentId = studentId,
                     onOpenKeyboardSettings = {
-                        KeyboardSettingsNavigationState.selectedStudentId = studentId
-                        navController.navigate(Screens.KEYBOARD_SETTINGS.route)
+                        navController.openKeyboardSettings(
+                            studentId = studentId,
+                            returnRoute = Screens.SESSION_SETTINGS.route,
+                        )
                     },
                     onClose = {
                         val popped = navController.popBackStack()
@@ -205,11 +212,12 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 )
             }
             composable(Screens.KEYBOARD_SETTINGS.route) {
-                val studentId = KeyboardSettingsNavigationState.selectedStudentId
+                val studentId = remember { KeyboardSettingsNavigationState.selectedStudentId }
+                val returnRoute = remember { KeyboardSettingsNavigationState.returnRoute }
                 if (studentId.isNullOrBlank()) {
-                    KeyboardSettingsNavigationState.selectedStudentId = null
+                    KeyboardSettingsNavigationState.clear()
                     LaunchedEffect(Unit) {
-                        val popped = navController.popBackStack()
+                        val popped = navController.returnFromKeyboardSettings(returnRoute)
                         if (!popped) {
                             navController.navigate(Screens.ACTIVE_STUDENT.route) {
                                 launchSingleTop = true
@@ -222,13 +230,13 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 KeyboardSettingsRoute(
                     studentId = studentId,
                     onClose = {
-                        val popped = navController.popBackStack()
+                        val popped = navController.returnFromKeyboardSettings(returnRoute)
                         if (!popped) {
-                            navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                            navController.navigate(returnRoute ?: Screens.ACTIVE_STUDENT.route) {
                                 launchSingleTop = true
                             }
                         }
-                        KeyboardSettingsNavigationState.selectedStudentId = null
+                        KeyboardSettingsNavigationState.clear()
                     },
                 )
             }
@@ -248,4 +256,26 @@ private fun androidx.navigation.NavHostController.openActiveStudentFromDeck() {
         popUpTo(Screens.NO_STUDENTS.route) { inclusive = true }
         launchSingleTop = true
     }
+}
+
+private fun androidx.navigation.NavHostController.openKeyboardSettings(
+    studentId: String,
+    returnRoute: String,
+) {
+    KeyboardSettingsNavigationState.open(
+        studentId = studentId,
+        returnRoute = returnRoute,
+    )
+    navigate(Screens.KEYBOARD_SETTINGS.route)
+}
+
+private fun androidx.navigation.NavHostController.returnFromKeyboardSettings(
+    returnRoute: String?,
+): Boolean {
+    val targetRoute = returnRoute ?: return popBackStack()
+    val poppedToTarget = popBackStack(targetRoute, inclusive = false)
+    if (poppedToTarget) return true
+
+    popBackStack()
+    return false
 }

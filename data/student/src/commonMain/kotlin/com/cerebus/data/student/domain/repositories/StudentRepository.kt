@@ -12,5 +12,6 @@ interface StudentRepository {
     suspend fun getActiveLettersById(id: String): String?
     suspend fun addLetter(id: String, letter: Char): Boolean
     suspend fun removeLetter(id: String, letter: Char): Boolean
+    suspend fun updateActiveLetters(id: String, activeLetters: String): Boolean
     suspend fun updateName(id: String, newName: String): Boolean
 }

@@ -18,6 +18,22 @@ class PreferencesRepositoryImpl(
         storage.clearLastActiveStudentId()
     }
 
+    override fun getKeyboardLanguage(studentId: String): String? {
+        return storage.getKeyboardLanguage(studentId)
+    }
+
+    override fun setKeyboardLanguage(studentId: String, languageCode: String) {
+        storage.setKeyboardLanguage(studentId, languageCode)
+    }
+
+    override fun getKeyboardShiftEnabled(studentId: String): Boolean? {
+        return storage.getKeyboardShiftEnabled(studentId)
+    }
+
+    override fun setKeyboardShiftEnabled(studentId: String, isEnabled: Boolean) {
+        storage.setKeyboardShiftEnabled(studentId, isEnabled)
+    }
+
     override fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

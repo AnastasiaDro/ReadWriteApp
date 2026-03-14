@@ -4,6 +4,13 @@
     <string name="keyboard_settings_subtitle">Choose which letters should stay active for this student.</string>
     <string name="keyboard_settings_selected">Studied letters</string>
     <string name="keyboard_settings_empty">No letters selected yet</string>
+    <string name="keyboard_settings_enable_all">Enable all</string>
+    <string name="keyboard_settings_disable_all">Disable all</string>
+    <string name="keyboard_settings_language">Keyboard language</string>
+    <string name="keyboard_settings_select_language">Select language</string>
+    <string name="keyboard_settings_language_english">English</string>
+    <string name="keyboard_settings_language_russian">Russian</string>
+    <string name="keyboard_settings_numbers">Numbers</string>
     <string name="keyboard_settings_russian">Russian layout</string>
     <string name="keyboard_settings_english">English layout</string>
 </resources>

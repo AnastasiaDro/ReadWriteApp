@@ -64,6 +64,7 @@ class GameScreenViewModel(
     fun onAction(action: GameScreenAction) {
         when (action) {
             is GameScreenAction.OnAnswerChanged -> updateAnswer(action.value)
+            is GameScreenAction.OnShiftChanged -> updateKeyboardShift(action.isEnabled)
             GameScreenAction.OnCheckClick -> checkAnswer()
             GameScreenAction.OnRetryClick -> repeatLastSession()
             GameScreenAction.OnRandomReviewClick -> repeatRandomStudiedCards()
@@ -101,9 +102,13 @@ class GameScreenViewModel(
                 title = buildDeckTitle(selectedDeckIds, decksById),
             )
             val activeStudentId = preferencesRepository.getLastActiveStudentId().orEmpty()
-            val activeSymbols = loadActiveSymbols(
+            val activeSymbols = loadStudiedSymbols(
                 studentId = activeStudentId,
                 studentRepository = studentRepository,
+            )
+            val isShiftEnabled = loadKeyboardShiftEnabled(
+                studentId = activeStudentId,
+                preferencesRepository = preferencesRepository,
             )
 
             val sessionCards = buildSessionCards(
@@ -126,6 +131,7 @@ class GameScreenViewModel(
                 cards = sessionCards,
                 studentId = activeStudentId,
                 activeSymbols = activeSymbols,
+                isShiftEnabled = isShiftEnabled,
                 sessionMode = GameSessionMode.Srs,
                 isHintVisible = initialHintVisible(sessionCards),
                 cardShownAtEpochMillis = nowMillis(),
@@ -151,6 +157,19 @@ class GameScreenViewModel(
         )
         session = updated
         _uiState.value = updated.toActiveUiState()
+    }
+
+    private fun updateKeyboardShift(isEnabled: Boolean) {
+        val current = session ?: return
+        if (current.isFinished || current.isShiftEnabled == isEnabled) return
+
+        val updated = current.copy(isShiftEnabled = isEnabled)
+        session = updated
+        _uiState.value = updated.toActiveUiState()
+        persistKeyboardShiftEnabled(
+            studentId = current.studentId,
+            isEnabled = isEnabled,
+        )
     }
 
     private fun checkAnswer() {
@@ -195,8 +214,15 @@ class GameScreenViewModel(
 
     private fun handleCorrectAnswer(current: GameSessionData) {
         feedbackJob?.cancel()
+        val currentCard = current.currentCard ?: return
+        val updatedStudiedSymbols = current.activeSymbols + currentCard.extractKeyboardSymbols()
+        persistStudiedSymbols(
+            studentId = current.studentId,
+            studiedSymbols = updatedStudiedSymbols,
+        )
 
         val withFeedback = current.copy(
+            activeSymbols = updatedStudiedSymbols,
             isHintVisible = false,
             feedback = GameFeedbackData(isCorrect = true),
         )
@@ -353,6 +379,36 @@ class GameScreenViewModel(
             .coerceAtLeast(1)
     }
 
+    private fun persistStudiedSymbols(
+        studentId: String,
+        studiedSymbols: Set<String>,
+    ) {
+        if (studentId.isBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                studentRepository.updateActiveLetters(
+                    id = studentId,
+                    activeLetters = studiedSymbols
+                        .mapNotNull { symbol -> symbol.singleOrNull() }
+                        .joinToString(separator = ""),
+                )
+            }
+        }
+    }
+
+    private fun persistKeyboardShiftEnabled(
+        studentId: String,
+        isEnabled: Boolean,
+    ) {
+        if (studentId.isBlank()) return
+        runCatching {
+            preferencesRepository.setKeyboardShiftEnabled(
+                studentId = studentId,
+                isEnabled = isEnabled,
+            )
+        }
+    }
+
     private fun restartSessionWithCards(
         current: GameSessionData,
         cards: List<GameCardData>,
@@ -394,6 +450,7 @@ private data class GameSessionData(
     val cards: List<GameCardData>,
     val studentId: String,
     val activeSymbols: Set<String>,
+    val isShiftEnabled: Boolean,
     val sessionMode: GameSessionMode,
     val currentIndex: Int = 0,
     val correctAnswers: Int = 0,
@@ -651,14 +708,15 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         cardIndex = currentIndex + 1,
         totalCards = cards.size,
         studentId = studentId,
-        activeSymbols = activeSymbols,
+        activeSymbols = activeSymbols + card.extractKeyboardSymbols(),
+        isShiftEnabled = isShiftEnabled,
         answerInput = answerInput,
         isHintVisible = isHintVisible,
         feedback = feedback?.toUi(),
     )
 }
 
-private suspend fun loadActiveSymbols(
+private suspend fun loadStudiedSymbols(
     studentId: String,
     studentRepository: StudentRepository,
 ): Set<String> {
@@ -666,7 +724,23 @@ private suspend fun loadActiveSymbols(
     return studentRepository.getActiveLettersById(studentId)
         .orEmpty()
         .lowercase()
-        .filter { it.isLetter() }
+        .filter { it.isLetterOrDigit() }
+        .map { it.toString() }
+        .toSet()
+}
+
+private fun loadKeyboardShiftEnabled(
+    studentId: String,
+    preferencesRepository: PreferencesRepository,
+): Boolean {
+    if (studentId.isBlank()) return false
+    return preferencesRepository.getKeyboardShiftEnabled(studentId) == true
+}
+
+private fun GameCardData.extractKeyboardSymbols(): Set<String> {
+    return answer
+        .lowercase()
+        .filter { it.isLetterOrDigit() }
         .map { it.toString() }
         .toSet()
 }

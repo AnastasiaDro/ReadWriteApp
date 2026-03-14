@@ -55,6 +55,7 @@ kotlin {
                 implementation(libs.androidx.lifecycle.viewmodelCompose)
                 implementation(libs.koin.compose.viewmodel)
                 implementation(project(":data:student"))
+                implementation(project(":data:preferences"))
             }
         }
 

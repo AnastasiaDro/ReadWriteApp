@@ -327,6 +327,8 @@ private fun ActiveGameContent(
             TrainingKeyboard(
                 referenceText = state.currentCard.answer,
                 activeSymbols = state.activeSymbols,
+                isShiftEnabled = state.isShiftEnabled,
+                onShiftChanged = { onAction(GameScreenAction.OnShiftChanged(it)) },
                 onSymbolPressed = { symbol ->
                     onAction(
                         GameScreenAction.OnAnswerChanged(
@@ -407,6 +409,10 @@ private fun GameCard(
     isHintVisible: Boolean,
     imageLoader: ImageLoader,
 ) {
+    var imageLoadFailed by remember(imagePath) { mutableStateOf(false) }
+    val normalizedImagePath = imagePath.trim()
+    val isTextCard = normalizedImagePath.isBlank() || imageLoadFailed
+
     Box(
         modifier = Modifier
             .size(cardSize)
@@ -419,24 +425,26 @@ private fun GameCard(
             .background(MaterialTheme.colorScheme.surface),
         contentAlignment = Alignment.Center,
     ) {
-        if (imagePath.isNotBlank()) {
+        if (isTextCard) {
+            CardTextFallback(
+                text = answer,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
             AsyncImage(
-                model = imagePath,
+                model = normalizedImagePath,
                 contentDescription = "Game card image",
                 imageLoader = imageLoader,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-            )
-        } else {
-            CardTextFallback(
-                text = answer,
-                modifier = Modifier.fillMaxSize(),
+                onSuccess = { imageLoadFailed = false },
+                onError = { imageLoadFailed = true },
             )
         }
 
         Hint(
             text = answer.uppercase(),
-            visible = isHintVisible,
+            visible = isHintVisible && !isTextCard,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 12.dp),
