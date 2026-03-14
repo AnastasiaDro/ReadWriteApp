@@ -76,6 +76,7 @@ kotlin {
                 implementation(project(":data:flashcards"))
                 implementation(project(":data:preferences"))
                 implementation(project(":data:study_progress"))
+                implementation(project(":feature:customkeyboard"))
             }
         }
 

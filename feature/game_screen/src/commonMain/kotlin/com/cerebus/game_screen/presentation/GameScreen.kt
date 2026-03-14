@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -38,9 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,8 +47,8 @@ import androidx.navigation.NavHostController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
+import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.game_screen.navigation.GameScreenNavigatorImpl
-import kotlinx.coroutines.handleCoroutineException
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -150,125 +149,171 @@ private fun ActiveGameContent(
     val imageLoader = remember(platformContext) { ImageLoader.Builder(platformContext).build() }
     val windowWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     val windowHeightDp = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
-    val cardSize = (minOf(windowHeightDp, windowWidthDp) / 2f).coerceAtLeast(140.dp)
+    var isKeyboardVisible by remember { mutableStateOf(false) }
+    val baseCardSize = (minOf(windowHeightDp, windowWidthDp) / 2f).coerceAtLeast(140.dp)
+    val keyboardReservedSpace = if (isKeyboardVisible) {
+        (windowHeightDp * 0.34f).coerceIn(220.dp, 320.dp)
+    } else {
+        0.dp
+    }
+    val cardSize = if (isKeyboardVisible) {
+        (baseCardSize * 0.82f).coerceAtLeast(128.dp)
+    } else {
+        baseCardSize
+    }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-
-        FeedbackBanner(
-            feedback = state.feedback,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-
-        Text(
-            text = "${state.cardIndex} / ${state.totalCards}",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-
-        Box(
+        Column(
             modifier = Modifier
-                .size(cardSize)
-                .clip(RoundedCornerShape(20.dp))
-                .border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = RoundedCornerShape(20.dp),
-                )
-                .background(MaterialTheme.colorScheme.surface),
-            contentAlignment = Alignment.Center,
+                .fillMaxSize()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = keyboardReservedSpace + 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            val pictureUrl = state.currentCard.imagePath.orEmpty()
-            if (pictureUrl.isNotBlank()) {
-                AsyncImage(
-                    model = pictureUrl,
-                    contentDescription = "Game card image",
-                    imageLoader = imageLoader,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                CardTextFallback(
-                    text = state.currentCard.answer,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-
-            Hint(
-                text = state.currentCard.answer.uppercase(),
-                visible = state.isHintVisible,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 12.dp),
+            FeedbackBanner(
+                feedback = state.feedback,
+                modifier = Modifier.padding(bottom = 12.dp),
             )
-        }
 
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-        ) {
-            val checkButtonWidth = 120.dp
-            val buttonSpacing = 12.dp
-            val maxFieldWidth = (maxWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
-            val fieldWidth = minOf(cardSize, maxFieldWidth)
+            Text(
+                text = "${state.cardIndex} / ${state.totalCards}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
 
-            val desiredButtonOffset = (fieldWidth / 2) + buttonSpacing + (checkButtonWidth / 2)
-            val maxButtonOffset = (maxWidth / 2) - (checkButtonWidth / 2)
-            val buttonOffset = minOf(desiredButtonOffset, maxButtonOffset)
-            var answerFieldValue by remember(state.currentCard.id) {
-                mutableStateOf(
-                    TextFieldValue(
-                        text = state.answerInput,
-                        selection = TextRange(state.answerInput.length),
+            Box(
+                modifier = Modifier
+                    .size(cardSize)
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(20.dp),
                     )
-                )
-            }
-
-            LaunchedEffect(state.answerInput, state.currentCard.id) {
-                if (state.answerInput != answerFieldValue.text) {
-                    val selectionIndex = answerFieldValue.selection.end.coerceIn(0, state.answerInput.length)
-                    answerFieldValue = TextFieldValue(
-                        text = state.answerInput,
-                        selection = TextRange(selectionIndex),
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                val pictureUrl = state.currentCard.imagePath.orEmpty()
+                if (pictureUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = pictureUrl,
+                        contentDescription = "Game card image",
+                        imageLoader = imageLoader,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    CardTextFallback(
+                        text = state.currentCard.answer,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
+
+                Hint(
+                    text = state.currentCard.answer.uppercase(),
+                    visible = state.isHintVisible,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp),
+                )
             }
 
-            OutlinedTextField(
-                value = answerFieldValue,
-                onValueChange = { updated ->
-                    answerFieldValue = updated
-                    if (updated.text != state.answerInput) {
-                        onAction(GameScreenAction.OnAnswerChanged(updated.text))
-                    }
-                },
+            BoxWithConstraints(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .width(fieldWidth)
-                    .heightIn(min = 72.dp),
-                textStyle = MaterialTheme.typography.bodyLarge,
-                singleLine = true,
-            )
-
-            Button(
-                onClick = { onAction(GameScreenAction.OnCheckClick) },
-                enabled = state.answerInput.isNotBlank(),
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .offset(x = buttonOffset)
-                    .width(checkButtonWidth)
-                    .heightIn(min = 72.dp),
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
             ) {
-                Text("Отправить")
+                val checkButtonWidth = 120.dp
+                val buttonSpacing = 12.dp
+                val maxFieldWidth = (maxWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
+                val fieldWidth = minOf(cardSize, maxFieldWidth)
+
+                val desiredButtonOffset = (fieldWidth / 2) + buttonSpacing + (checkButtonWidth / 2)
+                val maxButtonOffset = (maxWidth / 2) - (checkButtonWidth / 2)
+                val buttonOffset = minOf(desiredButtonOffset, maxButtonOffset)
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .width(fieldWidth)
+                        .height(56.dp),
+                ) {
+                    OutlinedTextField(
+                        value = state.answerInput,
+                        onValueChange = {},
+                        modifier = Modifier.fillMaxSize(),
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                        singleLine = true,
+                        readOnly = true,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { isKeyboardVisible = true },
+                    )
+                }
+
+                Button(
+                    onClick = { onAction(GameScreenAction.OnCheckClick) },
+                    enabled = state.answerInput.isNotBlank(),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(x = buttonOffset)
+                        .width(checkButtonWidth)
+                        .height(56.dp),
+                ) {
+                    Text("Отправить")
+                }
             }
+        }
+
+        AnimatedVisibility(
+            visible = isKeyboardVisible,
+            enter = fadeIn(animationSpec = tween(durationMillis = 180)),
+            exit = fadeOut(animationSpec = tween(durationMillis = 120)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+        ) {
+            TrainingKeyboard(
+                referenceText = state.currentCard.answer,
+                activeSymbols = emptySet(),
+                onSymbolPressed = { symbol ->
+                    onAction(
+                        GameScreenAction.OnAnswerChanged(
+                            state.answerInput + symbol,
+                        )
+                    )
+                },
+                onBackspacePressed = {
+                    onAction(
+                        GameScreenAction.OnAnswerChanged(
+                            state.answerInput.dropLast(1),
+                        )
+                    )
+                },
+                onSpacePressed = {
+                    onAction(
+                        GameScreenAction.OnAnswerChanged(
+                            if (state.answerInput.endsWith(" ")) {
+                                state.answerInput
+                            } else {
+                                state.answerInput + " "
+                            }
+                        )
+                    )
+                },
+                onSubmitPressed = { onAction(GameScreenAction.OnCheckClick) },
+                onSettingsPressed = {},
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
