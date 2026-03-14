@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +53,7 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.cerebus.customkeyboard.TrainingKeyboard
+import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
 import com.cerebus.game_screen.navigation.GameScreenNavigatorImpl
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -265,11 +268,13 @@ private fun ActiveGameContent(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            AnswerInputSection(
-                                answerInput = state.answerInput,
-                                isStacked = true,
-                                availableWidth = landscapeInputWidth,
-                                fieldReferenceWidth = landscapeCardSize,
+                        AnswerInputSection(
+                            answerInput = state.answerInput,
+                            expectedAnswer = state.currentCard.answer,
+                            inputFeedbackType = state.inputFeedbackType,
+                            isStacked = true,
+                            availableWidth = landscapeInputWidth,
+                            fieldReferenceWidth = landscapeCardSize,
                                 onFieldClick = { isKeyboardVisible = true },
                                 onSubmit = { onAction(GameScreenAction.OnCheckClick) },
                             )
@@ -304,6 +309,8 @@ private fun ActiveGameContent(
 
                         AnswerInputSection(
                             answerInput = state.answerInput,
+                            expectedAnswer = state.currentCard.answer,
+                            inputFeedbackType = state.inputFeedbackType,
                             isStacked = useStackedInput,
                             availableWidth = availableContentWidth,
                             fieldReferenceWidth = portraitCardSize,
@@ -328,14 +335,10 @@ private fun ActiveGameContent(
                 referenceText = state.currentCard.answer,
                 activeSymbols = state.activeSymbols,
                 isShiftEnabled = state.isShiftEnabled,
+                feedbackKey = state.keyboardFeedbackKey,
+                feedbackType = state.keyboardFeedbackType,
                 onShiftChanged = { onAction(GameScreenAction.OnShiftChanged(it)) },
-                onSymbolPressed = { symbol ->
-                    onAction(
-                        GameScreenAction.OnAnswerChanged(
-                            state.answerInput + symbol,
-                        )
-                    )
-                },
+                onSymbolPressed = { symbol -> onAction(GameScreenAction.OnKeyboardSymbolPressed(symbol)) },
                 onBackspacePressed = {
                     onAction(
                         GameScreenAction.OnAnswerChanged(
@@ -344,15 +347,9 @@ private fun ActiveGameContent(
                     )
                 },
                 onSpacePressed = {
-                    onAction(
-                        GameScreenAction.OnAnswerChanged(
-                            if (state.answerInput.endsWith(" ")) {
-                                state.answerInput
-                            } else {
-                                state.answerInput + " "
-                            }
-                        )
-                    )
+                    if (!state.answerInput.endsWith(" ")) {
+                        onAction(GameScreenAction.OnKeyboardSymbolPressed(" "))
+                    }
                 },
                 onSubmitPressed = { onAction(GameScreenAction.OnCheckClick) },
                 onSettingsPressed = {
@@ -455,6 +452,8 @@ private fun GameCard(
 @Composable
 private fun AnswerInputSection(
     answerInput: String,
+    expectedAnswer: String,
+    inputFeedbackType: TrainingKeyboardFeedbackType?,
     isStacked: Boolean,
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
@@ -476,6 +475,8 @@ private fun AnswerInputSection(
         ) {
             ReadOnlyAnswerField(
                 value = answerInput,
+                expectedAnswer = expectedAnswer,
+                inputFeedbackType = inputFeedbackType,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -500,6 +501,8 @@ private fun AnswerInputSection(
         ) {
             ReadOnlyAnswerField(
                 value = answerInput,
+                expectedAnswer = expectedAnswer,
+                inputFeedbackType = inputFeedbackType,
                 modifier = Modifier
                     .width(fieldWidth)
                     .height(56.dp),
@@ -522,23 +525,60 @@ private fun AnswerInputSection(
 @Composable
 private fun ReadOnlyAnswerField(
     value: String,
+    expectedAnswer: String,
+    inputFeedbackType: TrainingKeyboardFeedbackType?,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val displayedValue = remember(value, expectedAnswer) {
+        buildAnswerProgressMask(
+            answerInput = value,
+            expectedAnswer = expectedAnswer,
+        )
+    }
+    val feedbackBorderColor = when (inputFeedbackType) {
+        TrainingKeyboardFeedbackType.Correct -> Color(0xFF9AD88F)
+        TrainingKeyboardFeedbackType.Wrong -> Color(0xFFFF7A7A)
+        null -> MaterialTheme.colorScheme.outline
+    }
+
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = value,
+            value = displayedValue,
             onValueChange = {},
             modifier = Modifier.fillMaxSize(),
             textStyle = MaterialTheme.typography.bodyLarge,
             singleLine = true,
             readOnly = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = feedbackBorderColor,
+                unfocusedBorderColor = feedbackBorderColor,
+            ),
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .clickable(onClick = onClick),
         )
+    }
+}
+
+private fun buildAnswerProgressMask(
+    answerInput: String,
+    expectedAnswer: String,
+): String {
+    if (expectedAnswer.isEmpty()) return answerInput
+    return buildString {
+        expectedAnswer.forEachIndexed { index, expectedChar ->
+            if (index > 0) append(' ')
+            append(
+                when {
+                    index < answerInput.length -> answerInput[index]
+                    expectedChar == ' ' -> ' '
+                    else -> '_'
+                }
+            )
+        }
     }
 }
 

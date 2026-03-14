@@ -18,6 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,6 +56,7 @@ import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_language_english
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_language_russian
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_numbers
+import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_prevent_wrong_key_press
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_russian
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_select_language
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_selected
@@ -115,6 +117,7 @@ data class KeyboardSettingsUiState(
     val currentLanguage: KeyboardSettingsLanguage = KeyboardSettingsLanguage.resolveDefault(
         currentSystemLanguageCode(),
     ),
+    val preventWrongKeyPress: Boolean = true,
 )
 
 class KeyboardSettingsViewModel(
@@ -132,6 +135,7 @@ class KeyboardSettingsViewModel(
                 isLoading = false,
                 selectedLetters = emptySet(),
                 currentLanguage = fallbackLanguage,
+                preventWrongKeyPress = true,
             )
             val loadedState = runCatching {
                 val letters = studentRepository.getActiveLettersById(studentId)
@@ -140,10 +144,14 @@ class KeyboardSettingsViewModel(
                     .filter { it.isLetterOrDigit() }
                     .toSet()
                 val currentLanguage = resolveCurrentLanguage()
+                val preventWrongKeyPress = preferencesRepository
+                    .getPreventWrongKeyPressEnabled(studentId)
+                    ?: true
                 KeyboardSettingsUiState(
                     isLoading = false,
                     selectedLetters = letters,
                     currentLanguage = currentLanguage,
+                    preventWrongKeyPress = preventWrongKeyPress,
                 )
             }.getOrElse { fallbackState }
             _uiState.value = loadedState
@@ -177,6 +185,14 @@ class KeyboardSettingsViewModel(
         if (_uiState.value.currentLanguage == language) return
         preferencesRepository.setKeyboardLanguage(studentId, language.code)
         _uiState.update { it.copy(currentLanguage = language) }
+    }
+
+    fun onPreventWrongKeyPressChanged(isEnabled: Boolean) {
+        preferencesRepository.setPreventWrongKeyPressEnabled(
+            studentId = studentId,
+            isEnabled = isEnabled,
+        )
+        _uiState.update { it.copy(preventWrongKeyPress = isEnabled) }
     }
 
     fun enableAllCurrentLanguage() {
@@ -229,6 +245,7 @@ fun KeyboardSettingsRoute(
         state = state,
         onLetterClicked = viewModel::onLetterClicked,
         onLanguageSelected = viewModel::onLanguageSelected,
+        onPreventWrongKeyPressChanged = viewModel::onPreventWrongKeyPressChanged,
         onEnableAllClick = viewModel::enableAllCurrentLanguage,
         onDisableAllClick = viewModel::disableAllCurrentLanguage,
         onClose = onClose,
@@ -240,6 +257,7 @@ fun KeyboardSettingsScreen(
     state: KeyboardSettingsUiState,
     onLetterClicked: (Char) -> Unit,
     onLanguageSelected: (KeyboardSettingsLanguage) -> Unit,
+    onPreventWrongKeyPressChanged: (Boolean) -> Unit,
     onEnableAllClick: () -> Unit,
     onDisableAllClick: () -> Unit,
     onClose: () -> Unit,
@@ -298,6 +316,21 @@ fun KeyboardSettingsScreen(
             currentLanguage = state.currentLanguage,
             onClick = { showLanguageDialog = true },
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.keyboard_settings_prevent_wrong_key_press),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Switch(
+                checked = state.preventWrongKeyPress,
+                onCheckedChange = onPreventWrongKeyPressChanged,
+            )
+        }
 
         BulkActionsRow(
             hasAnySelected = hasAnyCurrentSelected,

@@ -1,5 +1,7 @@
 package com.cerebus.game_screen.presentation
 
+import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
+
 sealed interface GameUiState {
 
     data object Loading : GameUiState
@@ -11,7 +13,11 @@ sealed interface GameUiState {
         val totalCards: Int,
         val studentId: String,
         val activeSymbols: Set<String>,
+        val preventWrongKeyPress: Boolean,
         val isShiftEnabled: Boolean,
+        val keyboardFeedbackKey: String? = null,
+        val keyboardFeedbackType: TrainingKeyboardFeedbackType? = null,
+        val inputFeedbackType: TrainingKeyboardFeedbackType? = null,
         val answerInput: String,
         val isHintVisible: Boolean,
         val feedback: FeedbackUi? = null,

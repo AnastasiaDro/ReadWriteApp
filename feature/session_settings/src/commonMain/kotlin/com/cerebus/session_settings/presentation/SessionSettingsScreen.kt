@@ -44,6 +44,7 @@ import readwriteapp.feature.session_settings.generated.resources.session_setting
 import readwriteapp.feature.session_settings.generated.resources.session_settings_learn_more_step
 import readwriteapp.feature.session_settings.generated.resources.session_settings_load_error
 import readwriteapp.feature.session_settings.generated.resources.session_settings_max_new_per_day
+import readwriteapp.feature.session_settings.generated.resources.session_settings_prevent_wrong_key_press
 import readwriteapp.feature.session_settings.generated.resources.session_settings_new_cards
 import readwriteapp.feature.session_settings.generated.resources.session_settings_no_decks
 import readwriteapp.feature.session_settings.generated.resources.session_settings_reviews
@@ -167,6 +168,18 @@ fun SessionSettingsScreen(
             Switch(
                 checked = state.allowNearMatch,
                 onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNearMatch(it)) },
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = stringResource(Res.string.session_settings_prevent_wrong_key_press))
+            Switch(
+                checked = state.preventWrongKeyPress,
+                onCheckedChange = { onIntent(SessionSettingsIntent.ChangePreventWrongKeyPress(it)) },
             )
         }
 

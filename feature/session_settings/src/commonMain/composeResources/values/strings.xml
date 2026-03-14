@@ -6,6 +6,7 @@
     <string name="session_settings_guided_hint_threshold">Successful answers with hint before hiding</string>
     <string name="session_settings_max_new_per_day">Maximum new cards per day</string>
     <string name="session_settings_allow_near_match">Allow small answer mistakes</string>
+    <string name="session_settings_prevent_wrong_key_press">Do not allow pressing wrong keys</string>
     <string name="session_settings_active_decks">Active decks</string>
     <string name="session_settings_no_decks">No decks available</string>
     <string name="session_settings_save">Save</string>

@@ -9,6 +9,7 @@ val sessionSettingsModule = module {
         SessionSettingsViewModel(
             studentId = studentId,
             prefsRepository = get(),
+            preferencesRepository = get(),
             deckRepository = get(),
             studentDeckRepository = get(),
         )

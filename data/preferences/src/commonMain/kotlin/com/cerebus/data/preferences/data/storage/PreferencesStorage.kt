@@ -8,6 +8,8 @@ interface PreferencesStorage {
     fun setKeyboardLanguage(studentId: String, languageCode: String)
     fun getKeyboardShiftEnabled(studentId: String): Boolean?
     fun setKeyboardShiftEnabled(studentId: String, isEnabled: Boolean)
+    fun getPreventWrongKeyPressEnabled(studentId: String): Boolean?
+    fun setPreventWrongKeyPressEnabled(studentId: String, isEnabled: Boolean)
     fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

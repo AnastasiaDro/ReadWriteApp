@@ -34,6 +34,14 @@ class PreferencesRepositoryImpl(
         storage.setKeyboardShiftEnabled(studentId, isEnabled)
     }
 
+    override fun getPreventWrongKeyPressEnabled(studentId: String): Boolean? {
+        return storage.getPreventWrongKeyPressEnabled(studentId)
+    }
+
+    override fun setPreventWrongKeyPressEnabled(studentId: String, isEnabled: Boolean) {
+        storage.setPreventWrongKeyPressEnabled(studentId, isEnabled)
+    }
+
     override fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

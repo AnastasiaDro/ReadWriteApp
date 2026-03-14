@@ -56,6 +56,7 @@ kotlin {
                 implementation(project(":core:utils"))
                 implementation(project(":core:game_engine"))
                 implementation(project(":data:decks"))
+                implementation(project(":data:preferences"))
                 implementation(project(":data:student-deck"))
             }
         }

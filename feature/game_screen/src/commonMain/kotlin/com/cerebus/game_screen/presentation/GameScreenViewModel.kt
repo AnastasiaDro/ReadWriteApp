@@ -2,6 +2,7 @@ package com.cerebus.game_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
 import com.cerebus.core.game_engine.domain.logic.interleaveReviewAndNewCards
 import com.cerebus.core.game_engine.domain.logic.selectBalancedNewCardsByDeck
 import com.cerebus.core.game_engine.domain.logic.takeRoundRobinByDeck
@@ -34,6 +35,7 @@ private const val DEFAULT_LEARN_MORE_STEP = 5
 private const val MIN_GUIDED_HINT_THRESHOLD = 0
 private const val MAX_GUIDED_HINT_THRESHOLD = 5
 private const val RANDOM_REVIEW_LIMIT = 10
+private const val KEY_FEEDBACK_DURATION_MS = 180L
 
 class GameScreenViewModel(
     deckIds: List<String>,
@@ -55,6 +57,7 @@ class GameScreenViewModel(
 
     private var session: GameSessionData? = null
     private var feedbackJob: Job? = null
+    private var keyFeedbackJob: Job? = null
     private var dailyLimitIncrease: Int = 0
 
     init {
@@ -64,6 +67,7 @@ class GameScreenViewModel(
     fun onAction(action: GameScreenAction) {
         when (action) {
             is GameScreenAction.OnAnswerChanged -> updateAnswer(action.value)
+            is GameScreenAction.OnKeyboardSymbolPressed -> handleKeyboardSymbolPress(action.symbol)
             is GameScreenAction.OnShiftChanged -> updateKeyboardShift(action.isEnabled)
             GameScreenAction.OnCheckClick -> checkAnswer()
             GameScreenAction.OnRetryClick -> repeatLastSession()
@@ -110,6 +114,10 @@ class GameScreenViewModel(
                 studentId = activeStudentId,
                 preferencesRepository = preferencesRepository,
             )
+            val preventWrongKeyPress = loadPreventWrongKeyPressEnabled(
+                studentId = activeStudentId,
+                preferencesRepository = preferencesRepository,
+            )
 
             val sessionCards = buildSessionCards(
                 deckIds = selectedDeckIds,
@@ -131,6 +139,7 @@ class GameScreenViewModel(
                 cards = sessionCards,
                 studentId = activeStudentId,
                 activeSymbols = activeSymbols,
+                preventWrongKeyPress = preventWrongKeyPress,
                 isShiftEnabled = isShiftEnabled,
                 sessionMode = GameSessionMode.Srs,
                 isHintVisible = initialHintVisible(sessionCards),
@@ -149,7 +158,7 @@ class GameScreenViewModel(
 
     private fun updateAnswer(value: String) {
         val current = session ?: return
-        if (current.isFinished) return
+        if (current.isFinished || current.feedback != null) return
 
         val updated = current.copy(
             answerInput = value,
@@ -157,6 +166,35 @@ class GameScreenViewModel(
         )
         session = updated
         _uiState.value = updated.toActiveUiState()
+    }
+
+    private fun handleKeyboardSymbolPress(symbol: String) {
+        val current = session ?: return
+        if (current.isFinished || current.feedback != null) return
+
+        if (!current.preventWrongKeyPress) {
+            updateAnswer(current.answerInput + symbol)
+            return
+        }
+
+        val expectedSymbol = current.expectedNextSymbol()
+        if (expectedSymbol != null && symbol.matchesExpectedSymbol(expectedSymbol)) {
+            val updated = current.copy(
+                answerInput = current.answerInput + symbol,
+            )
+            session = updated
+            _uiState.value = updated.toActiveUiState()
+            triggerTypingFeedback(
+                symbol = symbol,
+                type = TrainingKeyboardFeedbackType.Correct,
+            )
+        } else {
+            triggerTypingFeedback(
+                symbol = symbol,
+                type = TrainingKeyboardFeedbackType.Wrong,
+            )
+            playInvalidKeySoundStub()
+        }
     }
 
     private fun updateKeyboardShift(isEnabled: Boolean) {
@@ -170,6 +208,41 @@ class GameScreenViewModel(
             studentId = current.studentId,
             isEnabled = isEnabled,
         )
+    }
+
+    private fun triggerTypingFeedback(
+        symbol: String,
+        type: TrainingKeyboardFeedbackType,
+    ) {
+        keyFeedbackJob?.cancel()
+        val current = session ?: return
+        val updated = current.copy(
+            keyboardFeedbackKey = symbol.normalizedFeedbackKey(),
+            keyboardFeedbackType = type,
+            inputFeedbackType = type,
+        )
+        session = updated
+        _uiState.value = updated.toActiveUiState()
+
+        keyFeedbackJob = viewModelScope.launch {
+            delay(KEY_FEEDBACK_DURATION_MS)
+            val actual = session ?: return@launch
+            val cleared = actual.copy(
+                keyboardFeedbackKey = null,
+                keyboardFeedbackType = null,
+                inputFeedbackType = null,
+            )
+            session = cleared
+            _uiState.value = if (cleared.isFinished) {
+                cleared.toFinishedUiState()
+            } else {
+                cleared.toActiveUiState()
+            }
+        }
+    }
+
+    private fun playInvalidKeySoundStub() {
+        // TODO connect invalid key press sound playback here.
     }
 
     private fun checkAnswer() {
@@ -450,7 +523,11 @@ private data class GameSessionData(
     val cards: List<GameCardData>,
     val studentId: String,
     val activeSymbols: Set<String>,
+    val preventWrongKeyPress: Boolean,
     val isShiftEnabled: Boolean,
+    val keyboardFeedbackKey: String? = null,
+    val keyboardFeedbackType: TrainingKeyboardFeedbackType? = null,
+    val inputFeedbackType: TrainingKeyboardFeedbackType? = null,
     val sessionMode: GameSessionMode,
     val currentIndex: Int = 0,
     val correctAnswers: Int = 0,
@@ -465,6 +542,11 @@ private data class GameSessionData(
 
     val isFinished: Boolean
         get() = currentIndex >= cards.size
+
+    fun expectedNextSymbol(): String? {
+        val answer = currentCard?.answer ?: return null
+        return answer.getOrNull(answerInput.length)?.toString()
+    }
 }
 
 private data class GameFeedbackData(
@@ -709,7 +791,11 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         totalCards = cards.size,
         studentId = studentId,
         activeSymbols = activeSymbols + card.extractKeyboardSymbols(),
+        preventWrongKeyPress = preventWrongKeyPress,
         isShiftEnabled = isShiftEnabled,
+        keyboardFeedbackKey = keyboardFeedbackKey,
+        keyboardFeedbackType = keyboardFeedbackType,
+        inputFeedbackType = inputFeedbackType,
         answerInput = answerInput,
         isHintVisible = isHintVisible,
         feedback = feedback?.toUi(),
@@ -735,6 +821,22 @@ private fun loadKeyboardShiftEnabled(
 ): Boolean {
     if (studentId.isBlank()) return false
     return preferencesRepository.getKeyboardShiftEnabled(studentId) == true
+}
+
+private fun loadPreventWrongKeyPressEnabled(
+    studentId: String,
+    preferencesRepository: PreferencesRepository,
+): Boolean {
+    if (studentId.isBlank()) return true
+    return preferencesRepository.getPreventWrongKeyPressEnabled(studentId) ?: true
+}
+
+private fun String.matchesExpectedSymbol(expectedSymbol: String): Boolean {
+    return lowercase() == expectedSymbol.lowercase()
+}
+
+private fun String.normalizedFeedbackKey(): String {
+    return lowercase()
 }
 
 private fun GameCardData.extractKeyboardSymbols(): Set<String> {

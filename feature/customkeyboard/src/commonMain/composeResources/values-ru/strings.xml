@@ -8,6 +8,7 @@
     <string name="keyboard_settings_disable_all">Выключить все</string>
     <string name="keyboard_settings_language">Язык клавиатуры</string>
     <string name="keyboard_settings_select_language">Выберите язык</string>
+    <string name="keyboard_settings_prevent_wrong_key_press">Не давать нажимать неправильно</string>
     <string name="keyboard_settings_language_english">English</string>
     <string name="keyboard_settings_language_russian">Русский</string>
     <string name="keyboard_settings_numbers">Цифры</string>

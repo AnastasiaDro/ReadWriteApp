@@ -5,6 +5,7 @@ import com.russhwolf.settings.Settings
 private const val LAST_ACTIVE_STUDENT_KEY = "last_active_student"
 private const val KEYBOARD_LANGUAGE_PREFIX = "keyboard_language_v1_"
 private const val KEYBOARD_SHIFT_PREFIX = "keyboard_shift_v1_"
+private const val PREVENT_WRONG_KEY_PRESS_PREFIX = "prevent_wrong_key_press_v1_"
 private const val LAST_SESSION_PREFIX = "last_session_v1_"
 private const val SESSION_IDS_SEPARATOR = ","
 private const val ANONYMOUS_STUDENT_ID = "_anonymous_"
@@ -52,6 +53,20 @@ class PreferencesStorageImpl(
         val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
         settings.putBoolean(
             key = buildKeyboardShiftKey(normalizedStudentId),
+            value = isEnabled,
+        )
+    }
+
+    override fun getPreventWrongKeyPressEnabled(studentId: String): Boolean? {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return null
+        val key = buildPreventWrongKeyPressKey(normalizedStudentId)
+        return if (settings.hasKey(key)) settings.getBoolean(key, true) else null
+    }
+
+    override fun setPreventWrongKeyPressEnabled(studentId: String, isEnabled: Boolean) {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
+        settings.putBoolean(
+            key = buildPreventWrongKeyPressKey(normalizedStudentId),
             value = isEnabled,
         )
     }
@@ -125,5 +140,9 @@ class PreferencesStorageImpl(
 
     private fun buildKeyboardShiftKey(studentId: String): String {
         return "$KEYBOARD_SHIFT_PREFIX$studentId"
+    }
+
+    private fun buildPreventWrongKeyPressKey(studentId: String): String {
+        return "$PREVENT_WRONG_KEY_PRESS_PREFIX$studentId"
     }
 }

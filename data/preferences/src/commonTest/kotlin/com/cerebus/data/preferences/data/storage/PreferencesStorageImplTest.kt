@@ -146,4 +146,32 @@ class PreferencesStorageImplTest {
 
         assertNull(restored)
     }
+
+    @Test
+    fun saveAndRestorePreventWrongKeyPress_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setPreventWrongKeyPressEnabled(
+            studentId = "student_1",
+            isEnabled = false,
+        )
+
+        val restored = storage.getPreventWrongKeyPressEnabled("student_1")
+
+        assertEquals(false, restored)
+    }
+
+    @Test
+    fun preventWrongKeyPress_otherStudent_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setPreventWrongKeyPressEnabled(
+            studentId = "student_1",
+            isEnabled = false,
+        )
+
+        val restored = storage.getPreventWrongKeyPressEnabled("student_2")
+
+        assertNull(restored)
+    }
 }

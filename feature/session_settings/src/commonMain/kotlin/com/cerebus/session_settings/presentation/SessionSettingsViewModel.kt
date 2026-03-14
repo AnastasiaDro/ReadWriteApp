@@ -6,6 +6,7 @@ import com.cerebus.core.utils.CustomResult
 import com.cerebus.core.game_engine.domain.model.StudentSrsPrefs
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.data.decks.domain.repositories.DeckRepository
+import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 class SessionSettingsViewModel(
     private val studentId: String,
     private val prefsRepository: StudentPrefsRepository,
+    private val preferencesRepository: PreferencesRepository,
     private val deckRepository: DeckRepository,
     private val studentDeckRepository: StudentDeckRepository,
 ) : ViewModel() {
@@ -50,6 +52,9 @@ class SessionSettingsViewModel(
             is SessionSettingsIntent.ChangeAllowNearMatch -> {
                 _state.update { it.copy(allowNearMatch = intent.value) }
             }
+            is SessionSettingsIntent.ChangePreventWrongKeyPress -> {
+                _state.update { it.copy(preventWrongKeyPress = intent.value) }
+            }
             is SessionSettingsIntent.ToggleDeck -> toggleDeck(intent.deckId, intent.isActive)
             SessionSettingsIntent.SaveClicked -> save()
             SessionSettingsIntent.CancelClicked -> emitClose()
@@ -68,8 +73,19 @@ class SessionSettingsViewModel(
                     .orEmpty()
                     .map { it.id }
                     .toSet()
-                Triple(prefs, allDecks, studentDecks)
-            }.onSuccess { (prefs, allDecks, selectedDeckIds) ->
+                val preventWrongKeyPress = preferencesRepository
+                    .getPreventWrongKeyPressEnabled(studentId)
+                    ?: true
+                LoadedSettingsData(
+                    prefs = prefs,
+                    allDecks = allDecks,
+                    selectedDeckIds = studentDecks,
+                    preventWrongKeyPress = preventWrongKeyPress,
+                )
+            }.onSuccess { loaded ->
+                val prefs = loaded.prefs
+                val allDecks = loaded.allDecks
+                val selectedDeckIds = loaded.selectedDeckIds
                 loadedPrefs = prefs
                 reviewsChangedByUser = false
                 initialActiveDeckIds = selectedDeckIds
@@ -80,6 +96,7 @@ class SessionSettingsViewModel(
                     guidedHintSuccessThreshold = prefs.guidedHintSuccessThreshold,
                     maxNewCardsPerDay = prefs.maxNewCardsPerDay,
                     allowNearMatch = prefs.allowNearMatch,
+                    preventWrongKeyPress = loaded.preventWrongKeyPress,
                     deckOptions = allDecks.map { deck ->
                         SessionDeckOptionUi(
                             deckId = deck.id,
@@ -154,6 +171,10 @@ class SessionSettingsViewModel(
 
             runCatching {
                 prefsRepository.savePrefs(updatedPrefs)
+                preferencesRepository.setPreventWrongKeyPressEnabled(
+                    studentId = studentId,
+                    isEnabled = snapshot.preventWrongKeyPress,
+                )
                 if (deckIdsToAssign.isNotEmpty()) {
                     when (
                         val result = studentDeckRepository.assignDecksToStudent(
@@ -194,3 +215,10 @@ class SessionSettingsViewModel(
         }
     }
 }
+
+private data class LoadedSettingsData(
+    val prefs: StudentSrsPrefs,
+    val allDecks: List<com.cerebus.data.decks.domain.models.Deck>,
+    val selectedDeckIds: Set<String>,
+    val preventWrongKeyPress: Boolean,
+)

@@ -63,12 +63,21 @@ private val inactiveKeyBackgroundColor = Color(0xFF818285)
 private val inactiveKeyTextColor = Color(0xFFB0B0B3)
 private val shiftAccentColor = Color(0xFF8000FF)
 private val keyboardContainerShape = RoundedCornerShape(18.dp)
+private val correctKeyBackgroundColor = Color(0xFFCFECC9)
+private val wrongKeyBackgroundColor = Color(0xFFFFC9C9)
+
+enum class TrainingKeyboardFeedbackType {
+    Correct,
+    Wrong,
+}
 
 @Composable
 fun TrainingKeyboard(
     referenceText: String,
     activeSymbols: Set<String>,
     isShiftEnabled: Boolean,
+    feedbackKey: String? = null,
+    feedbackType: TrainingKeyboardFeedbackType? = null,
     onShiftChanged: (Boolean) -> Unit,
     onSymbolPressed: (String) -> Unit,
     onBackspacePressed: () -> Unit,
@@ -129,6 +138,11 @@ fun TrainingKeyboard(
                                 .fillMaxHeight()
                                 .padding(horizontal = 1.5.dp, vertical = 4.dp),
                         ) {
+                            val keyFeedbackType = resolveKeyFeedbackType(
+                                key = key,
+                                feedbackKey = feedbackKey,
+                                feedbackType = feedbackType,
+                            )
                             KeyboardKey(
                                 label = when {
                                     key == "space" -> ""
@@ -148,6 +162,7 @@ fun TrainingKeyboard(
                                 icon = keySpec.icon,
                                 isShiftActive = key == "shift" && isShiftEnabled,
                                 isEnabled = isKeyEnabled,
+                                feedbackType = keyFeedbackType,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -231,6 +246,21 @@ private fun isKeyEnabled(
     }
 }
 
+private fun resolveKeyFeedbackType(
+    key: String,
+    feedbackKey: String?,
+    feedbackType: TrainingKeyboardFeedbackType?,
+): TrainingKeyboardFeedbackType? {
+    if (feedbackKey == null || feedbackType == null) return null
+    val normalizedFeedbackKey = feedbackKey.lowercase()
+    val normalizedKey = when (key) {
+        "space" -> " "
+        "shift", "abc", "settings", "⌫", "OK" -> return null
+        else -> key.lowercase()
+    }
+    return if (normalizedKey == normalizedFeedbackKey) feedbackType else null
+}
+
 @Composable
 private fun KeyboardKey(
     label: String,
@@ -239,6 +269,7 @@ private fun KeyboardKey(
     icon: ImageVector?,
     isShiftActive: Boolean,
     isEnabled: Boolean,
+    feedbackType: TrainingKeyboardFeedbackType?,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -246,7 +277,12 @@ private fun KeyboardKey(
     val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val isLandscape = windowWidthDp > windowHeightDp
-    val backgroundColor = if (isEnabled) keyBackgroundColor else inactiveKeyBackgroundColor
+    val backgroundColor = when {
+        feedbackType == TrainingKeyboardFeedbackType.Correct -> correctKeyBackgroundColor
+        feedbackType == TrainingKeyboardFeedbackType.Wrong -> wrongKeyBackgroundColor
+        isEnabled -> keyBackgroundColor
+        else -> inactiveKeyBackgroundColor
+    }
     val textColor = when {
         !isEnabled -> inactiveKeyTextColor
         isShiftActive -> shiftAccentColor
