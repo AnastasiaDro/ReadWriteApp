@@ -11,6 +11,7 @@
     <string name="session_settings_save">Сохранить</string>
     <string name="session_settings_saving">Сохранение...</string>
     <string name="session_settings_cancel">Отмена</string>
+    <string name="session_settings_keyboard">Настройки клавиатуры</string>
     <string name="session_settings_load_error">Не удалось загрузить настройки</string>
     <string name="session_settings_save_error">Не удалось сохранить настройки</string>
 </resources>

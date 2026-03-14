@@ -75,6 +75,7 @@ kotlin {
                 implementation(project(":data:decks"))
                 implementation(project(":data:flashcards"))
                 implementation(project(":data:preferences"))
+                implementation(project(":data:student"))
                 implementation(project(":data:study_progress"))
                 implementation(project(":feature:customkeyboard"))
             }

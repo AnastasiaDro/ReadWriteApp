@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -42,6 +44,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil3.ImageLoader
@@ -55,6 +58,8 @@ import org.koin.core.parameter.parametersOf
 import readwriteapp.feature.game_screen.generated.resources.game_back_to_student
 import readwriteapp.feature.game_screen.generated.resources.game_learn_more
 import readwriteapp.feature.game_screen.generated.resources.game_learn_more_hint
+import readwriteapp.feature.game_screen.generated.resources.game_random_review
+import readwriteapp.feature.game_screen.generated.resources.game_random_review_hint
 import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session_hint
 import readwriteapp.feature.game_screen.generated.resources.Res
 import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session
@@ -63,6 +68,7 @@ import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_ses
 fun GameScreenWrapper(
     navController: NavHostController,
     deckIds: List<String>,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val navigator = remember(navController) { GameScreenNavigatorImpl(navController) }
     val viewModel = koinViewModel<GameScreenViewModel>(
@@ -89,6 +95,7 @@ fun GameScreenWrapper(
     GameScreen(
         state = state,
         onAction = viewModel::onAction,
+        onOpenKeyboardSettings = onOpenKeyboardSettings,
     )
 }
 
@@ -96,6 +103,7 @@ fun GameScreenWrapper(
 fun GameScreen(
     state: GameUiState,
     onAction: (GameScreenAction) -> Unit,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (state) {
@@ -117,6 +125,7 @@ fun GameScreen(
                 ActiveGameContent(
                     state = state,
                     onAction = onAction,
+                    onOpenKeyboardSettings = onOpenKeyboardSettings,
                 )
             }
 
@@ -143,132 +152,165 @@ fun GameScreen(
 private fun ActiveGameContent(
     state: GameUiState.Active,
     onAction: (GameScreenAction) -> Unit,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val density = LocalDensity.current
     val platformContext = LocalPlatformContext.current
     val imageLoader = remember(platformContext) { ImageLoader.Builder(platformContext).build() }
     val windowWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     val windowHeightDp = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val isLandscape = windowWidthDp > windowHeightDp
     var isKeyboardVisible by remember { mutableStateOf(false) }
-    val baseCardSize = (minOf(windowHeightDp, windowWidthDp) / 2f).coerceAtLeast(140.dp)
-    val keyboardReservedSpace = if (isKeyboardVisible) {
-        (windowHeightDp * 0.34f).coerceIn(220.dp, 320.dp)
-    } else {
-        0.dp
-    }
-    val cardSize = if (isKeyboardVisible) {
-        (baseCardSize * 0.82f).coerceAtLeast(128.dp)
-    } else {
-        baseCardSize
+    val keyboardHeight = remember(windowWidthDp, windowHeightDp) {
+        if (isLandscape) {
+            (windowHeightDp * 0.5f).coerceIn(220.dp, 340.dp)
+        } else {
+            (windowHeightDp * 0.3f).coerceIn(220.dp, 340.dp)
+        }
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
+                .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .padding(bottom = keyboardReservedSpace + 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+                .padding(
+                    top = 56.dp,
+                    bottom = 12.dp,
+                ),
         ) {
-            FeedbackBanner(
-                feedback = state.feedback,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+            val compactMode = isKeyboardVisible || isLandscape
+            val useLandscapeFeedbackOverlay = isLandscape
+            val availableContentWidth = maxWidth
+            val availableContentHeight = maxHeight
+            val feedbackReservedHeight = when {
+                useLandscapeFeedbackOverlay -> 0.dp
+                state.feedback == null -> 0.dp
+                compactMode -> 72.dp
+                else -> 126.dp
+            }
+            val useStackedInput = isLandscape || maxWidth < 420.dp
+            val inputSectionHeight = if (useStackedInput) 124.dp else 56.dp
+            val counterHeight = 24.dp
+            val verticalSpacing = if (compactMode) 12.dp else 18.dp
+            val portraitCardSize = minOf(
+                availableContentWidth * if (compactMode) 0.62f else 0.72f,
+                availableContentHeight - feedbackReservedHeight - inputSectionHeight - counterHeight - (verticalSpacing * 3),
+            ).coerceAtLeast(120.dp)
+            val landscapeCardSize = minOf(
+                availableContentHeight - feedbackReservedHeight - counterHeight - 20.dp,
+                availableContentWidth * 0.42f,
+            ).coerceAtLeast(120.dp)
+            val landscapeInputWidth = minOf(
+                availableContentWidth * 0.34f,
+                320.dp,
+            ).coerceAtLeast(220.dp)
+            val landscapeBlockSpacing = minOf(
+                availableContentWidth * 0.04f,
+                24.dp,
+            ).coerceAtLeast(12.dp)
 
-            Text(
-                text = "${state.cardIndex} / ${state.totalCards}",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(cardSize)
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        shape = RoundedCornerShape(20.dp),
-                    )
-                    .background(MaterialTheme.colorScheme.surface),
-                contentAlignment = Alignment.Center,
-            ) {
-                val pictureUrl = state.currentCard.imagePath.orEmpty()
-                if (pictureUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = pictureUrl,
-                        contentDescription = "Game card image",
-                        imageLoader = imageLoader,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    CardTextFallback(
-                        text = state.currentCard.answer,
-                        modifier = Modifier.fillMaxSize(),
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (!useLandscapeFeedbackOverlay) {
+                    FeedbackBanner(
+                        feedback = state.feedback,
+                        compact = compactMode,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth(),
                     )
                 }
 
-                Hint(
-                    text = state.currentCard.answer.uppercase(),
-                    visible = state.isHintVisible,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 12.dp),
-                )
-            }
-
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-            ) {
-                val checkButtonWidth = 120.dp
-                val buttonSpacing = 12.dp
-                val maxFieldWidth = (maxWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
-                val fieldWidth = minOf(cardSize, maxFieldWidth)
-
-                val desiredButtonOffset = (fieldWidth / 2) + buttonSpacing + (checkButtonWidth / 2)
-                val maxButtonOffset = (maxWidth / 2) - (checkButtonWidth / 2)
-                val buttonOffset = minOf(desiredButtonOffset, maxButtonOffset)
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .width(fieldWidth)
-                        .height(56.dp),
-                ) {
-                    OutlinedTextField(
-                        value = state.answerInput,
-                        onValueChange = {},
-                        modifier = Modifier.fillMaxSize(),
-                        textStyle = MaterialTheme.typography.bodyLarge,
-                        singleLine = true,
-                        readOnly = true,
-                    )
-                    Box(
+                if (isLandscape && isKeyboardVisible) {
+                    Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable { isKeyboardVisible = true },
-                    )
-                }
+                            .padding(top = feedbackReservedHeight),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier.width(landscapeCardSize + 12.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = "${state.cardIndex} / ${state.totalCards}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                                GameCard(
+                                    cardSize = landscapeCardSize,
+                                    imagePath = state.currentCard.imagePath.orEmpty(),
+                                    answer = state.currentCard.answer,
+                                    isHintVisible = state.isHintVisible,
+                                    imageLoader = imageLoader,
+                                )
+                            }
+                        }
 
-                Button(
-                    onClick = { onAction(GameScreenAction.OnCheckClick) },
-                    enabled = state.answerInput.isNotBlank(),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .offset(x = buttonOffset)
-                        .width(checkButtonWidth)
-                        .height(56.dp),
-                ) {
-                    Text("Отправить")
+                        Box(modifier = Modifier.width(landscapeBlockSpacing))
+
+                        Column(
+                            modifier = Modifier.width(landscapeInputWidth),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            AnswerInputSection(
+                                answerInput = state.answerInput,
+                                isStacked = true,
+                                availableWidth = landscapeInputWidth,
+                                fieldReferenceWidth = landscapeCardSize,
+                                onFieldClick = { isKeyboardVisible = true },
+                                onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                            )
+                        }
+                    }
+
+                    LandscapeFeedbackOverlay(
+                        feedback = state.feedback,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = feedbackReservedHeight),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        Text(
+                            text = "${state.cardIndex} / ${state.totalCards}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+
+                        GameCard(
+                            cardSize = portraitCardSize,
+                            imagePath = state.currentCard.imagePath.orEmpty(),
+                            answer = state.currentCard.answer,
+                            isHintVisible = state.isHintVisible,
+                            imageLoader = imageLoader,
+                        )
+
+                        AnswerInputSection(
+                            answerInput = state.answerInput,
+                            isStacked = useStackedInput,
+                            availableWidth = availableContentWidth,
+                            fieldReferenceWidth = portraitCardSize,
+                            onFieldClick = { isKeyboardVisible = true },
+                            onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                        )
+                    }
                 }
             }
         }
@@ -278,13 +320,13 @@ private fun ActiveGameContent(
             enter = fadeIn(animationSpec = tween(durationMillis = 180)),
             exit = fadeOut(animationSpec = tween(durationMillis = 120)),
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 6.dp, vertical = 4.dp),
         ) {
             TrainingKeyboard(
                 referenceText = state.currentCard.answer,
-                activeSymbols = emptySet(),
+                activeSymbols = state.activeSymbols,
                 onSymbolPressed = { symbol ->
                     onAction(
                         GameScreenAction.OnAnswerChanged(
@@ -311,10 +353,184 @@ private fun ActiveGameContent(
                     )
                 },
                 onSubmitPressed = { onAction(GameScreenAction.OnCheckClick) },
-                onSettingsPressed = {},
-                modifier = Modifier.fillMaxWidth(),
+                onSettingsPressed = {
+                    if (state.studentId.isNotBlank()) {
+                        onOpenKeyboardSettings(state.studentId)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = keyboardHeight, max = keyboardHeight),
             )
         }
+    }
+}
+
+@Composable
+private fun LandscapeFeedbackOverlay(
+    feedback: FeedbackUi?,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = feedback != null,
+        enter = fadeIn(animationSpec = tween(durationMillis = 180)),
+        exit = fadeOut(animationSpec = tween(durationMillis = 180)),
+        modifier = modifier,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = feedback?.emoji.orEmpty(),
+                style = MaterialTheme.typography.displayLarge,
+            )
+            Text(
+                text = feedback?.message.orEmpty(),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.94f))
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun GameCard(
+    cardSize: Dp,
+    imagePath: String,
+    answer: String,
+    isHintVisible: Boolean,
+    imageLoader: ImageLoader,
+) {
+    Box(
+        modifier = Modifier
+            .size(cardSize)
+            .clip(RoundedCornerShape(20.dp))
+            .border(
+                width = 2.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(20.dp),
+            )
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (imagePath.isNotBlank()) {
+            AsyncImage(
+                model = imagePath,
+                contentDescription = "Game card image",
+                imageLoader = imageLoader,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            CardTextFallback(
+                text = answer,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Hint(
+            text = answer.uppercase(),
+            visible = isHintVisible,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun AnswerInputSection(
+    answerInput: String,
+    isStacked: Boolean,
+    availableWidth: Dp,
+    fieldReferenceWidth: Dp,
+    onFieldClick: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    val checkButtonWidth = 120.dp
+    val buttonSpacing = 12.dp
+    val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
+    val fieldWidth = minOf(fieldReferenceWidth, maxFieldWidth)
+
+    if (isStacked) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = ((availableWidth - fieldWidth) / 2).coerceAtLeast(0.dp)),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            ReadOnlyAnswerField(
+                value = answerInput,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                onClick = onFieldClick,
+            )
+
+            Button(
+                onClick = onSubmit,
+                enabled = answerInput.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+            ) {
+                Text("Отправить")
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ReadOnlyAnswerField(
+                value = answerInput,
+                modifier = Modifier
+                    .width(fieldWidth)
+                    .height(56.dp),
+                onClick = onFieldClick,
+            )
+            Button(
+                onClick = onSubmit,
+                enabled = answerInput.isNotBlank(),
+                modifier = Modifier
+                    .padding(start = buttonSpacing)
+                    .width(checkButtonWidth)
+                    .height(56.dp),
+            ) {
+                Text("Отправить")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadOnlyAnswerField(
+    value: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            modifier = Modifier.fillMaxSize(),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            singleLine = true,
+            readOnly = true,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(onClick = onClick),
+        )
     }
 }
 
@@ -348,12 +564,13 @@ private fun CardTextFallback(
 @Composable
 private fun FeedbackBanner(
     feedback: FeedbackUi?,
+    compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(126.dp),
+            .height(if (feedback == null) 0.dp else if (compact) 72.dp else 126.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
         AnimatedVisibility(
@@ -374,11 +591,19 @@ private fun FeedbackBanner(
             ) {
                 Text(
                     text = feedback?.emoji ?: "",
-                    style = MaterialTheme.typography.displayLarge,
+                    style = if (compact) {
+                        MaterialTheme.typography.headlineLarge
+                    } else {
+                        MaterialTheme.typography.displayLarge
+                    },
                 )
                 Text(
                     text = feedback?.message ?: "",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = if (compact) {
+                        MaterialTheme.typography.titleMedium
+                    } else {
+                        MaterialTheme.typography.titleLarge
+                    },
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
@@ -477,6 +702,24 @@ private fun FinishedGameContent(
 
         Text(
             text = stringResource(Res.string.game_repeat_last_session_hint),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .fillMaxWidth(0.86f),
+        )
+
+        Button(
+            onClick = { onAction(GameScreenAction.OnRandomReviewClick) },
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .fillMaxWidth(0.86f),
+        ) {
+            Text(stringResource(Res.string.game_random_review))
+        }
+
+        Text(
+            text = stringResource(Res.string.game_random_review_hint),
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier

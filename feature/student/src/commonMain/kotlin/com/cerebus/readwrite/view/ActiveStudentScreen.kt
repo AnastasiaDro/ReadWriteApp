@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,9 @@ import readwriteapp.feature.student.generated.resources.active_student_studied_d
 import readwriteapp.feature.student.generated.resources.active_student_error_import_deck_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_open_archive_picker_failed
 import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
+import readwriteapp.feature.student.generated.resources.active_student_keyboard_settings
+import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
+import readwriteapp.feature.student.generated.resources.active_student_studied_letters
 
 @Composable
 fun ActiveStudentRoute(
@@ -57,6 +61,7 @@ fun ActiveStudentRoute(
     onOpenDeckList: (Boolean) -> Unit,
     onOpenChangeStudent: () -> Unit,
     onOpenSessionSettings: (String) -> Unit,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val viewModel = koinViewModel<ActiveStudentViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -119,6 +124,7 @@ fun ActiveStudentRoute(
         state = state,
         onAction = viewModel::onAction,
         onOpenSessionSettings = onOpenSessionSettings,
+        onOpenKeyboardSettings = onOpenKeyboardSettings,
     )
 }
 
@@ -127,6 +133,7 @@ private fun ActiveStudentScreen(
     state: ActiveStudentUiState,
     onAction: (ActiveStudentAction) -> Unit,
     onOpenSessionSettings: (String) -> Unit,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     if (state.isLoading) {
         Box(
@@ -207,6 +214,47 @@ private fun ActiveStudentScreen(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TextButton(
+                    onClick = { state.studentId?.let(onOpenKeyboardSettings) },
+                    enabled = state.studentId != null,
+                ) {
+                    Text(text = stringResource(Res.string.active_student_keyboard_settings))
+                }
+            }
+
+            Text(
+                text = stringResource(Res.string.active_student_studied_letters),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            if (state.activeLetters.isBlank()) {
+                Text(
+                    text = stringResource(Res.string.active_student_no_studied_letters),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            } else {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(state.activeLetters.lowercase().toList()) { letter ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                        ) {
+                            Text(
+                                text = letter.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
 
             Text(
                 text = stringResource(Res.string.active_student_active_decks),

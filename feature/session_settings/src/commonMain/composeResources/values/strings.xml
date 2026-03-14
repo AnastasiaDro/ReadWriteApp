@@ -11,6 +11,7 @@
     <string name="session_settings_save">Save</string>
     <string name="session_settings_saving">Saving...</string>
     <string name="session_settings_cancel">Cancel</string>
+    <string name="session_settings_keyboard">Keyboard settings</string>
     <string name="session_settings_load_error">Failed to load settings</string>
     <string name="session_settings_save_error">Failed to save settings</string>
 </resources>

@@ -1,0 +1,9 @@
+<resources>
+    <string name="keyboard_settings_title">Keyboard settings</string>
+    <string name="keyboard_settings_close">Close</string>
+    <string name="keyboard_settings_subtitle">Choose which letters should stay active for this student.</string>
+    <string name="keyboard_settings_selected">Studied letters</string>
+    <string name="keyboard_settings_empty">No letters selected yet</string>
+    <string name="keyboard_settings_russian">Russian layout</string>
+    <string name="keyboard_settings_english">English layout</string>
+</resources>

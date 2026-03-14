@@ -40,6 +40,7 @@ import readwriteapp.feature.session_settings.generated.resources.session_setting
 import readwriteapp.feature.session_settings.generated.resources.session_settings_allow_near_match
 import readwriteapp.feature.session_settings.generated.resources.session_settings_cancel
 import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold
+import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard
 import readwriteapp.feature.session_settings.generated.resources.session_settings_learn_more_step
 import readwriteapp.feature.session_settings.generated.resources.session_settings_load_error
 import readwriteapp.feature.session_settings.generated.resources.session_settings_max_new_per_day
@@ -55,6 +56,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SessionSettingsRoute(
     studentId: String,
+    onOpenKeyboardSettings: () -> Unit,
     onClose: () -> Unit,
     onError: (String) -> Unit = {},
 ) {
@@ -82,6 +84,7 @@ fun SessionSettingsRoute(
     SessionSettingsScreen(
         state = state,
         onIntent = viewModel::onIntent,
+        onOpenKeyboardSettings = onOpenKeyboardSettings,
     )
 }
 
@@ -89,6 +92,7 @@ fun SessionSettingsRoute(
 fun SessionSettingsScreen(
     state: SessionSettingsState,
     onIntent: (SessionSettingsIntent) -> Unit,
+    onOpenKeyboardSettings: () -> Unit,
 ) {
     if (state.isLoading) {
         Column(
@@ -115,6 +119,13 @@ fun SessionSettingsScreen(
             text = stringResource(Res.string.session_settings_title),
             style = MaterialTheme.typography.headlineSmall,
         )
+
+        TextButton(
+            onClick = onOpenKeyboardSettings,
+            modifier = Modifier.align(Alignment.Start),
+        ) {
+            Text(stringResource(Res.string.session_settings_keyboard))
+        }
 
         NumericField(
             label = stringResource(Res.string.session_settings_new_cards),

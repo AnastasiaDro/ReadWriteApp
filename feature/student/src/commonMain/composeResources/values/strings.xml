@@ -16,11 +16,14 @@
     <string name="active_student_change">Change</string>
     <string name="active_student_import">Import deck</string>
     <string name="active_student_learning_settings">⚙ Learning settings</string>
+    <string name="active_student_keyboard_settings">Keyboard</string>
     <string name="active_student_fallback_name">Student</string>
     <string name="active_student_active_decks">Active decks</string>
     <string name="active_student_studied_decks">Studied decks</string>
     <string name="active_student_start">▶ Start</string>
     <string name="active_student_other_decks">Your other decks:</string>
+    <string name="active_student_studied_letters">Studied letters</string>
+    <string name="active_student_no_studied_letters">No studied letters yet</string>
     <string name="active_student_no_active_decks">No active decks yet</string>
     <string name="active_student_no_decks">No decks yet</string>
     <string name="active_student_more">More decks</string>

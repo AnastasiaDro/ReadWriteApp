@@ -10,6 +10,7 @@ enum class Screens(val route: String) {
     DECK("deck"),
     GAME("game"),
     SESSION_SETTINGS("session_settings"),
+    KEYBOARD_SETTINGS("keyboard_settings"),
     AUTHORIZATION("authorization"),
     FILL_USER_PROFILE("fill_user_profile"),
     SPLASH("splash"),

@@ -1,6 +1,8 @@
 <resources>
     <string name="game_repeat_last_session">Повторить последнюю сессию</string>
     <string name="game_repeat_last_session_hint">Начать заново с тем же набором и порядком карточек из последней завершенной сессии.</string>
+    <string name="game_random_review">Повторить случайные карточки</string>
+    <string name="game_random_review_hint">Взять 10 случайных изученных карточек из этой колоды. Сначала карточки, которые уже повторяли сегодня, потом другие изученные. Этот режим не обновляет интервалы SRS.</string>
     <string name="game_learn_more">Учить еще</string>
     <string name="game_learn_more_hint">Увеличить лимиты сессии и добавить новые карточки и повторения, срок которых уже наступил.</string>
     <string name="game_back_to_student">Вернуться на экран пользователя</string>

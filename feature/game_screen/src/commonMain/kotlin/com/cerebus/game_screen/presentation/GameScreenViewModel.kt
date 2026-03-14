@@ -12,11 +12,13 @@ import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerAndRescheduleUseCase
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerCommand
+import com.cerebus.core.utils.localStartOfDayMillis
 import com.cerebus.core.utils.nowMillis
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
+import com.cerebus.data.student.domain.repositories.StudentRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,12 +33,14 @@ private const val REVIEW_TO_NEW_RATIO = 3
 private const val DEFAULT_LEARN_MORE_STEP = 5
 private const val MIN_GUIDED_HINT_THRESHOLD = 0
 private const val MAX_GUIDED_HINT_THRESHOLD = 5
+private const val RANDOM_REVIEW_LIMIT = 10
 
 class GameScreenViewModel(
     deckIds: List<String>,
     private val flashcardRepository: FlashcardRepository,
     private val deckRepository: DeckRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val studentRepository: StudentRepository,
     private val studentPrefsRepository: StudentPrefsRepository,
     private val cardProgressRepository: CardProgressRepository,
     private val submitAnswerAndRescheduleUseCase: SubmitAnswerAndRescheduleUseCase,
@@ -62,6 +66,7 @@ class GameScreenViewModel(
             is GameScreenAction.OnAnswerChanged -> updateAnswer(action.value)
             GameScreenAction.OnCheckClick -> checkAnswer()
             GameScreenAction.OnRetryClick -> repeatLastSession()
+            GameScreenAction.OnRandomReviewClick -> repeatRandomStudiedCards()
             GameScreenAction.OnLearnMoreClick -> learnMore()
             GameScreenAction.OnBackToStudentClick -> {
                 _effects.value = GameScreenEffect.OpenActiveStudent
@@ -96,6 +101,10 @@ class GameScreenViewModel(
                 title = buildDeckTitle(selectedDeckIds, decksById),
             )
             val activeStudentId = preferencesRepository.getLastActiveStudentId().orEmpty()
+            val activeSymbols = loadActiveSymbols(
+                studentId = activeStudentId,
+                studentRepository = studentRepository,
+            )
 
             val sessionCards = buildSessionCards(
                 deckIds = selectedDeckIds,
@@ -116,6 +125,8 @@ class GameScreenViewModel(
                 deck = deckData,
                 cards = sessionCards,
                 studentId = activeStudentId,
+                activeSymbols = activeSymbols,
+                sessionMode = GameSessionMode.Srs,
                 isHintVisible = initialHintVisible(sessionCards),
                 cardShownAtEpochMillis = nowMillis(),
                 attemptIndex = 1,
@@ -149,7 +160,7 @@ class GameScreenViewModel(
         val card = current.currentCard ?: return
         val studentId = current.studentId
 
-        if (studentId.isBlank()) {
+        if (studentId.isBlank() || current.sessionMode == GameSessionMode.RandomReview) {
             val isCorrect = current.answerInput.trim().equals(card.answer.trim(), ignoreCase = true)
             if (isCorrect) handleCorrectAnswer(current) else handleWrongAnswer(current)
             return
@@ -262,6 +273,42 @@ class GameScreenViewModel(
         }
     }
 
+    private fun repeatRandomStudiedCards() {
+        feedbackJob?.cancel()
+
+        val current = session ?: return
+        viewModelScope.launch {
+            val randomReviewCards = buildRandomReviewCards(
+                deckIds = selectedDeckIds,
+                studentId = current.studentId,
+                flashcardRepository = flashcardRepository,
+                cardProgressRepository = cardProgressRepository,
+                studentPrefsRepository = studentPrefsRepository,
+            ).ifEmpty {
+                current.cards.shuffled(Random(nowMillis())).take(RANDOM_REVIEW_LIMIT)
+            }
+
+            saveLastSessionCardsSnapshot(
+                studentId = current.studentId,
+                deckIds = selectedDeckIds,
+                sessionCards = randomReviewCards,
+                preferencesRepository = preferencesRepository,
+            )
+
+            val restarted = restartSessionWithCards(
+                current = current,
+                cards = randomReviewCards,
+                sessionMode = GameSessionMode.RandomReview,
+            )
+            session = restarted
+            _uiState.value = if (restarted.cards.isEmpty()) {
+                restarted.toFinishedUiState()
+            } else {
+                restarted.toActiveUiState()
+            }
+        }
+    }
+
     private fun learnMore() {
         feedbackJob?.cancel()
 
@@ -288,6 +335,7 @@ class GameScreenViewModel(
             val restarted = restartSessionWithCards(
                 current = current,
                 cards = sessionCards,
+                sessionMode = GameSessionMode.Srs,
             )
             session = restarted
             _uiState.value = if (restarted.cards.isEmpty()) {
@@ -308,9 +356,11 @@ class GameScreenViewModel(
     private fun restartSessionWithCards(
         current: GameSessionData,
         cards: List<GameCardData>,
+        sessionMode: GameSessionMode = current.sessionMode,
     ): GameSessionData {
         return current.copy(
             cards = cards,
+            sessionMode = sessionMode,
             currentIndex = 0,
             correctAnswers = 0,
             answerInput = "",
@@ -334,10 +384,17 @@ private data class GameCardData(
     val showHintInitially: Boolean = false,
 )
 
+private enum class GameSessionMode {
+    Srs,
+    RandomReview,
+}
+
 private data class GameSessionData(
     val deck: GameDeckData,
     val cards: List<GameCardData>,
     val studentId: String,
+    val activeSymbols: Set<String>,
+    val sessionMode: GameSessionMode,
     val currentIndex: Int = 0,
     val correctAnswers: Int = 0,
     val answerInput: String = "",
@@ -504,6 +561,73 @@ private suspend fun restoreLastSessionCards(
     return savedCardIds.mapNotNull { cardId -> cardsById[cardId] }
 }
 
+private suspend fun buildRandomReviewCards(
+    deckIds: List<String>,
+    studentId: String,
+    flashcardRepository: FlashcardRepository,
+    cardProgressRepository: CardProgressRepository,
+    studentPrefsRepository: StudentPrefsRepository,
+): List<GameCardData> {
+    if (studentId.isBlank()) return emptyList()
+
+    val progressByCardId = cardProgressRepository.observeProgress(studentId)
+        .first()
+        .associateBy { it.cardId }
+    val guidedHintThreshold = runCatching { studentPrefsRepository.getPrefs(studentId).guidedHintSuccessThreshold }
+        .getOrDefault(2)
+        .coerceIn(MIN_GUIDED_HINT_THRESHOLD, MAX_GUIDED_HINT_THRESHOLD)
+    val todayStartMillis = localStartOfDayMillis()
+    val random = Random(nowMillis())
+
+    val eligibleCards = buildList {
+        deckIds.forEach { deckId ->
+            flashcardRepository.getFlashcardsByDeckId(deckId).forEach { flashcard ->
+                val progress = progressByCardId[flashcard.id] ?: return@forEach
+                if (progress.state == CardState.NEW) return@forEach
+
+                add(
+                    GameCardWithProgress(
+                        card = GameCardData(
+                            deckId = deckId,
+                            id = flashcard.id,
+                            answer = flashcard.name,
+                            imagePath = flashcard.imageUrl.ifBlank { null },
+                            showHintInitially = shouldShowHintInitially(
+                                progress = progress,
+                                guidedHintThreshold = guidedHintThreshold,
+                            ),
+                        ),
+                        progress = progress,
+                    )
+                )
+            }
+        }
+    }
+
+    val reviewedToday = eligibleCards
+        .filter { candidate ->
+            val lastReviewed = candidate.progress.lastReviewedAtEpochMillis
+            lastReviewed != null && lastReviewed >= todayStartMillis
+        }
+        .shuffled(random)
+        .take(RANDOM_REVIEW_LIMIT)
+
+    val reviewedTodayIds = reviewedToday.mapTo(mutableSetOf()) { it.card.id }
+    val otherStudied = eligibleCards
+        .filterNot { it.card.id in reviewedTodayIds }
+        .shuffled(random)
+        .take((RANDOM_REVIEW_LIMIT - reviewedToday.size).coerceAtLeast(0))
+
+    return (reviewedToday + otherStudied)
+        .map { it.card }
+        .shuffled(random)
+}
+
+private data class GameCardWithProgress(
+    val card: GameCardData,
+    val progress: CardProgress,
+)
+
 private fun buildDeckTitle(
     deckIds: List<String>,
     decksById: Map<String, Deck?>,
@@ -526,10 +650,25 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         ),
         cardIndex = currentIndex + 1,
         totalCards = cards.size,
+        studentId = studentId,
+        activeSymbols = activeSymbols,
         answerInput = answerInput,
         isHintVisible = isHintVisible,
         feedback = feedback?.toUi(),
     )
+}
+
+private suspend fun loadActiveSymbols(
+    studentId: String,
+    studentRepository: StudentRepository,
+): Set<String> {
+    if (studentId.isBlank()) return emptySet()
+    return studentRepository.getActiveLettersById(studentId)
+        .orEmpty()
+        .lowercase()
+        .filter { it.isLetter() }
+        .map { it.toString() }
+        .toSet()
 }
 
 private fun GameSessionData.toFinishedUiState(): GameUiState.Finished {

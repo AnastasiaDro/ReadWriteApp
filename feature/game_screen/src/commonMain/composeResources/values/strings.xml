@@ -1,6 +1,8 @@
 <resources>
     <string name="game_repeat_last_session">Repeat last session</string>
     <string name="game_repeat_last_session_hint">Start over with the same cards and order from your latest completed session.</string>
+    <string name="game_random_review">Repeat random cards</string>
+    <string name="game_random_review_hint">Take 10 random studied cards from this deck. First cards reviewed today, then other studied cards. This mode does not update SRS intervals.</string>
     <string name="game_learn_more">Learn more</string>
     <string name="game_learn_more_hint">Increase session limits and add extra new and currently due review cards.</string>
     <string name="game_back_to_student">Back to student screen</string>

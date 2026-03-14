@@ -12,6 +12,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.Modifier
+import com.cerebus.customkeyboard.KeyboardSettingsRoute
+import com.cerebus.customkeyboard.navigation.KeyboardSettingsNavigationState
 import com.cerebus.core.ui.insets.bottomSystemBarPadding
 import com.cerebus.core.ui.insets.topSystemBarPadding
 import com.cerebus.create_screen.navigation.CreateNavigationState
@@ -92,6 +94,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                         SessionSettingsNavigationState.selectedStudentId = studentId
                         navController.navigate(Screens.SESSION_SETTINGS.route)
                     },
+                    onOpenKeyboardSettings = { studentId ->
+                        KeyboardSettingsNavigationState.selectedStudentId = studentId
+                        navController.navigate(Screens.KEYBOARD_SETTINGS.route)
+                    },
                 )
             }
             composable(Screens.CHANGE_STUDENT.route) {
@@ -161,6 +167,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     deckIds = GameSessionNavigationState.selectedDeckIds.ifEmpty {
                         listOfNotNull(DeckNavigationState.selectedDeckId.takeIf { it.isNotBlank() })
                     },
+                    onOpenKeyboardSettings = { studentId ->
+                        KeyboardSettingsNavigationState.selectedStudentId = studentId
+                        navController.navigate(Screens.KEYBOARD_SETTINGS.route)
+                    },
                 )
             }
             composable(Screens.SESSION_SETTINGS.route) {
@@ -179,6 +189,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 }
                 SessionSettingsRoute(
                     studentId = studentId,
+                    onOpenKeyboardSettings = {
+                        KeyboardSettingsNavigationState.selectedStudentId = studentId
+                        navController.navigate(Screens.KEYBOARD_SETTINGS.route)
+                    },
                     onClose = {
                         val popped = navController.popBackStack()
                         if (!popped) {
@@ -187,6 +201,34 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                             }
                         }
                         SessionSettingsNavigationState.selectedStudentId = null
+                    },
+                )
+            }
+            composable(Screens.KEYBOARD_SETTINGS.route) {
+                val studentId = KeyboardSettingsNavigationState.selectedStudentId
+                if (studentId.isNullOrBlank()) {
+                    KeyboardSettingsNavigationState.selectedStudentId = null
+                    LaunchedEffect(Unit) {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                    return@composable
+                }
+
+                KeyboardSettingsRoute(
+                    studentId = studentId,
+                    onClose = {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                                launchSingleTop = true
+                            }
+                        }
+                        KeyboardSettingsNavigationState.selectedStudentId = null
                     },
                 )
             }

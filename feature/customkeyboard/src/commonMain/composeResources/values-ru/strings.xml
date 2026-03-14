@@ -1,0 +1,9 @@
+<resources>
+    <string name="keyboard_settings_title">Настройки клавиатуры</string>
+    <string name="keyboard_settings_close">Закрыть</string>
+    <string name="keyboard_settings_subtitle">Выберите, какие буквы должны оставаться активными для этого ученика.</string>
+    <string name="keyboard_settings_selected">Изученные буквы</string>
+    <string name="keyboard_settings_empty">Пока не выбрано ни одной буквы</string>
+    <string name="keyboard_settings_russian">Русская раскладка</string>
+    <string name="keyboard_settings_english">Английская раскладка</string>
+</resources>

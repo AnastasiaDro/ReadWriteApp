@@ -9,6 +9,8 @@ sealed interface GameUiState {
         val currentCard: CardUi,
         val cardIndex: Int,
         val totalCards: Int,
+        val studentId: String,
+        val activeSymbols: Set<String>,
         val answerInput: String,
         val isHintVisible: Boolean,
         val feedback: FeedbackUi? = null,

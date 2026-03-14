@@ -2,6 +2,7 @@ package com.cerebus.readwrite.di
 
 import com.cerebus.readwrite.di.core.databaseModule
 import com.cerebus.readwrite.di.feature.createScreenModule
+import com.cerebus.readwrite.di.feature.customKeyboardModule
 import com.cerebus.readwrite.di.feature.decksModule
 import com.cerebus.readwrite.di.feature.flashcardsModule
 import com.cerebus.readwrite.di.feature.gameScreenModule
@@ -23,6 +24,7 @@ val modules = listOf<Module>(
     preferencesModule,
     studyProgressModule,
     sessionSettingsModule,
+    customKeyboardModule,
     createScreenModule,
     studentFeatureModule,
 )
