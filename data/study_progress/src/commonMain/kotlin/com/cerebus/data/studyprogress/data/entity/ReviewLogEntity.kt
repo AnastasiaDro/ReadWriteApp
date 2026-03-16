@@ -46,32 +46,32 @@ data class ReviewLogEntity(
     val userInputRaw: String,
     @ColumnInfo(name = "user_input_normalized")
     val userInputNormalized: String,
-    @ColumnInfo(name = "best_expected_normalized")
-    val bestExpectedNormalized: String,
-    val similarity: Double,
-    @ColumnInfo(name = "is_exact")
-    val isExact: Boolean,
-    @ColumnInfo(name = "match_type")
-    val matchType: Int,
-    @ColumnInfo(name = "used_hint")
-    val usedHint: Boolean,
-    @ColumnInfo(name = "attempt_index")
-    val attemptIndex: Int,
-    @ColumnInfo(name = "state_before")
-    val stateBefore: Int,
-    @ColumnInfo(name = "state_after")
-    val stateAfter: Int,
-    val grade: Int,
-    @ColumnInfo(name = "scheduled_due_at_before_epoch_millis")
-    val scheduledDueAtBeforeEpochMillis: Long,
+    @ColumnInfo(name = "expected_answer_normalized")
+    val expectedAnswerNormalized: String,
+    @ColumnInfo(name = "is_correct")
+    val isCorrect: Boolean,
+    @ColumnInfo(name = "hint_level")
+    val hintLevel: Int,
+    @ColumnInfo(name = "wrong_press_count")
+    val wrongPressCount: Int,
+    @ColumnInfo(name = "duration_ms")
+    val durationMs: Long,
+    @ColumnInfo(name = "copy_stage")
+    val copyStage: Boolean,
+    @ColumnInfo(name = "level_before")
+    val levelBefore: Int,
+    @ColumnInfo(name = "level_after")
+    val levelAfter: Int,
+    @ColumnInfo(name = "recall_success_streak_before")
+    val recallSuccessStreakBefore: Int,
+    @ColumnInfo(name = "recall_success_streak_after")
+    val recallSuccessStreakAfter: Int,
+    @ColumnInfo(name = "copy_success_streak_before")
+    val copySuccessStreakBefore: Int,
+    @ColumnInfo(name = "copy_success_streak_after")
+    val copySuccessStreakAfter: Int,
+    @ColumnInfo(name = "due_at_before_epoch_millis")
+    val dueAtBeforeEpochMillis: Long,
     @ColumnInfo(name = "due_at_after_epoch_millis")
     val dueAtAfterEpochMillis: Long,
-    @ColumnInfo(name = "interval_before_days")
-    val intervalBeforeDays: Double,
-    @ColumnInfo(name = "interval_after_days")
-    val intervalAfterDays: Double,
-    @ColumnInfo(name = "ease_before")
-    val easeBefore: Double,
-    @ColumnInfo(name = "ease_after")
-    val easeAfter: Double,
 )

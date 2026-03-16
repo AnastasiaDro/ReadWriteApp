@@ -1,7 +1,6 @@
 package com.cerebus.data.studyprogress.data
 
 import com.cerebus.core.game_engine.domain.model.CardProgress
-import com.cerebus.core.game_engine.domain.model.Grade
 import com.cerebus.core.game_engine.domain.model.ReviewLog
 import com.cerebus.core.game_engine.domain.model.StudentSrsPrefs
 import com.cerebus.core.game_engine.domain.repository.AtomicProgressLogRepository
@@ -11,7 +10,6 @@ import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.data.studyprogress.data.dao.StudyProgressDao
 import com.cerebus.data.studyprogress.data.mapper.toDomain
 import com.cerebus.data.studyprogress.data.mapper.toEntity
-import com.cerebus.data.studyprogress.data.mapper.toGrade
 import kotlinx.coroutines.flow.map
 
 class RoomCardProgressRepository(
@@ -47,35 +45,6 @@ class RoomReviewLogRepository(
 ) : ReviewLogRepository {
     override suspend fun insertLog(log: ReviewLog) {
         dao.insertReviewLog(log.toEntity())
-    }
-
-    override suspend fun getRecentGrades(
-        studentId: String,
-        cardId: String,
-        limit: Int,
-    ): List<Grade> {
-        if (limit <= 0) return emptyList()
-        return dao.getRecentGrades(
-            studentId = studentId,
-            cardId = cardId,
-            limit = limit,
-        ).map { it.toGrade() }
-    }
-
-    override suspend fun getRecentGradesByCards(
-        studentId: String,
-        cardIds: List<String>,
-        limitPerCard: Int,
-    ): Map<String, List<Grade>> {
-        if (cardIds.isEmpty() || limitPerCard <= 0) return emptyMap()
-
-        return dao.getRecentGradesForCards(
-            studentId = studentId,
-            cardIds = cardIds,
-        ).groupBy { row -> row.cardId }
-            .mapValues { (_, rows) ->
-                rows.take(limitPerCard).map { row -> row.grade.toGrade() }
-            }
     }
 }
 

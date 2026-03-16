@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -25,6 +26,7 @@ import com.cerebus.data.decks.domain.models.Deck
 @Composable
 fun DeckInlineItem(
     deck: Deck,
+    supportingText: String? = null,
     onClick: () -> Unit,
 ) {
     val imageLoader = ImageLoader.Builder(LocalPlatformContext.current).build()
@@ -59,11 +61,23 @@ fun DeckInlineItem(
                 )
             }
         }
-        Text(
-            text = deck.name,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.widthIn(max = 140.dp),
-            maxLines = 1,
-        )
+        Column(
+            modifier = Modifier.widthIn(max = 160.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = deck.name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+            )
+            if (!supportingText.isNullOrBlank()) {
+                Text(
+                    text = supportingText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }

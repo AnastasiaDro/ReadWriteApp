@@ -12,6 +12,8 @@ sealed interface GameUiState {
         val cardIndex: Int,
         val totalCards: Int,
         val studentId: String,
+        val isPracticeMode: Boolean,
+        val learningStage: TypingLearningStage,
         val activeSymbols: Set<String>,
         val preventWrongKeyPress: Boolean,
         val isShiftEnabled: Boolean,
@@ -20,6 +22,12 @@ sealed interface GameUiState {
         val inputFeedbackType: TrainingKeyboardFeedbackType? = null,
         val answerInput: String,
         val isHintVisible: Boolean,
+        val isSimplifiedKeyboardEnabled: Boolean = false,
+        val copySuccessStreak: Int = 0,
+        val wrongPressCount: Int = 0,
+        val usedShowWord: Boolean = false,
+        val usedSimplifiedKeyboard: Boolean = false,
+        val lastHintLevel: HintLevel? = null,
         val feedback: FeedbackUi? = null,
     ) : GameUiState
 

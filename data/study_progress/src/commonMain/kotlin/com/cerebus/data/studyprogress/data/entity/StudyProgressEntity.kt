@@ -36,20 +36,19 @@ data class StudyProgressEntity(
     val studentId: String,
     @ColumnInfo(name = "card_id")
     val cardId: String,
-    val state: Int,
+    val level: Int,
     @ColumnInfo(name = "due_at_epoch_millis")
     val dueAtEpochMillis: Long,
-    @ColumnInfo(name = "interval_days")
-    val intervalDays: Double,
-    val ease: Double,
-    @ColumnInfo(name = "learning_step_index")
-    val learningStepIndex: Int,
-    val reps: Int,
-    val lapses: Int,
+    @ColumnInfo(name = "recall_success_streak")
+    val recallSuccessStreak: Int,
+    @ColumnInfo(name = "copy_success_streak")
+    val copySuccessStreak: Int,
     @ColumnInfo(name = "last_reviewed_at_epoch_millis")
     val lastReviewedAtEpochMillis: Long?,
-    @ColumnInfo(name = "last_grade")
-    val lastGrade: Int?,
-    @ColumnInfo(name = "guided_hint_success_count")
-    val guidedHintSuccessCount: Int,
+    @ColumnInfo(name = "last_hint_level")
+    val lastHintLevel: Int?,
+    @ColumnInfo(name = "last_duration_ms")
+    val lastDurationMs: Long?,
+    @ColumnInfo(name = "last_wrong_press_count")
+    val lastWrongPressCount: Int,
 )

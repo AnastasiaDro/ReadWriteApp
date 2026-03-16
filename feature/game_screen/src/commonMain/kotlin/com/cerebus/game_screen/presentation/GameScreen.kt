@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,6 +45,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,6 +69,9 @@ import readwriteapp.feature.game_screen.generated.resources.game_learn_more_hint
 import readwriteapp.feature.game_screen.generated.resources.game_random_review
 import readwriteapp.feature.game_screen.generated.resources.game_random_review_hint
 import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session_hint
+import readwriteapp.feature.game_screen.generated.resources.game_help_show_word
+import readwriteapp.feature.game_screen.generated.resources.game_help_simplify_keyboard
+import readwriteapp.feature.game_screen.generated.resources.game_practice_mode
 import readwriteapp.feature.game_screen.generated.resources.Res
 import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session
 
@@ -189,6 +197,9 @@ private fun ActiveGameContent(
         ) {
             val compactMode = isKeyboardVisible || isLandscape
             val useLandscapeFeedbackOverlay = isLandscape
+            val showShowWordToggle = state.learningStage == TypingLearningStage.Recall
+            val showSimplifyToggle = true
+            val helpToggleCount = (if (showShowWordToggle) 1 else 0) + (if (showSimplifyToggle) 1 else 0)
             val availableContentWidth = maxWidth
             val availableContentHeight = maxHeight
             val feedbackReservedHeight = when {
@@ -198,7 +209,12 @@ private fun ActiveGameContent(
                 else -> 126.dp
             }
             val useStackedInput = isLandscape || maxWidth < 420.dp
-            val inputSectionHeight = if (useStackedInput) 124.dp else 56.dp
+            val inputSectionHeight = when {
+                useStackedInput && helpToggleCount > 0 -> if (helpToggleCount > 1) 196.dp else 152.dp
+                useStackedInput -> 124.dp
+                helpToggleCount > 0 -> if (helpToggleCount > 1) 128.dp else 104.dp
+                else -> 56.dp
+            }
             val counterHeight = 24.dp
             val verticalSpacing = if (compactMode) 12.dp else 18.dp
             val portraitCardSize = minOf(
@@ -245,6 +261,10 @@ private fun ActiveGameContent(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
                             ) {
+                                PracticeModeBadge(
+                                    visible = state.isPracticeMode,
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
                                 Text(
                                     text = "${state.cardIndex} / ${state.totalCards}",
                                     style = MaterialTheme.typography.labelLarge,
@@ -272,12 +292,22 @@ private fun ActiveGameContent(
                             answerInput = state.answerInput,
                             expectedAnswer = state.currentCard.answer,
                             inputFeedbackType = state.inputFeedbackType,
+                            showShowWordToggle = showShowWordToggle,
+                            showSimplifyToggle = showSimplifyToggle,
+                            isShowWordEnabled = state.isHintVisible,
+                            isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                            usedShowWord = state.usedShowWord,
+                            usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
                             isStacked = true,
                             availableWidth = landscapeInputWidth,
                             fieldReferenceWidth = landscapeCardSize,
-                                onFieldClick = { isKeyboardVisible = true },
-                                onSubmit = { onAction(GameScreenAction.OnCheckClick) },
-                            )
+                            onFieldClick = { isKeyboardVisible = true },
+                            onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                            onShowWordToggle = { onAction(GameScreenAction.OnShowWordHelpToggled(it)) },
+                            onSimplifyKeyboardToggle = {
+                                onAction(GameScreenAction.OnSimplifyKeyboardHelpToggled(it))
+                            },
+                        )
                         }
                     }
 
@@ -293,6 +323,10 @@ private fun ActiveGameContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly,
                     ) {
+                        PracticeModeBadge(
+                            visible = state.isPracticeMode,
+                        )
+
                         Text(
                             text = "${state.cardIndex} / ${state.totalCards}",
                             style = MaterialTheme.typography.labelLarge,
@@ -311,11 +345,21 @@ private fun ActiveGameContent(
                             answerInput = state.answerInput,
                             expectedAnswer = state.currentCard.answer,
                             inputFeedbackType = state.inputFeedbackType,
+                            showShowWordToggle = showShowWordToggle,
+                            showSimplifyToggle = showSimplifyToggle,
+                            isShowWordEnabled = state.isHintVisible,
+                            isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                            usedShowWord = state.usedShowWord,
+                            usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
                             isStacked = useStackedInput,
                             availableWidth = availableContentWidth,
                             fieldReferenceWidth = portraitCardSize,
                             onFieldClick = { isKeyboardVisible = true },
                             onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                            onShowWordToggle = { onAction(GameScreenAction.OnShowWordHelpToggled(it)) },
+                            onSimplifyKeyboardToggle = {
+                                onAction(GameScreenAction.OnSimplifyKeyboardHelpToggled(it))
+                            },
                         )
                     }
                 }
@@ -339,13 +383,7 @@ private fun ActiveGameContent(
                 feedbackType = state.keyboardFeedbackType,
                 onShiftChanged = { onAction(GameScreenAction.OnShiftChanged(it)) },
                 onSymbolPressed = { symbol -> onAction(GameScreenAction.OnKeyboardSymbolPressed(symbol)) },
-                onBackspacePressed = {
-                    onAction(
-                        GameScreenAction.OnAnswerChanged(
-                            state.answerInput.dropLast(1),
-                        )
-                    )
-                },
+                onBackspacePressed = { onAction(GameScreenAction.OnBackspacePressed) },
                 onSpacePressed = {
                     if (!state.answerInput.endsWith(" ")) {
                         onAction(GameScreenAction.OnKeyboardSymbolPressed(" "))
@@ -362,6 +400,30 @@ private fun ActiveGameContent(
                     .heightIn(min = keyboardHeight, max = keyboardHeight),
             )
         }
+    }
+}
+
+@Composable
+private fun PracticeModeBadge(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(animationSpec = tween(durationMillis = 180)),
+        exit = fadeOut(animationSpec = tween(durationMillis = 120)),
+    ) {
+        Text(
+            text = stringResource(Res.string.game_practice_mode),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        )
     }
 }
 
@@ -454,11 +516,19 @@ private fun AnswerInputSection(
     answerInput: String,
     expectedAnswer: String,
     inputFeedbackType: TrainingKeyboardFeedbackType?,
+    showShowWordToggle: Boolean,
+    showSimplifyToggle: Boolean,
+    isShowWordEnabled: Boolean,
+    isSimplifiedKeyboardEnabled: Boolean,
+    usedShowWord: Boolean,
+    usedSimplifiedKeyboard: Boolean,
     isStacked: Boolean,
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
+    onShowWordToggle: (Boolean) -> Unit,
+    onSimplifyKeyboardToggle: (Boolean) -> Unit,
 ) {
     val checkButtonWidth = 120.dp
     val buttonSpacing = 12.dp
@@ -492,33 +562,135 @@ private fun AnswerInputSection(
             ) {
                 Text("Отправить")
             }
-        }
-    } else {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ReadOnlyAnswerField(
-                value = answerInput,
-                expectedAnswer = expectedAnswer,
-                inputFeedbackType = inputFeedbackType,
-                modifier = Modifier
-                    .width(fieldWidth)
-                    .height(56.dp),
-                onClick = onFieldClick,
-            )
-            Button(
-                onClick = onSubmit,
-                enabled = answerInput.isNotBlank(),
-                modifier = Modifier
-                    .padding(start = buttonSpacing)
-                    .width(checkButtonWidth)
-                    .height(56.dp),
-            ) {
-                Text("Отправить")
+
+            if (showShowWordToggle || showSimplifyToggle) {
+                HelpTogglesSection(
+                    showShowWordToggle = showShowWordToggle,
+                    showSimplifyToggle = showSimplifyToggle,
+                    isShowWordEnabled = isShowWordEnabled,
+                    isSimplifiedKeyboardEnabled = isSimplifiedKeyboardEnabled,
+                    usedShowWord = usedShowWord,
+                    usedSimplifiedKeyboard = usedSimplifiedKeyboard,
+                    modifier = Modifier.fillMaxWidth(),
+                    onShowWordToggle = onShowWordToggle,
+                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
+                )
             }
         }
+    } else {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ReadOnlyAnswerField(
+                    value = answerInput,
+                    expectedAnswer = expectedAnswer,
+                    inputFeedbackType = inputFeedbackType,
+                    modifier = Modifier
+                        .width(fieldWidth)
+                        .height(56.dp),
+                    onClick = onFieldClick,
+                )
+                Button(
+                    onClick = onSubmit,
+                    enabled = answerInput.isNotBlank(),
+                    modifier = Modifier
+                        .padding(start = buttonSpacing)
+                        .width(checkButtonWidth)
+                        .height(56.dp),
+                ) {
+                    Text("Отправить")
+                }
+            }
+
+            if (showShowWordToggle || showSimplifyToggle) {
+                HelpTogglesSection(
+                    showShowWordToggle = showShowWordToggle,
+                    showSimplifyToggle = showSimplifyToggle,
+                    isShowWordEnabled = isShowWordEnabled,
+                    isSimplifiedKeyboardEnabled = isSimplifiedKeyboardEnabled,
+                    usedShowWord = usedShowWord,
+                    usedSimplifiedKeyboard = usedSimplifiedKeyboard,
+                    modifier = Modifier.width(fieldWidth + checkButtonWidth + buttonSpacing),
+                    onShowWordToggle = onShowWordToggle,
+                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HelpTogglesSection(
+    showShowWordToggle: Boolean,
+    showSimplifyToggle: Boolean,
+    isShowWordEnabled: Boolean,
+    isSimplifiedKeyboardEnabled: Boolean,
+    usedShowWord: Boolean,
+    usedSimplifiedKeyboard: Boolean,
+    onShowWordToggle: (Boolean) -> Unit,
+    onSimplifyKeyboardToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (showShowWordToggle) {
+            HelpToggleRow(
+                label = stringResource(Res.string.game_help_show_word),
+                checked = isShowWordEnabled,
+                wasUsed = usedShowWord,
+                onCheckedChange = onShowWordToggle,
+            )
+        }
+
+        if (showSimplifyToggle) {
+            HelpToggleRow(
+                label = stringResource(Res.string.game_help_simplify_keyboard),
+                checked = isSimplifiedKeyboardEnabled,
+                wasUsed = usedSimplifiedKeyboard,
+                onCheckedChange = onSimplifyKeyboardToggle,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HelpToggleRow(
+    label: String,
+    checked: Boolean,
+    wasUsed: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            color = if (wasUsed) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }
 
@@ -530,10 +702,19 @@ private fun ReadOnlyAnswerField(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val displayedValue = remember(value, expectedAnswer) {
+    val currentSlotBackgroundColor = MaterialTheme.colorScheme.secondaryContainer
+    val currentSlotTextColor = MaterialTheme.colorScheme.onSecondaryContainer
+    val displayedValue = remember(
+        value,
+        expectedAnswer,
+        currentSlotBackgroundColor,
+        currentSlotTextColor,
+    ) {
         buildAnswerProgressMask(
             answerInput = value,
             expectedAnswer = expectedAnswer,
+            currentSlotBackgroundColor = currentSlotBackgroundColor,
+            currentSlotTextColor = currentSlotTextColor,
         )
     }
     val feedbackBorderColor = when (inputFeedbackType) {
@@ -544,7 +725,7 @@ private fun ReadOnlyAnswerField(
 
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = displayedValue,
+            value = "",
             onValueChange = {},
             modifier = Modifier.fillMaxSize(),
             textStyle = MaterialTheme.typography.bodyLarge,
@@ -554,6 +735,14 @@ private fun ReadOnlyAnswerField(
                 focusedBorderColor = feedbackBorderColor,
                 unfocusedBorderColor = feedbackBorderColor,
             ),
+        )
+        Text(
+            text = displayedValue,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(horizontal = 16.dp),
         )
         Box(
             modifier = Modifier
@@ -566,18 +755,38 @@ private fun ReadOnlyAnswerField(
 private fun buildAnswerProgressMask(
     answerInput: String,
     expectedAnswer: String,
-): String {
-    if (expectedAnswer.isEmpty()) return answerInput
-    return buildString {
+    currentSlotBackgroundColor: Color,
+    currentSlotTextColor: Color,
+): AnnotatedString {
+    if (expectedAnswer.isEmpty()) return AnnotatedString(answerInput)
+    return buildAnnotatedString {
+        val currentSlotIndex = expectedAnswer
+            .indices
+            .firstOrNull { index ->
+                expectedAnswer[index] != ' ' && index >= answerInput.length
+            } ?: -1
         expectedAnswer.forEachIndexed { index, expectedChar ->
             if (index > 0) append(' ')
-            append(
-                when {
-                    index < answerInput.length -> answerInput[index]
-                    expectedChar == ' ' -> ' '
-                    else -> '_'
-                }
-            )
+            val displayedChar = when {
+                index < answerInput.length -> answerInput[index]
+                expectedChar == ' ' -> ' '
+                else -> '_'
+            }
+            val isCurrentSlot = index == currentSlotIndex
+
+            if (isCurrentSlot) {
+                pushStyle(
+                    SpanStyle(
+                        background = currentSlotBackgroundColor,
+                        color = currentSlotTextColor,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                )
+                append(displayedChar)
+                pop()
+            } else {
+                append(displayedChar)
+            }
         }
     }
 }

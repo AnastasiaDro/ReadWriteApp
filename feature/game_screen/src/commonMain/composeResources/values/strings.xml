@@ -6,4 +6,7 @@
     <string name="game_learn_more">Learn more</string>
     <string name="game_learn_more_hint">Increase session limits and add extra new and currently due review cards.</string>
     <string name="game_back_to_student">Back to student screen</string>
+    <string name="game_help_show_word">Show word</string>
+    <string name="game_help_simplify_keyboard">Simplify keyboard</string>
+    <string name="game_practice_mode">Practice mode</string>
 </resources>

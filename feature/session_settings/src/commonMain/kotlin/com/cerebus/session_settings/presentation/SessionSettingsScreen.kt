@@ -40,6 +40,7 @@ import readwriteapp.feature.session_settings.generated.resources.session_setting
 import readwriteapp.feature.session_settings.generated.resources.session_settings_allow_near_match
 import readwriteapp.feature.session_settings.generated.resources.session_settings_cancel
 import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold
+import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold_hint
 import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard
 import readwriteapp.feature.session_settings.generated.resources.session_settings_learn_more_step
 import readwriteapp.feature.session_settings.generated.resources.session_settings_load_error
@@ -148,6 +149,7 @@ fun SessionSettingsScreen(
 
         DiscreteSliderField(
             label = stringResource(Res.string.session_settings_guided_hint_threshold),
+            helperText = stringResource(Res.string.session_settings_guided_hint_threshold_hint),
             value = state.guidedHintSuccessThreshold,
             valueRange = 0..5,
             onValueChanged = { onIntent(SessionSettingsIntent.ChangeGuidedHintSuccessThreshold(it)) },
@@ -307,6 +309,7 @@ private fun NumericField(
 @Composable
 private fun DiscreteSliderField(
     label: String,
+    helperText: String? = null,
     value: Int,
     valueRange: IntRange,
     onValueChanged: (Int) -> Unit,
@@ -323,6 +326,13 @@ private fun DiscreteSliderField(
             text = "$label: $safeValue",
             style = MaterialTheme.typography.bodyLarge,
         )
+        if (!helperText.isNullOrBlank()) {
+            Text(
+                text = helperText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Slider(
             value = safeValue.toFloat(),
             onValueChange = { raw ->

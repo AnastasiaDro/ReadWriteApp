@@ -4,10 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
 import com.cerebus.core.game_engine.domain.model.CardProgress
-import com.cerebus.core.game_engine.domain.model.CardState
-import com.cerebus.core.game_engine.domain.model.Grade
+import com.cerebus.core.game_engine.domain.model.SrsConfig
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
-import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
 import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
@@ -28,17 +26,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
-private const val MIN_MASTERED_INTERVAL_DAYS = 3.0
-private const val MIN_SUCCESS_STREAK = 3
+private val learnedLevelThreshold = SrsConfig().learnedLevelThreshold
 
 data class ActiveStudentUiState(
     val isLoading: Boolean = true,
     val studentId: String? = null,
     val studentName: String = "",
     val activeLetters: String = "",
-    val activeDecks: List<Deck> = emptyList(),
-    val studiedDecks: List<Deck> = emptyList(),
-    val otherDecks: List<Deck> = emptyList(),
+    val activeDecks: List<DeckProgressItem> = emptyList(),
+    val studiedDecks: List<DeckProgressItem> = emptyList(),
+    val otherDecks: List<DeckProgressItem> = emptyList(),
 )
 
 sealed interface ActiveStudentAction {
@@ -65,7 +62,6 @@ class ActiveStudentViewModel(
     private val deckRepository: DeckRepository,
     private val flashcardRepository: FlashcardRepository,
     private val cardProgressRepository: CardProgressRepository,
-    private val reviewLogRepository: ReviewLogRepository,
     private val preferencesRepository: PreferencesRepository,
     private val deckPackageService: DeckPackageService,
 ) : ViewModel() {
@@ -84,7 +80,7 @@ class ActiveStudentViewModel(
     fun onAction(action: ActiveStudentAction) {
         when (action) {
             ActiveStudentAction.OnStartClick -> {
-                val deckIds = _uiState.value.activeDecks.map { it.id }
+                val deckIds = _uiState.value.activeDecks.map { it.deck.id }
                 if (deckIds.isEmpty()) return
                 _effects.value = ActiveStudentEffect.OpenGame(deckIds)
             }
@@ -178,13 +174,6 @@ class ActiveStudentViewModel(
                         assignedDeckIds = assignedDeckIds,
                         cardsByDeck = cardsByDeck,
                         progressByCardId = progressList.associateBy { progress -> progress.cardId },
-                        successStreakByCardId = reviewLogRepository.getRecentGradesByCards(
-                            studentId = relation.student.id,
-                            cardIds = cardsByDeck.values.flatten().map { card -> card.id }.distinct(),
-                            limitPerCard = MIN_SUCCESS_STREAK,
-                        ).mapValues { (_, grades) ->
-                            calculateSuccessStreak(grades)
-                        },
                     )
                     ActiveStudentUiState(
                         isLoading = false,
@@ -239,25 +228,31 @@ class ActiveStudentViewModel(
         assignedDeckIds: Set<String>,
         cardsByDeck: Map<String, List<Flashcard>>,
         progressByCardId: Map<String, CardProgress>,
-        successStreakByCardId: Map<String, Int>,
     ): DeckBuckets {
-        val active = mutableListOf<Deck>()
-        val studied = mutableListOf<Deck>()
-        val other = mutableListOf<Deck>()
+        val active = mutableListOf<DeckProgressItem>()
+        val studied = mutableListOf<DeckProgressItem>()
+        val other = mutableListOf<DeckProgressItem>()
 
         allDecks.forEach { deck ->
             val cards = cardsByDeck[deck.id].orEmpty()
+            val learnedCards = cards.count { card ->
+                val progress = progressByCardId[card.id] ?: return@count false
+                progress.level >= learnedLevelThreshold
+            }
+            val deckProgress = DeckProgressItem(
+                deck = deck,
+                learnedCards = learnedCards,
+                totalCards = cards.size,
+            )
             val isStudied = cards.isNotEmpty() && cards.all { card ->
                 val progress = progressByCardId[card.id] ?: return@all false
-                progress.state == CardState.REVIEW &&
-                    progress.intervalDays >= MIN_MASTERED_INTERVAL_DAYS &&
-                    (successStreakByCardId[card.id] ?: 0) >= MIN_SUCCESS_STREAK
+                progress.level >= learnedLevelThreshold
             }
 
             when {
-                isStudied -> studied += deck
-                deck.id in assignedDeckIds -> active += deck
-                else -> other += deck
+                isStudied -> studied += deckProgress
+                deck.id in assignedDeckIds -> active += deckProgress
+                else -> other += deckProgress
             }
         }
 
@@ -266,15 +261,6 @@ class ActiveStudentViewModel(
             studiedDecks = studied,
             otherDecks = other,
         )
-    }
-
-    private fun calculateSuccessStreak(grades: List<Grade>): Int {
-        var streak = 0
-        for (grade in grades) {
-            if (grade == Grade.AGAIN) break
-            streak++
-        }
-        return streak
     }
 
     private fun resolveActiveStudent(
@@ -295,8 +281,14 @@ private data class ActiveStudentSnapshot(
     val allDecks: List<Deck>,
 )
 
+data class DeckProgressItem(
+    val deck: Deck,
+    val learnedCards: Int,
+    val totalCards: Int,
+)
+
 private data class DeckBuckets(
-    val activeDecks: List<Deck>,
-    val studiedDecks: List<Deck>,
-    val otherDecks: List<Deck>,
+    val activeDecks: List<DeckProgressItem>,
+    val studiedDecks: List<DeckProgressItem>,
+    val otherDecks: List<DeckProgressItem>,
 )

@@ -1,12 +1,8 @@
 package com.cerebus.core.game_engine.domain.usecase
 
-import com.cerebus.core.game_engine.domain.logic.computeGrade
 import com.cerebus.core.game_engine.domain.logic.computeMatch
 import com.cerebus.core.game_engine.domain.logic.scheduleNext
 import com.cerebus.core.game_engine.domain.model.CardProgress
-import com.cerebus.core.game_engine.domain.model.CardState
-import com.cerebus.core.game_engine.domain.model.Grade
-import com.cerebus.core.game_engine.domain.model.MatchType
 import com.cerebus.core.game_engine.domain.model.ReviewLog
 import com.cerebus.core.game_engine.domain.model.SrsConfig
 import com.cerebus.core.game_engine.domain.repository.AtomicProgressLogRepository
@@ -18,18 +14,20 @@ import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 data class SubmitAnswerCommand(
     val studentId: String,
     val cardId: String,
-    val expectedAnswers: List<String>,
+    val expectedAnswer: String,
     val userInput: String,
     val shownAtEpochMillis: Long,
     val submittedAtEpochMillis: Long,
-    val usedHint: Boolean,
-    val attemptIndex: Int,
+    val hintLevel: Int,
+    val wrongPressCount: Int,
+    val durationMs: Long,
+    val isRecallStage: Boolean,
+    val copyStageSuccessThreshold: Int,
 )
 
 data class SubmitAnswerResult(
-    val grade: Grade,
-    val matchType: MatchType,
-    val similarity: Double,
+    val isCorrect: Boolean,
+    val hintLevel: Int,
     val nextDueAtEpochMillis: Long,
     val updatedProgress: CardProgress,
 )
@@ -43,7 +41,6 @@ class SubmitAnswerAndRescheduleUseCase(
 ) {
     suspend operator fun invoke(command: SubmitAnswerCommand): SubmitAnswerResult {
         val prefs = studentPrefsRepository.getPrefs(command.studentId)
-
         val progressBefore = progressRepository.getProgress(
             studentId = command.studentId,
             cardId = command.cardId,
@@ -51,44 +48,50 @@ class SubmitAnswerAndRescheduleUseCase(
             studentId = command.studentId,
             cardId = command.cardId,
             nowEpochMillis = command.submittedAtEpochMillis,
-            config = config,
         )
 
         val match = computeMatch(
             userInput = command.userInput,
-            expectedAnswers = command.expectedAnswers,
+            expectedAnswers = listOf(command.expectedAnswer),
             prefs = prefs,
         )
+        val isCorrect = match.isExact
+        val normalizedHintLevel = command.hintLevel.coerceIn(0, 3)
 
-        val recentGrades = reviewLogRepository.getRecentGrades(
-            studentId = command.studentId,
-            cardId = command.cardId,
-            limit = prefs.easyStreakRequired,
-        )
-
-        val grade = computeGrade(
-            match = match,
-            progress = progressBefore,
-            usedHint = command.usedHint,
-            attemptIndex = command.attemptIndex,
-            recentGrades = recentGrades,
-            prefs = prefs,
-        )
-
-        val scheduleResult = scheduleNext(
-            progress = progressBefore,
-            grade = grade,
-            submittedAtEpochMillis = command.submittedAtEpochMillis,
-            config = config,
-        )
-        val updatedGuidedHintSuccessCount = resolveGuidedHintSuccessCount(
-            currentCount = progressBefore.guidedHintSuccessCount,
-            grade = grade,
-            usedHint = command.usedHint,
-        )
-        val updatedProgress = scheduleResult.updatedProgress.copy(
-            guidedHintSuccessCount = updatedGuidedHintSuccessCount,
-        )
+        val updatedProgress = if (command.isRecallStage) {
+            if (!isCorrect) {
+                progressBefore.copy(
+                    lastReviewedAtEpochMillis = command.submittedAtEpochMillis,
+                    lastHintLevel = normalizedHintLevel,
+                    lastDurationMs = command.durationMs,
+                    lastWrongPressCount = command.wrongPressCount,
+                )
+            } else {
+                val scheduled = scheduleNext(
+                    progress = progressBefore,
+                    hintLevel = normalizedHintLevel,
+                    submittedAtEpochMillis = command.submittedAtEpochMillis,
+                    config = config.copy(
+                        requiredRecallSuccesses = prefs.easyStreakRequired.coerceAtLeast(1),
+                    ),
+                )
+                scheduled.updatedProgress.copy(
+                    lastHintLevel = normalizedHintLevel,
+                    lastDurationMs = command.durationMs,
+                    lastWrongPressCount = command.wrongPressCount,
+                )
+            }
+        } else {
+            buildCopyStageProgress(
+                progressBefore = progressBefore,
+                isCorrect = isCorrect,
+                hintLevel = normalizedHintLevel,
+                submittedAtEpochMillis = command.submittedAtEpochMillis,
+                durationMs = command.durationMs,
+                wrongPressCount = command.wrongPressCount,
+                copyStageSuccessThreshold = command.copyStageSuccessThreshold.coerceAtLeast(1),
+            )
+        }
 
         val reviewLog = ReviewLog(
             studentId = command.studentId,
@@ -97,21 +100,20 @@ class SubmitAnswerAndRescheduleUseCase(
             submittedAtEpochMillis = command.submittedAtEpochMillis,
             userInputRaw = command.userInput,
             userInputNormalized = match.userNorm,
-            bestExpectedNormalized = match.bestExpectedNorm,
-            similarity = match.similarity,
-            isExact = match.isExact,
-            matchType = match.matchType,
-            usedHint = command.usedHint,
-            attemptIndex = command.attemptIndex,
-            stateBefore = progressBefore.state,
-            stateAfter = updatedProgress.state,
-            grade = grade,
-            scheduledDueAtBeforeEpochMillis = progressBefore.dueAtEpochMillis,
-            dueAtAfterEpochMillis = scheduleResult.dueAtEpochMillis,
-            intervalBeforeDays = progressBefore.intervalDays,
-            intervalAfterDays = updatedProgress.intervalDays,
-            easeBefore = progressBefore.ease,
-            easeAfter = updatedProgress.ease,
+            expectedAnswerNormalized = match.bestExpectedNorm,
+            isCorrect = isCorrect,
+            hintLevel = normalizedHintLevel,
+            wrongPressCount = command.wrongPressCount,
+            durationMs = command.durationMs,
+            copyStage = !command.isRecallStage,
+            levelBefore = progressBefore.level,
+            levelAfter = updatedProgress.level,
+            recallSuccessStreakBefore = progressBefore.recallSuccessStreak,
+            recallSuccessStreakAfter = updatedProgress.recallSuccessStreak,
+            copySuccessStreakBefore = progressBefore.copySuccessStreak,
+            copySuccessStreakAfter = updatedProgress.copySuccessStreak,
+            dueAtBeforeEpochMillis = progressBefore.dueAtEpochMillis,
+            dueAtAfterEpochMillis = updatedProgress.dueAtEpochMillis,
         )
 
         when {
@@ -135,14 +137,10 @@ class SubmitAnswerAndRescheduleUseCase(
             }
         }
 
-        println("SRS progress upsert -> $updatedProgress")
-        println("SRS review log insert -> $reviewLog")
-
         return SubmitAnswerResult(
-            grade = grade,
-            matchType = match.matchType,
-            similarity = match.similarity,
-            nextDueAtEpochMillis = scheduleResult.dueAtEpochMillis,
+            isCorrect = isCorrect,
+            hintLevel = normalizedHintLevel,
+            nextDueAtEpochMillis = updatedProgress.dueAtEpochMillis,
             updatedProgress = updatedProgress,
         )
     }
@@ -152,29 +150,41 @@ private fun defaultNewProgress(
     studentId: String,
     cardId: String,
     nowEpochMillis: Long,
-    config: SrsConfig,
 ): CardProgress {
     return CardProgress(
         studentId = studentId,
         cardId = cardId,
-        state = CardState.NEW,
+        level = 0,
         dueAtEpochMillis = nowEpochMillis,
-        intervalDays = 0.0,
-        ease = config.easeStart,
-        learningStepIndex = 0,
-        reps = 0,
-        lapses = 0,
+        recallSuccessStreak = 0,
+        copySuccessStreak = 0,
         lastReviewedAtEpochMillis = null,
-        lastGrade = null,
-        guidedHintSuccessCount = 0,
+        lastHintLevel = null,
+        lastDurationMs = null,
+        lastWrongPressCount = 0,
     )
 }
 
-private fun resolveGuidedHintSuccessCount(
-    currentCount: Int,
-    grade: Grade,
-    usedHint: Boolean,
-): Int {
-    if (grade == Grade.AGAIN) return currentCount
-    return if (usedHint) currentCount + 1 else currentCount
+private fun buildCopyStageProgress(
+    progressBefore: CardProgress,
+    isCorrect: Boolean,
+    hintLevel: Int,
+    submittedAtEpochMillis: Long,
+    durationMs: Long,
+    wrongPressCount: Int,
+    copyStageSuccessThreshold: Int,
+): CardProgress {
+    val nextCopySuccessStreak = if (isCorrect && hintLevel == 0) {
+        (progressBefore.copySuccessStreak + 1).coerceAtMost(copyStageSuccessThreshold)
+    } else {
+        0
+    }
+    return progressBefore.copy(
+        dueAtEpochMillis = submittedAtEpochMillis,
+        copySuccessStreak = nextCopySuccessStreak,
+        lastReviewedAtEpochMillis = submittedAtEpochMillis,
+        lastHintLevel = hintLevel,
+        lastDurationMs = durationMs,
+        lastWrongPressCount = wrongPressCount,
+    )
 }

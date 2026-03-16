@@ -6,4 +6,7 @@
     <string name="game_learn_more">Учить еще</string>
     <string name="game_learn_more_hint">Увеличить лимиты сессии и добавить новые карточки и повторения, срок которых уже наступил.</string>
     <string name="game_back_to_student">Вернуться на экран пользователя</string>
+    <string name="game_help_show_word">Показать слово</string>
+    <string name="game_help_simplify_keyboard">Упростить клавиатуру</string>
+    <string name="game_practice_mode">Режим практики</string>
 </resources>

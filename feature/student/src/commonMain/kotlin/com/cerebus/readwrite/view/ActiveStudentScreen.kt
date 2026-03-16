@@ -53,6 +53,7 @@ import readwriteapp.feature.student.generated.resources.create_student_avatar_pl
 import readwriteapp.feature.student.generated.resources.active_student_keyboard_settings
 import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_studied_letters
+import readwriteapp.feature.student.generated.resources.active_student_deck_progress
 
 @Composable
 fun ActiveStudentRoute(
@@ -276,8 +277,13 @@ private fun ActiveStudentScreen(
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(state.activeDecks) { deck ->
                             DeckInlineItem(
-                                deck = deck,
-                                onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.id)) },
+                                deck = deck.deck,
+                                supportingText = stringResource(
+                                    Res.string.active_student_deck_progress,
+                                    deck.learnedCards,
+                                    deck.totalCards,
+                                ),
+                                onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.deck.id)) },
                             )
                         }
                     }
@@ -304,8 +310,13 @@ private fun ActiveStudentScreen(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.studiedDecks) { deck ->
                         DeckInlineItem(
-                            deck = deck,
-                            onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.id)) },
+                            deck = deck.deck,
+                            supportingText = stringResource(
+                                Res.string.active_student_deck_progress,
+                                deck.learnedCards,
+                                deck.totalCards,
+                            ),
+                            onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.deck.id)) },
                         )
                     }
                 }
@@ -338,8 +349,13 @@ private fun ActiveStudentScreen(
                 ) {
                     items(state.otherDecks.take(5)) { deck ->
                         DeckInlineItem(
-                            deck = deck,
-                            onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.id)) },
+                            deck = deck.deck,
+                            supportingText = stringResource(
+                                Res.string.active_student_deck_progress,
+                                deck.learnedCards,
+                                deck.totalCards,
+                            ),
+                            onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.deck.id)) },
                         )
                     }
                 }

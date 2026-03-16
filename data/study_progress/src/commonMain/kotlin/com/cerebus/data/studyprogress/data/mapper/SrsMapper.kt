@@ -1,9 +1,6 @@
 package com.cerebus.data.studyprogress.data.mapper
 
 import com.cerebus.core.game_engine.domain.model.CardProgress
-import com.cerebus.core.game_engine.domain.model.CardState
-import com.cerebus.core.game_engine.domain.model.Grade
-import com.cerebus.core.game_engine.domain.model.MatchType
 import com.cerebus.core.game_engine.domain.model.ReviewLog
 import com.cerebus.core.game_engine.domain.model.StudentSrsPrefs
 import com.cerebus.data.studyprogress.data.entity.ReviewLogEntity
@@ -14,16 +11,14 @@ fun StudyProgressEntity.toDomain(): CardProgress {
     return CardProgress(
         studentId = studentId,
         cardId = cardId,
-        state = CardState.entries[state],
+        level = level,
         dueAtEpochMillis = dueAtEpochMillis,
-        intervalDays = intervalDays,
-        ease = ease,
-        learningStepIndex = learningStepIndex,
-        reps = reps,
-        lapses = lapses,
+        recallSuccessStreak = recallSuccessStreak,
+        copySuccessStreak = copySuccessStreak,
         lastReviewedAtEpochMillis = lastReviewedAtEpochMillis,
-        lastGrade = lastGrade?.let { Grade.entries[it] },
-        guidedHintSuccessCount = guidedHintSuccessCount,
+        lastHintLevel = lastHintLevel,
+        lastDurationMs = lastDurationMs,
+        lastWrongPressCount = lastWrongPressCount,
     )
 }
 
@@ -31,16 +26,14 @@ fun CardProgress.toEntity(): StudyProgressEntity {
     return StudyProgressEntity(
         studentId = studentId,
         cardId = cardId,
-        state = state.ordinal,
+        level = level,
         dueAtEpochMillis = dueAtEpochMillis,
-        intervalDays = intervalDays,
-        ease = ease,
-        learningStepIndex = learningStepIndex,
-        reps = reps,
-        lapses = lapses,
+        recallSuccessStreak = recallSuccessStreak,
+        copySuccessStreak = copySuccessStreak,
         lastReviewedAtEpochMillis = lastReviewedAtEpochMillis,
-        lastGrade = lastGrade?.ordinal,
-        guidedHintSuccessCount = guidedHintSuccessCount,
+        lastHintLevel = lastHintLevel,
+        lastDurationMs = lastDurationMs,
+        lastWrongPressCount = lastWrongPressCount,
     )
 }
 
@@ -52,21 +45,20 @@ fun ReviewLog.toEntity(): ReviewLogEntity {
         submittedAtEpochMillis = submittedAtEpochMillis,
         userInputRaw = userInputRaw,
         userInputNormalized = userInputNormalized,
-        bestExpectedNormalized = bestExpectedNormalized,
-        similarity = similarity,
-        isExact = isExact,
-        matchType = matchType.ordinal,
-        usedHint = usedHint,
-        attemptIndex = attemptIndex,
-        stateBefore = stateBefore.ordinal,
-        stateAfter = stateAfter.ordinal,
-        grade = grade.ordinal,
-        scheduledDueAtBeforeEpochMillis = scheduledDueAtBeforeEpochMillis,
+        expectedAnswerNormalized = expectedAnswerNormalized,
+        isCorrect = isCorrect,
+        hintLevel = hintLevel,
+        wrongPressCount = wrongPressCount,
+        durationMs = durationMs,
+        copyStage = copyStage,
+        levelBefore = levelBefore,
+        levelAfter = levelAfter,
+        recallSuccessStreakBefore = recallSuccessStreakBefore,
+        recallSuccessStreakAfter = recallSuccessStreakAfter,
+        copySuccessStreakBefore = copySuccessStreakBefore,
+        copySuccessStreakAfter = copySuccessStreakAfter,
+        dueAtBeforeEpochMillis = dueAtBeforeEpochMillis,
         dueAtAfterEpochMillis = dueAtAfterEpochMillis,
-        intervalBeforeDays = intervalBeforeDays,
-        intervalAfterDays = intervalAfterDays,
-        easeBefore = easeBefore,
-        easeAfter = easeAfter,
     )
 }
 
@@ -96,12 +88,4 @@ fun StudentSrsPrefs.toEntity(): StudentSrsPrefsEntity {
         easyStreakRequired = easyStreakRequired,
         guidedHintSuccessThreshold = guidedHintSuccessThreshold,
     )
-}
-
-fun Int.toGrade(): Grade {
-    return Grade.entries.getOrElse(this) { Grade.GOOD }
-}
-
-fun MatchType.toDbValue(): Int {
-    return ordinal
 }

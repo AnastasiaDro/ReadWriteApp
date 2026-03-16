@@ -7,8 +7,6 @@ import com.cerebus.core.game_engine.domain.logic.interleaveReviewAndNewCards
 import com.cerebus.core.game_engine.domain.logic.selectBalancedNewCardsByDeck
 import com.cerebus.core.game_engine.domain.logic.takeRoundRobinByDeck
 import com.cerebus.core.game_engine.domain.model.CardProgress
-import com.cerebus.core.game_engine.domain.model.CardState
-import com.cerebus.core.game_engine.domain.model.Grade
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerAndRescheduleUseCase
@@ -36,6 +34,7 @@ private const val MIN_GUIDED_HINT_THRESHOLD = 0
 private const val MAX_GUIDED_HINT_THRESHOLD = 5
 private const val RANDOM_REVIEW_LIMIT = 10
 private const val KEY_FEEDBACK_DURATION_MS = 180L
+private const val MIN_KEY_PRESS_INTERVAL_MS = 200L
 
 class GameScreenViewModel(
     deckIds: List<String>,
@@ -68,7 +67,10 @@ class GameScreenViewModel(
         when (action) {
             is GameScreenAction.OnAnswerChanged -> updateAnswer(action.value)
             is GameScreenAction.OnKeyboardSymbolPressed -> handleKeyboardSymbolPress(action.symbol)
+            GameScreenAction.OnBackspacePressed -> handleBackspacePressed()
             is GameScreenAction.OnShiftChanged -> updateKeyboardShift(action.isEnabled)
+            is GameScreenAction.OnShowWordHelpToggled -> toggleShowWordHelp(action.isEnabled)
+            is GameScreenAction.OnSimplifyKeyboardHelpToggled -> toggleSimplifyKeyboardHelp(action.isEnabled)
             GameScreenAction.OnCheckClick -> checkAnswer()
             GameScreenAction.OnRetryClick -> repeatLastSession()
             GameScreenAction.OnRandomReviewClick -> repeatRandomStudiedCards()
@@ -119,7 +121,7 @@ class GameScreenViewModel(
                 preferencesRepository = preferencesRepository,
             )
 
-            val sessionCards = buildSessionCards(
+            val preparedSession = buildSessionCardsWithPracticeFallback(
                 deckIds = selectedDeckIds,
                 studentId = activeStudentId,
                 flashcardRepository = flashcardRepository,
@@ -130,25 +132,28 @@ class GameScreenViewModel(
             saveLastSessionCardsSnapshot(
                 studentId = activeStudentId,
                 deckIds = selectedDeckIds,
-                sessionCards = sessionCards,
+                sessionCards = preparedSession.cards,
                 preferencesRepository = preferencesRepository,
             )
 
             val initialSession = GameSessionData(
                 deck = deckData,
-                cards = sessionCards,
+                cards = preparedSession.cards,
                 studentId = activeStudentId,
                 activeSymbols = activeSymbols,
                 preventWrongKeyPress = preventWrongKeyPress,
                 isShiftEnabled = isShiftEnabled,
-                sessionMode = GameSessionMode.Srs,
-                isHintVisible = initialHintVisible(sessionCards),
+                sessionMode = preparedSession.mode,
+                learningStage = initialLearningStage(preparedSession.cards.firstOrNull()),
+                isHintVisible = initialHintVisible(preparedSession.cards),
+                copySuccessStreak = preparedSession.cards.firstOrNull()?.storedCopySuccessStreak ?: 0,
                 cardShownAtEpochMillis = nowMillis(),
+                attemptStartedAtEpochMillis = nowMillis(),
                 attemptIndex = 1,
             )
             session = initialSession
 
-            _uiState.value = if (sessionCards.isEmpty()) {
+            _uiState.value = if (preparedSession.cards.isEmpty()) {
                 initialSession.toFinishedUiState()
             } else {
                 initialSession.toActiveUiState()
@@ -171,16 +176,18 @@ class GameScreenViewModel(
     private fun handleKeyboardSymbolPress(symbol: String) {
         val current = session ?: return
         if (current.isFinished || current.feedback != null) return
+        val throttledCurrent = current.consumeKeyboardPressThrottle() ?: return
+        session = throttledCurrent
 
-        if (!current.preventWrongKeyPress) {
-            updateAnswer(current.answerInput + symbol)
+        if (!throttledCurrent.preventWrongKeyPress) {
+            updateAnswer(throttledCurrent.answerInput + symbol)
             return
         }
 
-        val expectedSymbol = current.expectedNextSymbol()
+        val expectedSymbol = throttledCurrent.expectedNextSymbol()
         if (expectedSymbol != null && symbol.matchesExpectedSymbol(expectedSymbol)) {
-            val updated = current.copy(
-                answerInput = current.answerInput + symbol,
+            val updated = throttledCurrent.copy(
+                answerInput = throttledCurrent.answerInput + symbol,
             )
             session = updated
             _uiState.value = updated.toActiveUiState()
@@ -189,12 +196,28 @@ class GameScreenViewModel(
                 type = TrainingKeyboardFeedbackType.Correct,
             )
         } else {
+            val updated = throttledCurrent.copy(
+                wrongPressCount = throttledCurrent.wrongPressCount + 1,
+            )
+            session = updated
+            _uiState.value = updated.toActiveUiState()
             triggerTypingFeedback(
                 symbol = symbol,
                 type = TrainingKeyboardFeedbackType.Wrong,
             )
             playInvalidKeySoundStub()
         }
+    }
+
+    private fun handleBackspacePressed() {
+        val current = session ?: return
+        if (current.isFinished || current.feedback != null) return
+        val throttledCurrent = current.consumeKeyboardPressThrottle() ?: return
+        val updated = throttledCurrent.copy(
+            answerInput = throttledCurrent.answerInput.dropLast(1),
+        )
+        session = updated
+        _uiState.value = updated.toActiveUiState()
     }
 
     private fun updateKeyboardShift(isEnabled: Boolean) {
@@ -245,16 +268,113 @@ class GameScreenViewModel(
         // TODO connect invalid key press sound playback here.
     }
 
+    private fun toggleShowWordHelp(isEnabled: Boolean) {
+        val current = session ?: return
+        if (current.isFinished || current.feedback != null) return
+        if (current.learningStage != TypingLearningStage.Recall) return
+
+        val updated = current.copy(
+            usedShowWord = current.usedShowWord || isEnabled,
+            isHintVisible = isEnabled,
+        )
+        session = updated
+        _uiState.value = updated.toActiveUiState()
+    }
+
+    private fun toggleSimplifyKeyboardHelp(isEnabled: Boolean) {
+        val current = session ?: return
+        if (current.isFinished || current.feedback != null) return
+
+        val updated = current.copy(
+            usedSimplifiedKeyboard = current.usedSimplifiedKeyboard || isEnabled,
+            isSimplifiedKeyboardEnabled = isEnabled,
+        )
+        session = updated
+        _uiState.value = updated.toActiveUiState()
+    }
+
+    private fun checkCopyStageAnswerLocally(current: GameSessionData) {
+        val card = current.currentCard ?: return
+        val isCorrect = current.answerInput.trim().equals(card.answer.trim(), ignoreCase = true)
+
+        if (!isCorrect) {
+            handleWrongAnswer(
+                current.copy(
+                    copySuccessStreak = 0,
+                    attemptIndex = current.attemptIndex + 1,
+                    lastHintLevel = current.computeCurrentHintLevel(),
+                    lastAttemptDurationMs = current.currentAttemptDurationMs(),
+                )
+            )
+            return
+        }
+
+        val hintLevel = current.computeCurrentHintLevel()
+        val isIdealCopyAttempt = hintLevel == HintLevel.None
+        val nextCopySuccessStreak = if (isIdealCopyAttempt) {
+            current.copySuccessStreak + 1
+        } else {
+            0
+        }
+
+        val withFeedback = current.copy(
+            copySuccessStreak = nextCopySuccessStreak,
+            lastHintLevel = hintLevel,
+            lastAttemptDurationMs = current.currentAttemptDurationMs(),
+            feedback = GameFeedbackData(isCorrect = true),
+        )
+        session = withFeedback
+        _uiState.value = withFeedback.toActiveUiState()
+
+        feedbackJob?.cancel()
+        feedbackJob = viewModelScope.launch {
+            delay(FEEDBACK_DURATION_MS)
+
+            val afterCopyAttempt = if (
+                nextCopySuccessStreak >= (current.currentCard?.copyStageSuccessThreshold ?: 2)
+            ) {
+                withFeedback.resetAttempt(
+                    learningStage = TypingLearningStage.Recall,
+                    isHintVisible = false,
+                    copySuccessStreak = 0,
+                )
+            } else {
+                withFeedback.resetAttempt(
+                    learningStage = TypingLearningStage.Copy,
+                    isHintVisible = true,
+                    copySuccessStreak = nextCopySuccessStreak,
+                )
+            }
+            session = afterCopyAttempt
+            _uiState.value = afterCopyAttempt.toActiveUiState()
+        }
+    }
+
     private fun checkAnswer() {
         val current = session ?: return
         if (current.isFinished) return
 
         val card = current.currentCard ?: return
         val studentId = current.studentId
+        val currentHintLevel = current.computeCurrentHintLevel()
+        val currentAttemptDurationMs = current.currentAttemptDurationMs()
 
         if (studentId.isBlank() || current.sessionMode == GameSessionMode.RandomReview) {
+            if (current.learningStage == TypingLearningStage.Copy) {
+                checkCopyStageAnswerLocally(current)
+                return
+            }
             val isCorrect = current.answerInput.trim().equals(card.answer.trim(), ignoreCase = true)
-            if (isCorrect) handleCorrectAnswer(current) else handleWrongAnswer(current)
+            if (isCorrect) {
+                handleCorrectAnswer(
+                    current.copy(
+                        lastHintLevel = currentHintLevel,
+                        lastAttemptDurationMs = currentAttemptDurationMs,
+                    )
+                )
+            } else {
+                handleWrongAnswer(current)
+            }
             return
         }
 
@@ -263,24 +383,73 @@ class GameScreenViewModel(
                 SubmitAnswerCommand(
                     studentId = studentId,
                     cardId = card.id,
-                    expectedAnswers = listOf(card.answer),
+                    expectedAnswer = card.answer,
                     userInput = current.answerInput,
                     shownAtEpochMillis = current.cardShownAtEpochMillis,
                     submittedAtEpochMillis = nowMillis(),
-                    usedHint = current.isHintVisible,
-                    attemptIndex = current.attemptIndex,
+                    hintLevel = currentHintLevel.value,
+                    wrongPressCount = current.wrongPressCount,
+                    durationMs = currentAttemptDurationMs,
+                    isRecallStage = current.learningStage == TypingLearningStage.Recall,
+                    copyStageSuccessThreshold = card.copyStageSuccessThreshold,
                 )
             )
 
             val actual = session ?: return@launch
             if (actual.currentCard?.id != card.id) return@launch
 
-            if (submitResult.grade == Grade.AGAIN) {
+            if (actual.learningStage == TypingLearningStage.Copy) {
+                val withProgress = actual.copy(
+                    copySuccessStreak = submitResult.updatedProgress.copySuccessStreak,
+                    lastHintLevel = currentHintLevel,
+                    lastAttemptDurationMs = currentAttemptDurationMs,
+                )
+                if (!submitResult.isCorrect) {
+                    handleWrongAnswer(withProgress.copy(attemptIndex = actual.attemptIndex + 1))
+                    return@launch
+                }
+
+                val withFeedback = withProgress.copy(feedback = GameFeedbackData(isCorrect = true))
+                session = withFeedback
+                _uiState.value = withFeedback.toActiveUiState()
+
+                feedbackJob?.cancel()
+                feedbackJob = viewModelScope.launch {
+                    delay(FEEDBACK_DURATION_MS)
+
+                    val afterCopyAttempt = if (
+                        submitResult.updatedProgress.copySuccessStreak >= card.copyStageSuccessThreshold
+                    ) {
+                        withFeedback.resetAttempt(
+                            learningStage = TypingLearningStage.Recall,
+                            isHintVisible = false,
+                            copySuccessStreak = submitResult.updatedProgress.copySuccessStreak,
+                        )
+                    } else {
+                        withFeedback.resetAttempt(
+                            learningStage = TypingLearningStage.Copy,
+                            isHintVisible = true,
+                            copySuccessStreak = submitResult.updatedProgress.copySuccessStreak,
+                        )
+                    }
+                    session = afterCopyAttempt
+                    _uiState.value = afterCopyAttempt.toActiveUiState()
+                }
+            } else if (!submitResult.isCorrect) {
                 handleWrongAnswer(
-                    actual.copy(attemptIndex = actual.attemptIndex + 1),
+                    actual.copy(
+                        attemptIndex = actual.attemptIndex + 1,
+                        lastHintLevel = currentHintLevel,
+                        lastAttemptDurationMs = currentAttemptDurationMs,
+                    ),
                 )
             } else {
-                handleCorrectAnswer(actual)
+                handleCorrectAnswer(
+                    actual.copy(
+                        lastHintLevel = currentHintLevel,
+                        lastAttemptDurationMs = currentAttemptDurationMs,
+                    )
+                )
             }
         }
     }
@@ -307,14 +476,25 @@ class GameScreenViewModel(
 
             val nextIndex = withFeedback.currentIndex + 1
             val nextCard = withFeedback.cards.getOrNull(nextIndex)
+            val nextStage = initialLearningStage(nextCard)
             val progressed = withFeedback.copy(
                 currentIndex = nextIndex,
                 correctAnswers = withFeedback.correctAnswers + 1,
+                learningStage = nextStage,
                 answerInput = "",
-                isHintVisible = nextCard?.showHintInitially == true,
+                isHintVisible = nextStage == TypingLearningStage.Copy,
+                copySuccessStreak = nextCard?.storedCopySuccessStreak ?: 0,
+                wrongPressCount = 0,
+                usedShowWord = false,
+                usedSimplifiedKeyboard = false,
+                isSimplifiedKeyboardEnabled = false,
                 feedback = null,
                 cardShownAtEpochMillis = nowMillis(),
+                attemptStartedAtEpochMillis = nowMillis(),
                 attemptIndex = 1,
+                lastHintLevel = null,
+                lastAttemptDurationMs = null,
+                lastHandledKeyPressAtEpochMillis = 0L,
             )
             session = progressed
 
@@ -330,7 +510,7 @@ class GameScreenViewModel(
         feedbackJob?.cancel()
 
         val withFeedback = current.copy(
-            isHintVisible = true,
+            isHintVisible = current.isHintVisible || current.learningStage == TypingLearningStage.Copy,
             feedback = GameFeedbackData(isCorrect = false),
         )
         session = withFeedback
@@ -416,7 +596,7 @@ class GameScreenViewModel(
             val learnMoreStep = resolveLearnMoreStep(current.studentId)
             dailyLimitIncrease += learnMoreStep
 
-            val sessionCards = buildSessionCards(
+            val preparedSession = buildSessionCardsWithPracticeFallback(
                 deckIds = selectedDeckIds,
                 studentId = current.studentId,
                 flashcardRepository = flashcardRepository,
@@ -427,14 +607,14 @@ class GameScreenViewModel(
             saveLastSessionCardsSnapshot(
                 studentId = current.studentId,
                 deckIds = selectedDeckIds,
-                sessionCards = sessionCards,
+                sessionCards = preparedSession.cards,
                 preferencesRepository = preferencesRepository,
             )
 
             val restarted = restartSessionWithCards(
                 current = current,
-                cards = sessionCards,
-                sessionMode = GameSessionMode.Srs,
+                cards = preparedSession.cards,
+                sessionMode = preparedSession.mode,
             )
             session = restarted
             _uiState.value = if (restarted.cards.isEmpty()) {
@@ -487,16 +667,31 @@ class GameScreenViewModel(
         cards: List<GameCardData>,
         sessionMode: GameSessionMode = current.sessionMode,
     ): GameSessionData {
+        val firstCard = cards.firstOrNull()
+        val initialStage = initialLearningStage(firstCard)
         return current.copy(
             cards = cards,
             sessionMode = sessionMode,
             currentIndex = 0,
             correctAnswers = 0,
+            learningStage = initialStage,
             answerInput = "",
-            isHintVisible = initialHintVisible(cards),
+            isHintVisible = initialStage == TypingLearningStage.Copy,
+            copySuccessStreak = firstCard?.storedCopySuccessStreak ?: 0,
+            wrongPressCount = 0,
+            usedShowWord = false,
+            usedSimplifiedKeyboard = false,
+            isSimplifiedKeyboardEnabled = false,
+            keyboardFeedbackKey = null,
+            keyboardFeedbackType = null,
+            inputFeedbackType = null,
             feedback = null,
             cardShownAtEpochMillis = nowMillis(),
+            attemptStartedAtEpochMillis = nowMillis(),
             attemptIndex = 1,
+            lastHintLevel = null,
+            lastAttemptDurationMs = null,
+            lastHandledKeyPressAtEpochMillis = 0L,
         )
     }
 }
@@ -511,6 +706,8 @@ private data class GameCardData(
     val answer: String,
     val imagePath: String?,
     val showHintInitially: Boolean = false,
+    val copyStageSuccessThreshold: Int = 2,
+    val storedCopySuccessStreak: Int = 0,
 )
 
 private enum class GameSessionMode {
@@ -525,6 +722,7 @@ private data class GameSessionData(
     val activeSymbols: Set<String>,
     val preventWrongKeyPress: Boolean,
     val isShiftEnabled: Boolean,
+    val learningStage: TypingLearningStage,
     val keyboardFeedbackKey: String? = null,
     val keyboardFeedbackType: TrainingKeyboardFeedbackType? = null,
     val inputFeedbackType: TrainingKeyboardFeedbackType? = null,
@@ -533,8 +731,17 @@ private data class GameSessionData(
     val correctAnswers: Int = 0,
     val answerInput: String = "",
     val isHintVisible: Boolean = false,
+    val isSimplifiedKeyboardEnabled: Boolean = false,
     val cardShownAtEpochMillis: Long,
+    val attemptStartedAtEpochMillis: Long,
     val attemptIndex: Int,
+    val copySuccessStreak: Int = 0,
+    val wrongPressCount: Int = 0,
+    val usedShowWord: Boolean = false,
+    val usedSimplifiedKeyboard: Boolean = false,
+    val lastHintLevel: HintLevel? = null,
+    val lastAttemptDurationMs: Long? = null,
+    val lastHandledKeyPressAtEpochMillis: Long = 0L,
     val feedback: GameFeedbackData? = null,
 ) {
     val currentCard: GameCardData?
@@ -552,6 +759,53 @@ private data class GameSessionData(
 private data class GameFeedbackData(
     val isCorrect: Boolean,
 )
+
+private fun GameSessionData.computeCurrentHintLevel(): HintLevel {
+    return computeHintLevel(
+        TypingAttemptMetrics(
+            wrongPressCount = wrongPressCount,
+            usedShowWord = usedShowWord,
+            usedSimplifiedKeyboard = usedSimplifiedKeyboard,
+        )
+    )
+}
+
+private fun GameSessionData.currentAttemptDurationMs(): Long {
+    return (nowMillis() - attemptStartedAtEpochMillis).coerceAtLeast(0L)
+}
+
+private fun GameSessionData.consumeKeyboardPressThrottle(): GameSessionData? {
+    val now = nowMillis()
+    if (now - lastHandledKeyPressAtEpochMillis < MIN_KEY_PRESS_INTERVAL_MS) return null
+    return copy(lastHandledKeyPressAtEpochMillis = now)
+}
+
+private fun GameSessionData.resetAttempt(
+    learningStage: TypingLearningStage = this.learningStage,
+    isHintVisible: Boolean = this.isHintVisible,
+    copySuccessStreak: Int = this.copySuccessStreak,
+): GameSessionData {
+    return copy(
+        learningStage = learningStage,
+        answerInput = "",
+        isHintVisible = isHintVisible,
+        keyboardFeedbackKey = null,
+        keyboardFeedbackType = null,
+        inputFeedbackType = null,
+        wrongPressCount = 0,
+        usedShowWord = false,
+        usedSimplifiedKeyboard = false,
+        isSimplifiedKeyboardEnabled = false,
+        feedback = null,
+        cardShownAtEpochMillis = nowMillis(),
+        attemptStartedAtEpochMillis = nowMillis(),
+        attemptIndex = 1,
+        copySuccessStreak = copySuccessStreak,
+        lastHintLevel = null,
+        lastAttemptDurationMs = null,
+        lastHandledKeyPressAtEpochMillis = 0L,
+    )
+}
 
 private suspend fun buildSessionCards(
     deckIds: List<String>,
@@ -572,6 +826,7 @@ private suspend fun buildSessionCards(
                     answer = card.name,
                     imagePath = card.imageUrl.ifBlank { null },
                     showHintInitially = false,
+                    copyStageSuccessThreshold = 2,
                 )
             }
     }
@@ -608,8 +863,10 @@ private suspend fun buildSessionCards(
                     progress = progress,
                     guidedHintThreshold = guidedHintThreshold,
                 ),
+                copyStageSuccessThreshold = guidedHintThreshold.coerceAtLeast(1),
+                storedCopySuccessStreak = progress?.copySuccessStreak ?: 0,
             )
-            if (progress == null || progress.state == CardState.NEW) {
+            if (progress == null || cardWithHintMode.showHintInitially) {
                 newByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
             } else if (progress.dueAtEpochMillis <= now) {
                 reviewByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
@@ -692,6 +949,8 @@ private suspend fun restoreLastSessionCards(
                             progress = progress,
                             guidedHintThreshold = guidedHintThreshold,
                         ),
+                        copyStageSuccessThreshold = guidedHintThreshold.coerceAtLeast(1),
+                        storedCopySuccessStreak = progress?.copySuccessStreak ?: 0,
                     )
                 )
             }
@@ -722,7 +981,7 @@ private suspend fun buildRandomReviewCards(
         deckIds.forEach { deckId ->
             flashcardRepository.getFlashcardsByDeckId(deckId).forEach { flashcard ->
                 val progress = progressByCardId[flashcard.id] ?: return@forEach
-                if (progress.state == CardState.NEW) return@forEach
+                if (progress.level <= 0) return@forEach
 
                 add(
                     GameCardWithProgress(
@@ -735,6 +994,8 @@ private suspend fun buildRandomReviewCards(
                                 progress = progress,
                                 guidedHintThreshold = guidedHintThreshold,
                             ),
+                            copyStageSuccessThreshold = guidedHintThreshold.coerceAtLeast(1),
+                            storedCopySuccessStreak = progress.copySuccessStreak,
                         ),
                         progress = progress,
                     )
@@ -767,6 +1028,54 @@ private data class GameCardWithProgress(
     val progress: CardProgress,
 )
 
+private data class PreparedSessionCards(
+    val cards: List<GameCardData>,
+    val mode: GameSessionMode,
+)
+
+private suspend fun buildSessionCardsWithPracticeFallback(
+    deckIds: List<String>,
+    studentId: String,
+    flashcardRepository: FlashcardRepository,
+    cardProgressRepository: CardProgressRepository,
+    studentPrefsRepository: StudentPrefsRepository,
+    dailyLimitIncrease: Int = 0,
+): PreparedSessionCards {
+    val srsCards = buildSessionCards(
+        deckIds = deckIds,
+        studentId = studentId,
+        flashcardRepository = flashcardRepository,
+        cardProgressRepository = cardProgressRepository,
+        studentPrefsRepository = studentPrefsRepository,
+        dailyLimitIncrease = dailyLimitIncrease,
+    )
+    if (srsCards.isNotEmpty()) {
+        return PreparedSessionCards(
+            cards = srsCards,
+            mode = GameSessionMode.Srs,
+        )
+    }
+
+    val practiceCards = buildRandomReviewCards(
+        deckIds = deckIds,
+        studentId = studentId,
+        flashcardRepository = flashcardRepository,
+        cardProgressRepository = cardProgressRepository,
+        studentPrefsRepository = studentPrefsRepository,
+    )
+    if (practiceCards.isNotEmpty()) {
+        return PreparedSessionCards(
+            cards = practiceCards,
+            mode = GameSessionMode.RandomReview,
+        )
+    }
+
+    return PreparedSessionCards(
+        cards = emptyList(),
+        mode = GameSessionMode.Srs,
+    )
+}
+
 private fun buildDeckTitle(
     deckIds: List<String>,
     decksById: Map<String, Deck?>,
@@ -780,6 +1089,11 @@ private fun buildDeckTitle(
 
 private fun GameSessionData.toActiveUiState(): GameUiState.Active {
     val card = requireNotNull(currentCard)
+    val activeKeyboardSymbols = if (isSimplifiedKeyboardEnabled) {
+        card.extractKeyboardSymbols()
+    } else {
+        activeSymbols + card.extractKeyboardSymbols()
+    }
     return GameUiState.Active(
         deckTitle = deck.title,
         currentCard = CardUi(
@@ -790,7 +1104,9 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         cardIndex = currentIndex + 1,
         totalCards = cards.size,
         studentId = studentId,
-        activeSymbols = activeSymbols + card.extractKeyboardSymbols(),
+        isPracticeMode = sessionMode == GameSessionMode.RandomReview,
+        learningStage = learningStage,
+        activeSymbols = activeKeyboardSymbols,
         preventWrongKeyPress = preventWrongKeyPress,
         isShiftEnabled = isShiftEnabled,
         keyboardFeedbackKey = keyboardFeedbackKey,
@@ -798,6 +1114,12 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         inputFeedbackType = inputFeedbackType,
         answerInput = answerInput,
         isHintVisible = isHintVisible,
+        isSimplifiedKeyboardEnabled = isSimplifiedKeyboardEnabled,
+        copySuccessStreak = copySuccessStreak,
+        wrongPressCount = wrongPressCount,
+        usedShowWord = usedShowWord,
+        usedSimplifiedKeyboard = usedSimplifiedKeyboard,
+        lastHintLevel = lastHintLevel,
         feedback = feedback?.toUi(),
     )
 }
@@ -873,13 +1195,19 @@ private fun initialHintVisible(cards: List<GameCardData>): Boolean {
     return cards.firstOrNull()?.showHintInitially == true
 }
 
+private fun initialLearningStage(card: GameCardData?): TypingLearningStage {
+    return if (card?.showHintInitially == true) {
+        TypingLearningStage.Copy
+    } else {
+        TypingLearningStage.Recall
+    }
+}
+
 private fun shouldShowHintInitially(
     progress: CardProgress?,
     guidedHintThreshold: Int,
 ): Boolean {
     if (guidedHintThreshold <= 0) return false
     if (progress == null) return true
-    val isGuidedStage = progress.state == CardState.NEW || progress.state == CardState.LEARNING
-    if (!isGuidedStage) return false
-    return progress.guidedHintSuccessCount < guidedHintThreshold
+    return progress.copySuccessStreak < guidedHintThreshold
 }
