@@ -1,5 +1,6 @@
 package com.cerebus.data.preferences.data.storage
 
+import com.cerebus.data.preferences.domain.models.KeyboardPressDelay
 import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 
 interface PreferencesStorage {
@@ -18,6 +19,8 @@ interface PreferencesStorage {
     fun setNeighborTypoSensitivity(studentId: String, sensitivity: NeighborTypoSensitivity)
     fun getFreeNeighborSlipPresses(studentId: String): Int?
     fun setFreeNeighborSlipPresses(studentId: String, count: Int)
+    fun getKeyboardPressDelay(studentId: String): KeyboardPressDelay?
+    fun setKeyboardPressDelay(studentId: String, delay: KeyboardPressDelay)
     fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

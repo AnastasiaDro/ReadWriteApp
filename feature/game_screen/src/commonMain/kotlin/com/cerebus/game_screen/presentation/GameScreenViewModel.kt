@@ -14,12 +14,14 @@ import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerAndRescheduleUseC
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerCommand
 import com.cerebus.core.utils.localStartOfDayMillis
 import com.cerebus.core.utils.nowMillis
+import com.cerebus.data.preferences.domain.models.KeyboardPressDelay
 import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.student.domain.repositories.StudentRepository
+import com.cerebus.core.utils.GameLaunchMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,12 +38,12 @@ private const val MIN_GUIDED_HINT_THRESHOLD = 0
 private const val MAX_GUIDED_HINT_THRESHOLD = 5
 private const val RANDOM_REVIEW_LIMIT = 10
 private const val KEY_FEEDBACK_DURATION_MS = 180L
-private const val MIN_KEY_PRESS_INTERVAL_MS = 200L
 private const val FAST_TYPING_INTERVAL_MS = 450L
 private const val FAST_NEIGHBOR_TYPO_SUGGESTION_THRESHOLD = 3
 
 class GameScreenViewModel(
     deckIds: List<String>,
+    private val launchMode: GameLaunchMode,
     private val flashcardRepository: FlashcardRepository,
     private val deckRepository: DeckRepository,
     private val preferencesRepository: PreferencesRepository,
@@ -137,15 +139,40 @@ class GameScreenViewModel(
                 studentId = activeStudentId,
                 preferencesRepository = preferencesRepository,
             )
-
-            val preparedSession = buildSessionCardsWithPracticeFallback(
-                deckIds = selectedDeckIds,
+            val keyboardPressDelay = loadKeyboardPressDelay(
                 studentId = activeStudentId,
-                flashcardRepository = flashcardRepository,
-                cardProgressRepository = cardProgressRepository,
-                studentPrefsRepository = studentPrefsRepository,
-                dailyLimitIncrease = dailyLimitIncrease,
+                preferencesRepository = preferencesRepository,
             )
+
+            val preparedSession = when (launchMode) {
+                GameLaunchMode.Plan -> buildSessionCardsWithPracticeFallback(
+                    deckIds = selectedDeckIds,
+                    studentId = activeStudentId,
+                    flashcardRepository = flashcardRepository,
+                    cardProgressRepository = cardProgressRepository,
+                    studentPrefsRepository = studentPrefsRepository,
+                    dailyLimitIncrease = dailyLimitIncrease,
+                )
+
+                GameLaunchMode.RandomLearned -> PreparedSessionCards(
+                    cards = buildRandomReviewCards(
+                        deckIds = selectedDeckIds,
+                        studentId = activeStudentId,
+                        flashcardRepository = flashcardRepository,
+                        cardProgressRepository = cardProgressRepository,
+                        studentPrefsRepository = studentPrefsRepository,
+                    ),
+                    mode = GameSessionMode.RandomReview,
+                )
+
+                GameLaunchMode.RandomAll -> PreparedSessionCards(
+                    cards = buildRandomAllCards(
+                        deckIds = selectedDeckIds,
+                        flashcardRepository = flashcardRepository,
+                    ),
+                    mode = GameSessionMode.RandomReview,
+                )
+            }
             saveLastSessionCardsSnapshot(
                 studentId = activeStudentId,
                 deckIds = selectedDeckIds,
@@ -162,6 +189,7 @@ class GameScreenViewModel(
                 allowNeighborTypos = allowNeighborTypos,
                 neighborTypoSensitivity = neighborTypoSensitivity,
                 freeNeighborSlipPresses = freeNeighborSlipPresses,
+                keyboardPressDelayMs = keyboardPressDelay.intervalMs,
                 isShiftEnabled = isShiftEnabled,
                 sessionMode = preparedSession.mode,
                 learningStage = initialLearningStage(preparedSession.cards.firstOrNull()),
@@ -205,8 +233,9 @@ class GameScreenViewModel(
             return
         }
 
-        val expectedSymbol = throttledCurrent.expectedNextSymbol()
-        if (expectedSymbol != null && symbol.matchesExpectedSymbol(expectedSymbol)) {
+        val expectedSymbol = throttledCurrent.expectedSymbolForPressed(symbol)
+        val acceptsPressedSymbol = throttledCurrent.acceptsPressedSymbol(symbol)
+        if (acceptsPressedSymbol && expectedSymbol != null) {
             val updated = throttledCurrent.copy(
                 answerInput = throttledCurrent.answerInput + symbol,
             )
@@ -368,7 +397,8 @@ class GameScreenViewModel(
 
     private fun checkCopyStageAnswerLocally(current: GameSessionData) {
         val card = current.currentCard ?: return
-        val isCorrect = current.answerInput.trim().equals(card.answer.trim(), ignoreCase = true)
+        val userInput = current.answerInput.canonicalizeOptionalSpacesForExpected(card.answer)
+        val isCorrect = userInput.trim().equals(card.answer.trim(), ignoreCase = true)
 
         if (!isCorrect) {
             handleWrongAnswer(
@@ -437,7 +467,8 @@ class GameScreenViewModel(
                 checkCopyStageAnswerLocally(current)
                 return
             }
-            val isCorrect = current.answerInput.trim().equals(card.answer.trim(), ignoreCase = true)
+            val userInput = current.answerInput.canonicalizeOptionalSpacesForExpected(card.answer)
+            val isCorrect = userInput.trim().equals(card.answer.trim(), ignoreCase = true)
             if (isCorrect) {
                 handleCorrectAnswer(
                     current.copy(
@@ -452,12 +483,13 @@ class GameScreenViewModel(
         }
 
         viewModelScope.launch {
+            val userInput = current.answerInput.canonicalizeOptionalSpacesForExpected(card.answer)
             val submitResult = submitAnswerAndRescheduleUseCase(
                 SubmitAnswerCommand(
                     studentId = studentId,
                     cardId = card.id,
                     expectedAnswer = card.answer,
-                    userInput = current.answerInput,
+                    userInput = userInput,
                     shownAtEpochMillis = current.cardShownAtEpochMillis,
                     submittedAtEpochMillis = nowMillis(),
                     hintLevel = currentHintLevel.value,
@@ -803,6 +835,7 @@ private data class GameSessionData(
     val allowNeighborTypos: Boolean,
     val neighborTypoSensitivity: NeighborTypoSensitivity,
     val freeNeighborSlipPresses: Int,
+    val keyboardPressDelayMs: Long,
     val isShiftEnabled: Boolean,
     val learningStage: TypingLearningStage,
     val keyboardFeedbackKey: String? = null,
@@ -836,9 +869,37 @@ private data class GameSessionData(
     val isFinished: Boolean
         get() = currentIndex >= cards.size
 
-    fun expectedNextSymbol(): String? {
+    fun expectedSymbolForPressed(pressedSymbol: String): String? {
         val answer = currentCard?.answer ?: return null
-        return answer.getOrNull(answerInput.length)?.toString()
+        val alignment = answerInputAlignment(
+            answerInput = answerInput,
+            expectedAnswer = answer,
+        )
+        val expectedSymbol = answer.getOrNull(alignment.nextExpectedIndex)?.toString() ?: return null
+        if (expectedSymbol != " " || pressedSymbol == " ") return expectedSymbol
+        return answer
+            .substring(alignment.nextExpectedIndex)
+            .firstOrNull { !it.isWhitespace() }
+            ?.toString()
+    }
+
+    fun acceptsPressedSymbol(pressedSymbol: String): Boolean {
+        val answer = currentCard?.answer ?: return false
+        val alignment = answerInputAlignment(
+            answerInput = answerInput,
+            expectedAnswer = answer,
+        )
+        val nextIndex = alignment.nextExpectedIndex
+        val nextExpectedChar = answer.getOrNull(nextIndex) ?: return false
+        if (!nextExpectedChar.isWhitespace()) {
+            return pressedSymbol.matchesExpectedSymbol(nextExpectedChar.toString())
+        }
+        if (pressedSymbol == " ") return true
+        val nextLetter = answer
+            .substring(nextIndex)
+            .firstOrNull { !it.isWhitespace() }
+            ?: return false
+        return pressedSymbol.matchesExpectedSymbol(nextLetter.toString())
     }
 }
 
@@ -869,7 +930,7 @@ private fun GameSessionData.isFastTyping(): Boolean {
 
 private fun GameSessionData.consumeKeyboardPressThrottle(): GameSessionData? {
     val now = nowMillis()
-    if (now - lastHandledKeyPressAtEpochMillis < MIN_KEY_PRESS_INTERVAL_MS) return null
+    if (now - lastHandledKeyPressAtEpochMillis < keyboardPressDelayMs) return null
     return copy(lastHandledKeyPressAtEpochMillis = now)
 }
 
@@ -1130,6 +1191,28 @@ private suspend fun buildRandomReviewCards(
         .shuffled(random)
 }
 
+private suspend fun buildRandomAllCards(
+    deckIds: List<String>,
+    flashcardRepository: FlashcardRepository,
+): List<GameCardData> {
+    val random = Random(nowMillis())
+    return deckIds
+        .flatMap { deckId ->
+            flashcardRepository.getFlashcardsByDeckId(deckId).map { flashcard ->
+                GameCardData(
+                    deckId = deckId,
+                    id = flashcard.id,
+                    answer = flashcard.name,
+                    imagePath = flashcard.imageUrl.ifBlank { null },
+                    showHintInitially = false,
+                    copyStageSuccessThreshold = 2,
+                )
+            }
+        }
+        .shuffled(random)
+        .take(RANDOM_REVIEW_LIMIT)
+}
+
 private data class GameCardWithProgress(
     val card: GameCardData,
     val progress: CardProgress,
@@ -1275,9 +1358,10 @@ private fun loadNeighborTypoSensitivity(
     studentId: String,
     preferencesRepository: PreferencesRepository,
 ): NeighborTypoSensitivity {
-    if (studentId.isBlank()) return NeighborTypoSensitivity.Strict
+    if (studentId.isBlank()) return NeighborTypoSensitivity.Normal
     return preferencesRepository.getNeighborTypoSensitivity(studentId)
-        ?: NeighborTypoSensitivity.Strict
+        ?.takeIf { it != NeighborTypoSensitivity.Strict }
+        ?: NeighborTypoSensitivity.Normal
 }
 
 private fun loadFreeNeighborSlipPresses(
@@ -1286,8 +1370,69 @@ private fun loadFreeNeighborSlipPresses(
 ): Int {
     if (studentId.isBlank()) return DEFAULT_FREE_NEIGHBOR_SLIP_PRESSES
     return preferencesRepository.getFreeNeighborSlipPresses(studentId)
-        ?.coerceIn(0, 2)
+        ?.coerceIn(0, 3)
         ?: DEFAULT_FREE_NEIGHBOR_SLIP_PRESSES
+}
+
+private fun loadKeyboardPressDelay(
+    studentId: String,
+    preferencesRepository: PreferencesRepository,
+): KeyboardPressDelay {
+    if (studentId.isBlank()) return KeyboardPressDelay.Normal
+    return preferencesRepository.getKeyboardPressDelay(studentId)
+        ?: KeyboardPressDelay.Normal
+}
+
+private data class AnswerInputAlignment(
+    val nextExpectedIndex: Int,
+)
+
+private fun answerInputAlignment(
+    answerInput: String,
+    expectedAnswer: String,
+): AnswerInputAlignment {
+    var expectedIndex = 0
+    var inputIndex = 0
+
+    while (expectedIndex < expectedAnswer.length && inputIndex < answerInput.length) {
+        val expectedChar = expectedAnswer[expectedIndex]
+        val inputChar = answerInput[inputIndex]
+
+        when {
+            expectedChar.isWhitespace() && inputChar.isWhitespace() -> {
+                expectedIndex++
+                inputIndex++
+            }
+            expectedChar.isWhitespace() -> {
+                expectedIndex++
+            }
+            inputChar.toString().matchesExpectedSymbol(expectedChar.toString()) -> {
+                expectedIndex++
+                inputIndex++
+            }
+            else -> break
+        }
+    }
+
+    while (expectedIndex < expectedAnswer.length && expectedAnswer[expectedIndex].isWhitespace()) {
+        val nextInputChar = answerInput.getOrNull(inputIndex)
+        if (nextInputChar?.isWhitespace() == true) break
+        expectedIndex++
+    }
+
+    return AnswerInputAlignment(
+        nextExpectedIndex = expectedIndex,
+    )
+}
+
+private fun String.canonicalizeOptionalSpacesForExpected(expectedAnswer: String): String {
+    val normalizedUser = filterNot(Char::isWhitespace)
+    val normalizedExpected = expectedAnswer.filterNot(Char::isWhitespace)
+    return if (normalizedUser.equals(normalizedExpected, ignoreCase = true)) {
+        expectedAnswer
+    } else {
+        this
+    }
 }
 
 private fun String.matchesExpectedSymbol(expectedSymbol: String): Boolean {

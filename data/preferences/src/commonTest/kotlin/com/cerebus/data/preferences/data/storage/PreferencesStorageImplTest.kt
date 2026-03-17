@@ -1,5 +1,6 @@
 package com.cerebus.data.preferences.data.storage
 
+import com.cerebus.data.preferences.domain.models.KeyboardPressDelay
 import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.russhwolf.settings.MapSettings
 import kotlin.test.Test
@@ -256,6 +257,34 @@ class PreferencesStorageImplTest {
         )
 
         val restored = storage.getFreeNeighborSlipPresses("student_2")
+
+        assertNull(restored)
+    }
+
+    @Test
+    fun saveAndRestoreKeyboardPressDelay_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setKeyboardPressDelay(
+            studentId = "student_1",
+            delay = KeyboardPressDelay.Slow,
+        )
+
+        val restored = storage.getKeyboardPressDelay("student_1")
+
+        assertEquals(KeyboardPressDelay.Slow, restored)
+    }
+
+    @Test
+    fun keyboardPressDelay_otherStudent_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setKeyboardPressDelay(
+            studentId = "student_1",
+            delay = KeyboardPressDelay.Fast,
+        )
+
+        val restored = storage.getKeyboardPressDelay("student_2")
 
         assertNull(restored)
     }

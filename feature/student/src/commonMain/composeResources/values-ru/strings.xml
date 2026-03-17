@@ -28,6 +28,15 @@
     <string name="active_student_studied_english_letters">Английские буквы</string>
     <string name="active_student_no_studied_letters">Пока нет изученных букв</string>
     <string name="active_student_deck_progress">Изучено %1$d из %2$d</string>
+    <string name="active_student_mode_dialog_title">Как заниматься</string>
+    <string name="active_student_mode_dialog_plan_title">По плану</string>
+    <string name="active_student_mode_dialog_plan_hint">Новые карточки и повторения из активных колод</string>
+    <string name="active_student_mode_dialog_random_title">Случайные изученные</string>
+    <string name="active_student_mode_dialog_random_hint">Свободная практика знакомых карточек без изменения прогресса</string>
+    <string name="active_student_mode_dialog_gallery_title">Галерея карточек</string>
+    <string name="active_student_mode_dialog_gallery_hint">Выбрать колоду и листать карточки вручную</string>
+    <string name="active_student_gallery_choose_deck_title">Выберите колоду для галереи</string>
+    <string name="active_student_mode_dialog_cancel">Пока не выбирать</string>
     <string name="active_student_no_active_decks">Пока нет активных колод</string>
     <string name="active_student_no_decks">Пока нет колод</string>
     <string name="active_student_more">Больше колод</string>

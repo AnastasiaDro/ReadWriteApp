@@ -8,6 +8,7 @@ enum class Screens(val route: String) {
     CREATE_STUDENT("create_student"),
     CREATE("create"),
     DECK("deck"),
+    DECK_GALLERY("deck_gallery"),
     GAME("game"),
     SESSION_SETTINGS("session_settings"),
     KEYBOARD_SETTINGS("keyboard_settings"),

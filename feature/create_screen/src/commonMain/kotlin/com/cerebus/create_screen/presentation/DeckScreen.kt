@@ -152,19 +152,6 @@ fun DeckScreen(
                     deleteText = strings.delete,
                     onDeleteClick = { onAction(DeckScreenAction.OnDeleteSelectedCardsClick) },
                 )
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Button(
-                        onClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
-                    ) {
-                        Text(strings.startTraining)
-                    }
-                }
             }
         },
     ) { innerPadding ->
@@ -194,6 +181,14 @@ fun DeckScreen(
                 strings = strings,
                 onEditNameClick = { onAction(DeckScreenAction.OnEditNameClick) },
                 onEditCoverClick = { onAction(DeckScreenAction.OnEditCoverClick) },
+            )
+
+            DeckTrainingModesSection(
+                strings = strings,
+                onStartPlanClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
+                onStartRandomLearnedClick = { onAction(DeckScreenAction.OnStartRandomLearnedClick) },
+                onStartRandomAllClick = { onAction(DeckScreenAction.OnStartRandomAllClick) },
+                onOpenGalleryClick = { onAction(DeckScreenAction.OnOpenGalleryClick) },
             )
 
             Text(
@@ -396,6 +391,75 @@ fun DeckScreen(
         onConfirm = { onAction(DeckScreenAction.OnConfirmDeleteSelectedCards) },
         onDismiss = { onAction(DeckScreenAction.OnDismissDeleteSelectedCardsDialog) },
     )
+}
+
+@Composable
+private fun DeckTrainingModesSection(
+    strings: DeckScreenStrings,
+    onStartPlanClick: () -> Unit,
+    onStartRandomLearnedClick: () -> Unit,
+    onStartRandomAllClick: () -> Unit,
+    onOpenGalleryClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = strings.trainingModesTitle,
+            style = MaterialTheme.typography.titleMedium,
+        )
+
+        DeckTrainingModeButton(
+            title = strings.trainingPlanTitle,
+            hint = strings.trainingPlanHint,
+            onClick = onStartPlanClick,
+        )
+        DeckTrainingModeButton(
+            title = strings.randomLearnedTitle,
+            hint = strings.randomLearnedHint,
+            onClick = onStartRandomLearnedClick,
+        )
+        DeckTrainingModeButton(
+            title = strings.randomAllTitle,
+            hint = strings.randomAllHint,
+            onClick = onStartRandomAllClick,
+        )
+        DeckTrainingModeButton(
+            title = strings.galleryTitle,
+            hint = strings.galleryHint,
+            onClick = onOpenGalleryClick,
+        )
+    }
+}
+
+@Composable
+private fun DeckTrainingModeButton(
+    title: String,
+    hint: String,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable

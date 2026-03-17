@@ -60,6 +60,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
+import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.game_screen.navigation.GameScreenNavigatorImpl
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -84,12 +85,13 @@ import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_ses
 fun GameScreenWrapper(
     navController: NavHostController,
     deckIds: List<String>,
+    launchMode: GameLaunchMode,
     onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val navigator = remember(navController) { GameScreenNavigatorImpl(navController) }
     val viewModel = koinViewModel<GameScreenViewModel>(
-        parameters = { parametersOf(deckIds) }
+        parameters = { parametersOf(deckIds, launchMode) }
     )
 
     val state by viewModel.uiState.collectAsState()
@@ -816,16 +818,20 @@ private fun buildAnswerProgressMask(
 ): AnnotatedString {
     if (expectedAnswer.isEmpty()) return AnnotatedString(answerInput)
     return buildAnnotatedString {
-        val currentSlotIndex = expectedAnswer
-            .indices
-            .firstOrNull { index ->
-                expectedAnswer[index] != ' ' && index >= answerInput.length
-            } ?: -1
+        val currentSlotIndex = nextVisibleSlotIndex(
+            answerInput = answerInput,
+            expectedAnswer = expectedAnswer,
+        )
+        var inputIndex = 0
         expectedAnswer.forEachIndexed { index, expectedChar ->
             if (index > 0) append(' ')
             val displayedChar = when {
-                index < answerInput.length -> answerInput[index]
-                expectedChar == ' ' -> ' '
+                expectedChar.isWhitespace() && answerInput.getOrNull(inputIndex)?.isWhitespace() == true -> {
+                    inputIndex++
+                    ' '
+                }
+                expectedChar.isWhitespace() -> ' '
+                inputIndex < answerInput.length -> answerInput[inputIndex++]
                 else -> '_'
             }
             val isCurrentSlot = index == currentSlotIndex
@@ -845,6 +851,39 @@ private fun buildAnswerProgressMask(
             }
         }
     }
+}
+
+private fun nextVisibleSlotIndex(
+    answerInput: String,
+    expectedAnswer: String,
+): Int {
+    var expectedIndex = 0
+    var inputIndex = 0
+
+    while (expectedIndex < expectedAnswer.length && inputIndex < answerInput.length) {
+        val expectedChar = expectedAnswer[expectedIndex]
+        val inputChar = answerInput[inputIndex]
+
+        when {
+            expectedChar.isWhitespace() && inputChar.isWhitespace() -> {
+                expectedIndex++
+                inputIndex++
+            }
+            expectedChar.isWhitespace() -> {
+                expectedIndex++
+            }
+            else -> {
+                expectedIndex++
+                inputIndex++
+            }
+        }
+    }
+
+    while (expectedIndex < expectedAnswer.length && expectedAnswer[expectedIndex].isWhitespace()) {
+        expectedIndex++
+    }
+
+    return expectedIndex.takeIf { it in expectedAnswer.indices } ?: -1
 }
 
 @Composable

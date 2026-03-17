@@ -8,6 +8,9 @@ sealed interface DeckScreenAction {
     data class OnNameChanged(val value: String) : DeckScreenAction
     data object OnSaveNameClick : DeckScreenAction
     data object OnStartTrainingClick : DeckScreenAction
+    data object OnStartRandomLearnedClick : DeckScreenAction
+    data object OnStartRandomAllClick : DeckScreenAction
+    data object OnOpenGalleryClick : DeckScreenAction
 
     data object OnEditCoverClick : DeckScreenAction
     data object OnDismissEditCoverSourceDialog : DeckScreenAction
@@ -28,6 +31,7 @@ sealed interface DeckScreenAction {
 
     data class OnCardLongPress(val cardId: String) : DeckScreenAction
     data class OnCardClick(val cardId: String) : DeckScreenAction
+    data class OnOpenCardEditor(val cardId: String) : DeckScreenAction
     data object OnDeleteSelectedCardsClick : DeckScreenAction
     data object OnDismissDeleteSelectedCardsDialog : DeckScreenAction
     data object OnConfirmDeleteSelectedCards : DeckScreenAction

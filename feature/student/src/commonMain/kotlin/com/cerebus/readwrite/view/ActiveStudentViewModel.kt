@@ -14,6 +14,7 @@ import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.studentdeck.domain.models.StudentWithDecks
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
+import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,10 +38,17 @@ data class ActiveStudentUiState(
     val activeDecks: List<DeckProgressItem> = emptyList(),
     val studiedDecks: List<DeckProgressItem> = emptyList(),
     val otherDecks: List<DeckProgressItem> = emptyList(),
+    val isTrainingModeDialogVisible: Boolean = false,
+    val isGalleryDeckDialogVisible: Boolean = false,
 )
 
 sealed interface ActiveStudentAction {
     data object OnStartClick : ActiveStudentAction
+    data object OnDismissTrainingModeDialog : ActiveStudentAction
+    data class OnTrainingModeSelected(val mode: GameLaunchMode) : ActiveStudentAction
+    data object OnGalleryClick : ActiveStudentAction
+    data object OnDismissGalleryDeckDialog : ActiveStudentAction
+    data class OnGalleryDeckSelected(val deckId: String) : ActiveStudentAction
     data object OnChangeStudentClick : ActiveStudentAction
     data object OnMoreDecksClick : ActiveStudentAction
     data object OnCreateDeckClick : ActiveStudentAction
@@ -51,8 +59,12 @@ sealed interface ActiveStudentAction {
 
 sealed interface ActiveStudentEffect {
     data class OpenDeck(val deckId: String) : ActiveStudentEffect
-    data class OpenGame(val deckIds: List<String>) : ActiveStudentEffect
+    data class OpenGame(
+        val deckIds: List<String>,
+        val mode: GameLaunchMode,
+    ) : ActiveStudentEffect
     data class OpenDeckList(val openCreateDialog: Boolean) : ActiveStudentEffect
+    data class OpenDeckGallery(val deckId: String) : ActiveStudentEffect
     data object OpenImportDeckPicker : ActiveStudentEffect
     data object ShowImportDeckFailed : ActiveStudentEffect
     data object OpenChangeStudent : ActiveStudentEffect
@@ -81,9 +93,40 @@ class ActiveStudentViewModel(
     fun onAction(action: ActiveStudentAction) {
         when (action) {
             ActiveStudentAction.OnStartClick -> {
+                if (_uiState.value.activeDecks.isEmpty()) return
+                _uiState.update { it.copy(isTrainingModeDialogVisible = true) }
+            }
+
+            ActiveStudentAction.OnDismissTrainingModeDialog -> {
+                _uiState.update { it.copy(isTrainingModeDialogVisible = false) }
+            }
+
+            is ActiveStudentAction.OnTrainingModeSelected -> {
                 val deckIds = _uiState.value.activeDecks.map { it.deck.id }
                 if (deckIds.isEmpty()) return
-                _effects.value = ActiveStudentEffect.OpenGame(deckIds)
+                _uiState.update { it.copy(isTrainingModeDialogVisible = false) }
+                _effects.value = ActiveStudentEffect.OpenGame(
+                    deckIds = deckIds,
+                    mode = action.mode,
+                )
+            }
+
+            ActiveStudentAction.OnGalleryClick -> {
+                _uiState.update {
+                    it.copy(
+                        isTrainingModeDialogVisible = false,
+                        isGalleryDeckDialogVisible = true,
+                    )
+                }
+            }
+
+            ActiveStudentAction.OnDismissGalleryDeckDialog -> {
+                _uiState.update { it.copy(isGalleryDeckDialogVisible = false) }
+            }
+
+            is ActiveStudentAction.OnGalleryDeckSelected -> {
+                _uiState.update { it.copy(isGalleryDeckDialogVisible = false) }
+                _effects.value = ActiveStudentEffect.OpenDeckGallery(action.deckId)
             }
 
             ActiveStudentAction.OnChangeStudentClick -> {
@@ -220,6 +263,8 @@ class ActiveStudentViewModel(
                         activeDecks = buckets.activeDecks,
                         studiedDecks = buckets.studiedDecks,
                         otherDecks = buckets.otherDecks,
+                        isTrainingModeDialogVisible = _uiState.value.isTrainingModeDialogVisible,
+                        isGalleryDeckDialogVisible = _uiState.value.isGalleryDeckDialogVisible,
                     )
                 }
             }.collect { state ->

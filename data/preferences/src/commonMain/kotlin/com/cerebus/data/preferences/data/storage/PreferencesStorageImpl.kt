@@ -1,5 +1,6 @@
 package com.cerebus.data.preferences.data.storage
 
+import com.cerebus.data.preferences.domain.models.KeyboardPressDelay
 import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.russhwolf.settings.Settings
 
@@ -10,6 +11,7 @@ private const val PREVENT_WRONG_KEY_PRESS_PREFIX = "prevent_wrong_key_press_v1_"
 private const val ALLOW_NEIGHBOR_TYPOS_PREFIX = "allow_neighbor_typos_v1_"
 private const val NEIGHBOR_TYPO_SENSITIVITY_PREFIX = "neighbor_typo_sensitivity_v1_"
 private const val FREE_NEIGHBOR_SLIP_PRESSES_PREFIX = "free_neighbor_slip_presses_v1_"
+private const val KEYBOARD_PRESS_DELAY_PREFIX = "keyboard_press_delay_v1_"
 private const val LAST_SESSION_PREFIX = "last_session_v1_"
 private const val SESSION_IDS_SEPARATOR = ","
 private const val ANONYMOUS_STUDENT_ID = "_anonymous_"
@@ -117,7 +119,22 @@ class PreferencesStorageImpl(
         val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
         settings.putInt(
             key = buildFreeNeighborSlipPressesKey(normalizedStudentId),
-            value = count.coerceIn(0, 2),
+            value = count.coerceIn(0, 3),
+        )
+    }
+
+    override fun getKeyboardPressDelay(studentId: String): KeyboardPressDelay? {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return null
+        val key = buildKeyboardPressDelayKey(normalizedStudentId)
+        if (!settings.hasKey(key)) return null
+        return KeyboardPressDelay.fromStorageValue(settings.getStringOrNull(key))
+    }
+
+    override fun setKeyboardPressDelay(studentId: String, delay: KeyboardPressDelay) {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
+        settings.putString(
+            key = buildKeyboardPressDelayKey(normalizedStudentId),
+            value = delay.storageValue,
         )
     }
 
@@ -206,5 +223,9 @@ class PreferencesStorageImpl(
 
     private fun buildFreeNeighborSlipPressesKey(studentId: String): String {
         return "$FREE_NEIGHBOR_SLIP_PRESSES_PREFIX$studentId"
+    }
+
+    private fun buildKeyboardPressDelayKey(studentId: String): String {
+        return "$KEYBOARD_PRESS_DELAY_PREFIX$studentId"
     }
 }

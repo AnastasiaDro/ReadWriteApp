@@ -1,5 +1,6 @@
 package com.cerebus.data.preferences.data
 
+import com.cerebus.data.preferences.domain.models.KeyboardPressDelay
 import com.cerebus.data.preferences.data.storage.PreferencesStorage
 import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
@@ -73,6 +74,17 @@ class PreferencesRepositoryImpl(
         storage.setFreeNeighborSlipPresses(
             studentId = studentId,
             count = count,
+        )
+    }
+
+    override fun getKeyboardPressDelay(studentId: String): KeyboardPressDelay? {
+        return storage.getKeyboardPressDelay(studentId)
+    }
+
+    override fun setKeyboardPressDelay(studentId: String, delay: KeyboardPressDelay) {
+        storage.setKeyboardPressDelay(
+            studentId = studentId,
+            delay = delay,
         )
     }
 

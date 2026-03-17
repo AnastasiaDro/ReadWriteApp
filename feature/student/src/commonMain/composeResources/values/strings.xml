@@ -28,6 +28,15 @@
     <string name="active_student_studied_english_letters">English letters</string>
     <string name="active_student_no_studied_letters">No studied letters yet</string>
     <string name="active_student_deck_progress">Studied %1$d of %2$d</string>
+    <string name="active_student_mode_dialog_title">How to practice</string>
+    <string name="active_student_mode_dialog_plan_title">Follow the plan</string>
+    <string name="active_student_mode_dialog_plan_hint">New cards and scheduled reviews from active decks</string>
+    <string name="active_student_mode_dialog_random_title">Random studied cards</string>
+    <string name="active_student_mode_dialog_random_hint">Free practice with familiar cards without changing progress</string>
+    <string name="active_student_mode_dialog_gallery_title">Card gallery</string>
+    <string name="active_student_mode_dialog_gallery_hint">Choose a deck and browse cards manually</string>
+    <string name="active_student_gallery_choose_deck_title">Choose a deck for the gallery</string>
+    <string name="active_student_mode_dialog_cancel">Not now</string>
     <string name="active_student_no_active_decks">No active decks yet</string>
     <string name="active_student_no_decks">No decks yet</string>
     <string name="active_student_more">More decks</string>

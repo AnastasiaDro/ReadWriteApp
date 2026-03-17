@@ -15,6 +15,7 @@ import com.cerebus.create_screen.presentation.DeckScreenAction
 import com.cerebus.create_screen.presentation.DeckScreenStrings
 import com.cerebus.create_screen.presentation.DeckScreenViewModel
 import com.cerebus.create_screen.presentation.DeckValidationError
+import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.readwrite.media.rememberDeckArchiveShareLauncher
 import com.cerebus.readwrite.media.rememberPlatformMessenger
 import com.cerebus.readwrite.media.rememberCoverImagePicker
@@ -35,6 +36,15 @@ import readwriteapp.composeapp.generated.resources.create
 import readwriteapp.composeapp.generated.resources.confirm_delete_cards_message
 import readwriteapp.composeapp.generated.resources.confirm_delete_cards_title
 import readwriteapp.composeapp.generated.resources.deck_name_label
+import readwriteapp.composeapp.generated.resources.deck_training_mode_plan_hint
+import readwriteapp.composeapp.generated.resources.deck_training_mode_plan_title
+import readwriteapp.composeapp.generated.resources.deck_training_mode_random_all_hint
+import readwriteapp.composeapp.generated.resources.deck_training_mode_random_all_title
+import readwriteapp.composeapp.generated.resources.deck_training_mode_gallery_hint
+import readwriteapp.composeapp.generated.resources.deck_training_mode_gallery_title
+import readwriteapp.composeapp.generated.resources.deck_training_mode_random_learned_hint
+import readwriteapp.composeapp.generated.resources.deck_training_mode_random_learned_title
+import readwriteapp.composeapp.generated.resources.deck_training_modes_title
 import readwriteapp.composeapp.generated.resources.edit_cover
 import readwriteapp.composeapp.generated.resources.edit_card_title
 import readwriteapp.composeapp.generated.resources.edit_name
@@ -61,12 +71,14 @@ import readwriteapp.composeapp.generated.resources.delete
 fun DeckScreenRoute(
     deckId: String,
     onBackClick: () -> Unit,
-    onOpenGame: (String) -> Unit,
+    onOpenGame: (String, GameLaunchMode) -> Unit,
+    onOpenGallery: (String) -> Unit,
 ) {
     val viewModel = koinViewModel<DeckScreenViewModel>()
     val state by viewModel.uiState.collectAsState()
     val effect by viewModel.effects.collectAsState()
     var shouldOpenAddCardDialog by remember(deckId) { mutableStateOf(false) }
+    var editCardIdToOpen by remember(deckId) { mutableStateOf<String?>(null) }
     val messenger = rememberPlatformMessenger()
     val exportDeckErrorText = stringResource(Res.string.error_export_deck_failed)
     val shareDeckErrorText = stringResource(Res.string.error_share_deck_failed)
@@ -87,6 +99,7 @@ fun DeckScreenRoute(
 
     LaunchedEffect(deckId) {
         shouldOpenAddCardDialog = DeckNavigationState.consumeOpenAddCardDialogOnNextOpen()
+        editCardIdToOpen = DeckNavigationState.consumeOpenEditCardIdOnNextOpen()
         viewModel.onAction(DeckScreenAction.Initialize(deckId))
     }
 
@@ -94,7 +107,15 @@ fun DeckScreenRoute(
         when (val current = effect) {
             is DeckScreenEffect.OpenGame -> {
                 DeckNavigationState.selectDeck(deckId = current.deckId)
-                onOpenGame(current.deckId)
+                onOpenGame(current.deckId, current.mode)
+                viewModel.consumeEffect()
+            }
+            is DeckScreenEffect.OpenGallery -> {
+                DeckNavigationState.selectDeck(
+                    deckId = current.deckId,
+                    openGalleryCardId = current.cardId,
+                )
+                onOpenGallery(current.deckId)
                 viewModel.consumeEffect()
             }
             DeckScreenEffect.ShowExportDeckFailed -> {
@@ -114,23 +135,30 @@ fun DeckScreenRoute(
 
     LaunchedEffect(
         shouldOpenAddCardDialog,
+        editCardIdToOpen,
         state.isLoading,
         state.deckId,
         state.validationError,
     ) {
-        if (!shouldOpenAddCardDialog) return@LaunchedEffect
         if (state.isLoading) return@LaunchedEffect
         if (state.deckId != deckId) return@LaunchedEffect
 
         if (state.validationError == DeckValidationError.DECK_NOT_FOUND) {
             shouldOpenAddCardDialog = false
+            editCardIdToOpen = null
             return@LaunchedEffect
         }
 
-        if (!state.isAddCardDialogVisible) {
+        if (shouldOpenAddCardDialog && !state.isAddCardDialogVisible) {
             viewModel.onAction(DeckScreenAction.OnAddCardClick)
+            shouldOpenAddCardDialog = false
         }
-        shouldOpenAddCardDialog = false
+
+        val cardId = editCardIdToOpen
+        if (cardId != null && !state.isAddCardDialogVisible) {
+            viewModel.onAction(DeckScreenAction.OnOpenCardEditor(cardId))
+            editCardIdToOpen = null
+        }
     }
 
     LaunchedEffect(
@@ -160,6 +188,15 @@ fun DeckScreenRoute(
         exportDeck = stringResource(Res.string.export_deck),
         addCard = stringResource(Res.string.add_card),
         startTraining = stringResource(Res.string.start_training),
+        trainingModesTitle = stringResource(Res.string.deck_training_modes_title),
+        trainingPlanTitle = stringResource(Res.string.deck_training_mode_plan_title),
+        trainingPlanHint = stringResource(Res.string.deck_training_mode_plan_hint),
+        randomLearnedTitle = stringResource(Res.string.deck_training_mode_random_learned_title),
+        randomLearnedHint = stringResource(Res.string.deck_training_mode_random_learned_hint),
+        randomAllTitle = stringResource(Res.string.deck_training_mode_random_all_title),
+        randomAllHint = stringResource(Res.string.deck_training_mode_random_all_hint),
+        galleryTitle = stringResource(Res.string.deck_training_mode_gallery_title),
+        galleryHint = stringResource(Res.string.deck_training_mode_gallery_hint),
         addCardTitle = stringResource(Res.string.add_card_title),
         editCardTitle = stringResource(Res.string.edit_card_title),
         cards = stringResource(Res.string.cards),

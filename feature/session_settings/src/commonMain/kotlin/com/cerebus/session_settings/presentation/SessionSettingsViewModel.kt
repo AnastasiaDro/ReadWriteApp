@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.cerebus.core.utils.CustomResult
 import com.cerebus.core.game_engine.domain.model.StudentSrsPrefs
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
+import com.cerebus.data.preferences.domain.models.KeyboardPressDelay
 import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
@@ -56,6 +57,9 @@ class SessionSettingsViewModel(
             is SessionSettingsIntent.ChangePreventWrongKeyPress -> {
                 _state.update { it.copy(preventWrongKeyPress = intent.value) }
             }
+            is SessionSettingsIntent.ChangeKeyboardPressDelay -> {
+                _state.update { it.copy(keyboardPressDelay = intent.value) }
+            }
             is SessionSettingsIntent.ChangeAllowNeighborTypos -> {
                 _state.update { it.copy(allowNeighborTypos = intent.value) }
             }
@@ -63,7 +67,7 @@ class SessionSettingsViewModel(
                 _state.update { it.copy(neighborTypoSensitivity = intent.value) }
             }
             is SessionSettingsIntent.ChangeFreeNeighborSlipPresses -> {
-                _state.update { it.copy(freeNeighborSlipPresses = intent.value.coerceIn(0, 2)) }
+                _state.update { it.copy(freeNeighborSlipPresses = intent.value.coerceIn(0, 3)) }
             }
             is SessionSettingsIntent.ToggleDeck -> toggleDeck(intent.deckId, intent.isActive)
             SessionSettingsIntent.SaveClicked -> save()
@@ -86,12 +90,16 @@ class SessionSettingsViewModel(
                 val preventWrongKeyPress = preferencesRepository
                     .getPreventWrongKeyPressEnabled(studentId)
                     ?: true
+                val keyboardPressDelay = preferencesRepository
+                    .getKeyboardPressDelay(studentId)
+                    ?: KeyboardPressDelay.Normal
                 val allowNeighborTypos = preferencesRepository
                     .getAllowNeighborTyposEnabled(studentId)
                     ?: true
                 val neighborTypoSensitivity = preferencesRepository
                     .getNeighborTypoSensitivity(studentId)
-                    ?: NeighborTypoSensitivity.Strict
+                    ?.takeIf { it != NeighborTypoSensitivity.Strict }
+                    ?: NeighborTypoSensitivity.Normal
                 val freeNeighborSlipPresses = preferencesRepository
                     .getFreeNeighborSlipPresses(studentId)
                     ?: 1
@@ -100,6 +108,7 @@ class SessionSettingsViewModel(
                     allDecks = allDecks,
                     selectedDeckIds = studentDecks,
                     preventWrongKeyPress = preventWrongKeyPress,
+                    keyboardPressDelay = keyboardPressDelay,
                     allowNeighborTypos = allowNeighborTypos,
                     neighborTypoSensitivity = neighborTypoSensitivity,
                     freeNeighborSlipPresses = freeNeighborSlipPresses,
@@ -119,6 +128,7 @@ class SessionSettingsViewModel(
                     maxNewCardsPerDay = prefs.maxNewCardsPerDay,
                     allowNearMatch = prefs.allowNearMatch,
                     preventWrongKeyPress = loaded.preventWrongKeyPress,
+                    keyboardPressDelay = loaded.keyboardPressDelay,
                     allowNeighborTypos = loaded.allowNeighborTypos,
                     neighborTypoSensitivity = loaded.neighborTypoSensitivity,
                     freeNeighborSlipPresses = loaded.freeNeighborSlipPresses,
@@ -200,6 +210,10 @@ class SessionSettingsViewModel(
                     studentId = studentId,
                     isEnabled = snapshot.preventWrongKeyPress,
                 )
+                preferencesRepository.setKeyboardPressDelay(
+                    studentId = studentId,
+                    delay = snapshot.keyboardPressDelay,
+                )
                 preferencesRepository.setAllowNeighborTyposEnabled(
                     studentId = studentId,
                     isEnabled = snapshot.allowNeighborTypos,
@@ -258,6 +272,7 @@ private data class LoadedSettingsData(
     val allDecks: List<com.cerebus.data.decks.domain.models.Deck>,
     val selectedDeckIds: Set<String>,
     val preventWrongKeyPress: Boolean,
+    val keyboardPressDelay: KeyboardPressDelay,
     val allowNeighborTypos: Boolean,
     val neighborTypoSensitivity: NeighborTypoSensitivity,
     val freeNeighborSlipPresses: Int,

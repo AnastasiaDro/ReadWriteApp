@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebus.create_screen.navigation.DeckNavigationState
+import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.readwrite.media.rememberDeckArchivePicker
 import com.cerebus.readwrite.media.rememberPlatformMessenger
 import org.jetbrains.compose.resources.stringResource
@@ -61,11 +63,21 @@ import readwriteapp.feature.student.generated.resources.active_student_no_studie
 import readwriteapp.feature.student.generated.resources.active_student_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_studied_russian_letters
 import readwriteapp.feature.student.generated.resources.active_student_deck_progress
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_cancel
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_hint
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_title
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_title
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_gallery_hint
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_gallery_title
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_hint
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_title
+import readwriteapp.feature.student.generated.resources.active_student_gallery_choose_deck_title
 
 @Composable
 fun ActiveStudentRoute(
     onOpenDeck: (String) -> Unit,
-    onOpenGame: (List<String>) -> Unit,
+    onOpenGame: (List<String>, GameLaunchMode) -> Unit,
+    onOpenDeckGallery: (String) -> Unit,
     onOpenDeckList: (Boolean) -> Unit,
     onOpenChangeStudent: () -> Unit,
     onOpenSessionSettings: (String) -> Unit,
@@ -98,9 +110,15 @@ fun ActiveStudentRoute(
                 viewModel.consumeEffect()
             }
 
+            is ActiveStudentEffect.OpenDeckGallery -> {
+                DeckNavigationState.selectDeck(deckId = current.deckId)
+                onOpenDeckGallery(current.deckId)
+                viewModel.consumeEffect()
+            }
+
             is ActiveStudentEffect.OpenGame -> {
                 DeckNavigationState.selectDeck(deckId = current.deckIds.firstOrNull().orEmpty())
-                onOpenGame(current.deckIds)
+                onOpenGame(current.deckIds, current.mode)
                 viewModel.consumeEffect()
             }
 
@@ -382,6 +400,115 @@ private fun ActiveStudentScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
         }
+    }
+
+    if (state.isTrainingModeDialogVisible) {
+        AlertDialog(
+            onDismissRequest = {
+                onAction(ActiveStudentAction.OnDismissTrainingModeDialog)
+            },
+            title = {
+                Text(stringResource(Res.string.active_student_mode_dialog_title))
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            onAction(
+                                ActiveStudentAction.OnTrainingModeSelected(GameLaunchMode.Plan)
+                            )
+                        },
+                    ) {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(stringResource(Res.string.active_student_mode_dialog_plan_title))
+                            Text(
+                                text = stringResource(Res.string.active_student_mode_dialog_plan_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            onAction(
+                                ActiveStudentAction.OnTrainingModeSelected(GameLaunchMode.RandomLearned)
+                            )
+                        },
+                    ) {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(stringResource(Res.string.active_student_mode_dialog_random_title))
+                            Text(
+                                text = stringResource(Res.string.active_student_mode_dialog_random_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            onAction(ActiveStudentAction.OnGalleryClick)
+                        },
+                    ) {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(stringResource(Res.string.active_student_mode_dialog_gallery_title))
+                            Text(
+                                text = stringResource(Res.string.active_student_mode_dialog_gallery_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onAction(ActiveStudentAction.OnDismissTrainingModeDialog)
+                    },
+                ) {
+                    Text(stringResource(Res.string.active_student_mode_dialog_cancel))
+                }
+            },
+        )
+    }
+
+    if (state.isGalleryDeckDialogVisible) {
+        AlertDialog(
+            onDismissRequest = {
+                onAction(ActiveStudentAction.OnDismissGalleryDeckDialog)
+            },
+            title = {
+                Text(stringResource(Res.string.active_student_gallery_choose_deck_title))
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.activeDecks.forEach { deck ->
+                        TextButton(
+                            onClick = {
+                                onAction(
+                                    ActiveStudentAction.OnGalleryDeckSelected(deck.deck.id)
+                                )
+                            },
+                        ) {
+                            Text(deck.deck.name)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onAction(ActiveStudentAction.OnDismissGalleryDeckDialog)
+                    },
+                ) {
+                    Text(stringResource(Res.string.active_student_mode_dialog_cancel))
+                }
+            },
+        )
     }
 }
 

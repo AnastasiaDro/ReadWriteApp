@@ -36,6 +36,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.cerebus.data.preferences.domain.models.KeyboardPressDelay
 import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.cerebus.session_settings.navigation.SessionSettingsScrollTarget
 import org.jetbrains.compose.resources.stringResource
@@ -45,17 +46,23 @@ import readwriteapp.feature.session_settings.generated.resources.Res
 import readwriteapp.feature.session_settings.generated.resources.session_settings_active_decks
 import readwriteapp.feature.session_settings.generated.resources.session_settings_allow_near_match
 import readwriteapp.feature.session_settings.generated.resources.session_settings_allow_neighbor_typos
+import readwriteapp.feature.session_settings.generated.resources.session_settings_back
 import readwriteapp.feature.session_settings.generated.resources.session_settings_cancel
 import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold
 import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold_hint
+import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard_press_delay
+import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard_press_delay_fast
+import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard_press_delay_hint
+import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard_press_delay_normal
+import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard_press_delay_slow
 import readwriteapp.feature.session_settings.generated.resources.session_settings_keyboard
 import readwriteapp.feature.session_settings.generated.resources.session_settings_learn_more_step
 import readwriteapp.feature.session_settings.generated.resources.session_settings_load_error
 import readwriteapp.feature.session_settings.generated.resources.session_settings_max_new_per_day
 import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity
+import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity_hint
 import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity_normal
 import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity_soft
-import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity_strict
 import readwriteapp.feature.session_settings.generated.resources.session_settings_free_neighbor_slips
 import readwriteapp.feature.session_settings.generated.resources.session_settings_free_neighbor_slips_hint
 import readwriteapp.feature.session_settings.generated.resources.session_settings_prevent_wrong_key_press
@@ -102,6 +109,7 @@ fun SessionSettingsRoute(
         scrollTarget = scrollTarget,
         onIntent = viewModel::onIntent,
         onOpenKeyboardSettings = onOpenKeyboardSettings,
+        onClose = onClose,
     )
 }
 
@@ -112,6 +120,7 @@ fun SessionSettingsScreen(
     scrollTarget: SessionSettingsScrollTarget? = null,
     onIntent: (SessionSettingsIntent) -> Unit,
     onOpenKeyboardSettings: () -> Unit,
+    onClose: () -> Unit,
 ) {
     if (state.isLoading) {
         Column(
@@ -143,10 +152,23 @@ fun SessionSettingsScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = stringResource(Res.string.session_settings_title),
-            style = MaterialTheme.typography.headlineSmall,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(
+                onClick = onClose,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            ) {
+                Text(stringResource(Res.string.session_settings_back))
+            }
+
+            Text(
+                text = stringResource(Res.string.session_settings_title),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+        }
 
         TextButton(
             onClick = onOpenKeyboardSettings,
@@ -211,6 +233,27 @@ fun SessionSettingsScreen(
             )
         }
 
+        ChoiceChipField(
+            label = stringResource(Res.string.session_settings_keyboard_press_delay),
+            helperText = stringResource(Res.string.session_settings_keyboard_press_delay_hint),
+            selected = state.keyboardPressDelay,
+            enabled = true,
+            options = listOf(
+                KeyboardPressDelay.Fast to stringResource(
+                    Res.string.session_settings_keyboard_press_delay_fast
+                ),
+                KeyboardPressDelay.Normal to stringResource(
+                    Res.string.session_settings_keyboard_press_delay_normal
+                ),
+                KeyboardPressDelay.Slow to stringResource(
+                    Res.string.session_settings_keyboard_press_delay_slow
+                ),
+            ),
+            onSelected = {
+                onIntent(SessionSettingsIntent.ChangeKeyboardPressDelay(it))
+            },
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -231,12 +274,12 @@ fun SessionSettingsScreen(
 
             ChoiceChipField(
                 label = stringResource(Res.string.session_settings_neighbor_typo_sensitivity),
-                selected = state.neighborTypoSensitivity,
+                helperText = stringResource(Res.string.session_settings_neighbor_typo_sensitivity_hint),
+                selected = state.neighborTypoSensitivity
+                    .takeIf { it != NeighborTypoSensitivity.Strict }
+                    ?: NeighborTypoSensitivity.Normal,
                 enabled = state.allowNeighborTypos,
                 options = listOf(
-                    NeighborTypoSensitivity.Strict to stringResource(
-                        Res.string.session_settings_neighbor_typo_sensitivity_strict
-                    ),
                     NeighborTypoSensitivity.Normal to stringResource(
                         Res.string.session_settings_neighbor_typo_sensitivity_normal
                     ),
@@ -253,7 +296,7 @@ fun SessionSettingsScreen(
                 label = stringResource(Res.string.session_settings_free_neighbor_slips),
                 helperText = stringResource(Res.string.session_settings_free_neighbor_slips_hint),
                 value = state.freeNeighborSlipPresses,
-                valueRange = 0..2,
+                valueRange = 0..3,
                 enabled = state.allowNeighborTypos,
                 onValueChanged = { onIntent(SessionSettingsIntent.ChangeFreeNeighborSlipPresses(it)) },
             )
@@ -423,6 +466,7 @@ private fun DiscreteSliderField(
 @Composable
 private fun <T> ChoiceChipField(
     label: String,
+    helperText: String? = null,
     selected: T,
     options: List<Pair<T, String>>,
     enabled: Boolean,
@@ -436,6 +480,13 @@ private fun <T> ChoiceChipField(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
         )
+        if (!helperText.isNullOrBlank()) {
+            Text(
+                text = helperText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

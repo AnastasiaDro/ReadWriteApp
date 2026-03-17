@@ -13,12 +13,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.Modifier
+import com.cerebus.create_screen.presentation.DeckGalleryRoute
+import com.cerebus.create_screen.presentation.DeckGalleryStrings
 import com.cerebus.customkeyboard.KeyboardSettingsRoute
 import com.cerebus.customkeyboard.navigation.KeyboardSettingsNavigationState
 import com.cerebus.core.ui.insets.bottomSystemBarPadding
 import com.cerebus.core.ui.insets.topSystemBarPadding
 import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
+import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.game_screen.navigation.GameSessionNavigationState
 import com.cerebus.game_screen.presentation.GameScreenWrapper
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
@@ -34,6 +37,21 @@ import com.cerebus.session_settings.navigation.SessionSettingsNavigationState
 import com.cerebus.session_settings.navigation.SessionSettingsScrollTarget
 import com.cerebus.session_settings.presentation.SessionSettingsRoute
 import com.cerebus.tutube.navigation.Screens
+import org.jetbrains.compose.resources.stringResource
+import readwriteapp.composeapp.generated.resources.Res
+import readwriteapp.composeapp.generated.resources.back
+import readwriteapp.composeapp.generated.resources.deck_gallery_empty
+import readwriteapp.composeapp.generated.resources.deck_gallery_copy_stage
+import readwriteapp.composeapp.generated.resources.deck_gallery_correct_feedback
+import readwriteapp.composeapp.generated.resources.deck_gallery_edit
+import readwriteapp.composeapp.generated.resources.deck_gallery_next
+import readwriteapp.composeapp.generated.resources.deck_gallery_previous
+import readwriteapp.composeapp.generated.resources.deck_gallery_recall_stage
+import readwriteapp.composeapp.generated.resources.deck_gallery_show_word
+import readwriteapp.composeapp.generated.resources.deck_gallery_simplify_keyboard
+import readwriteapp.composeapp.generated.resources.deck_gallery_submit
+import readwriteapp.composeapp.generated.resources.deck_gallery_wrong_feedback
+import readwriteapp.composeapp.generated.resources.unnamed_deck
 
 @Composable
 fun ReadWriteAppNavigation() = MaterialTheme {
@@ -79,9 +97,13 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     onOpenDeck = {
                         navController.navigate(Screens.DECK.route)
                     },
-                    onOpenGame = {
-                        GameSessionNavigationState.selectedDeckIds = it
+                    onOpenGame = { deckIds, mode ->
+                        GameSessionNavigationState.selectedDeckIds = deckIds
+                        GameSessionNavigationState.launchMode = mode
                         navController.navigate(Screens.GAME.route)
+                    },
+                    onOpenDeckGallery = {
+                        navController.navigate(Screens.DECK_GALLERY.route)
                     },
                     onOpenDeckList = { openCreateDialog ->
                         if (openCreateDialog) {
@@ -160,9 +182,41 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 DeckScreenRoute(
                     deckId = DeckNavigationState.selectedDeckId,
                     onBackClick = { navController.openActiveStudentFromDeck() },
-                    onOpenGame = {
-                        GameSessionNavigationState.selectedDeckIds = listOf(it)
+                    onOpenGame = { deckId, mode ->
+                        GameSessionNavigationState.selectedDeckIds = listOf(deckId)
+                        GameSessionNavigationState.launchMode = mode
                         navController.navigate(Screens.GAME.route)
+                    },
+                    onOpenGallery = {
+                        navController.navigate(Screens.DECK_GALLERY.route)
+                    },
+                )
+            }
+            composable(Screens.DECK_GALLERY.route) {
+                val initialCardId = remember {
+                    DeckNavigationState.consumeOpenGalleryCardIdOnNextOpen()
+                }
+                DeckGalleryRoute(
+                    deckId = DeckNavigationState.selectedDeckId,
+                    initialCardId = initialCardId,
+                    strings = DeckGalleryStrings(
+                        back = stringResource(Res.string.back),
+                        titleFallback = stringResource(Res.string.unnamed_deck),
+                        previous = stringResource(Res.string.deck_gallery_previous),
+                        next = stringResource(Res.string.deck_gallery_next),
+                        empty = stringResource(Res.string.deck_gallery_empty),
+                        edit = stringResource(Res.string.deck_gallery_edit),
+                        submit = stringResource(Res.string.deck_gallery_submit),
+                        showWord = stringResource(Res.string.deck_gallery_show_word),
+                        simplifyKeyboard = stringResource(Res.string.deck_gallery_simplify_keyboard),
+                        copyStage = stringResource(Res.string.deck_gallery_copy_stage),
+                        recallStage = stringResource(Res.string.deck_gallery_recall_stage),
+                        correctFeedback = stringResource(Res.string.deck_gallery_correct_feedback),
+                        wrongFeedback = stringResource(Res.string.deck_gallery_wrong_feedback),
+                    ),
+                    onBackClick = { navController.popBackStack() },
+                    onEditCard = { deckId, cardId ->
+                        navController.openDeckEditor(deckId, cardId)
                     },
                 )
             }
@@ -172,6 +226,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     deckIds = GameSessionNavigationState.selectedDeckIds.ifEmpty {
                         listOfNotNull(DeckNavigationState.selectedDeckId.takeIf { it.isNotBlank() })
                     },
+                    launchMode = GameSessionNavigationState.launchMode,
                     onOpenSessionSettings = { studentId, scrollToTypos ->
                         navController.openSessionSettings(
                             studentId = studentId,
@@ -271,6 +326,23 @@ private fun androidx.navigation.NavHostController.openActiveStudentFromDeck() {
     navigate(Screens.ACTIVE_STUDENT.route) {
         popUpTo(Screens.NO_STUDENTS.route) { inclusive = true }
         launchSingleTop = true
+    }
+}
+
+private fun androidx.navigation.NavHostController.openDeckEditor(
+    deckId: String,
+    cardId: String,
+) {
+    DeckNavigationState.selectDeck(
+        deckId = deckId,
+        openEditCardId = cardId,
+    )
+    val replacedExistingDeck = popBackStack(Screens.DECK.route, inclusive = true)
+    navigate(Screens.DECK.route) {
+        launchSingleTop = true
+        if (replacedExistingDeck) {
+            restoreState = false
+        }
     }
 }
 

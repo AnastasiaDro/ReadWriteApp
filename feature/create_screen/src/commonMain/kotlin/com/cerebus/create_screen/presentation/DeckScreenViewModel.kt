@@ -8,6 +8,7 @@ import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
+import com.cerebus.core.utils.GameLaunchMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,7 +68,37 @@ class DeckScreenViewModel(
             DeckScreenAction.OnStartTrainingClick -> {
                 val deckId = _uiState.value.deckId
                 if (deckId.isNotBlank()) {
-                    _effects.value = DeckScreenEffect.OpenGame(deckId)
+                    _effects.value = DeckScreenEffect.OpenGame(
+                        deckId = deckId,
+                        mode = GameLaunchMode.Plan,
+                    )
+                }
+            }
+
+            DeckScreenAction.OnStartRandomLearnedClick -> {
+                val deckId = _uiState.value.deckId
+                if (deckId.isNotBlank()) {
+                    _effects.value = DeckScreenEffect.OpenGame(
+                        deckId = deckId,
+                        mode = GameLaunchMode.RandomLearned,
+                    )
+                }
+            }
+
+            DeckScreenAction.OnStartRandomAllClick -> {
+                val deckId = _uiState.value.deckId
+                if (deckId.isNotBlank()) {
+                    _effects.value = DeckScreenEffect.OpenGame(
+                        deckId = deckId,
+                        mode = GameLaunchMode.RandomAll,
+                    )
+                }
+            }
+
+            DeckScreenAction.OnOpenGalleryClick -> {
+                val deckId = _uiState.value.deckId
+                if (deckId.isNotBlank()) {
+                    _effects.value = DeckScreenEffect.OpenGallery(deckId = deckId)
                 }
             }
 
@@ -145,6 +176,7 @@ class DeckScreenViewModel(
             DeckScreenAction.OnConfirmAddCard -> saveCard()
             is DeckScreenAction.OnCardLongPress -> toggleCardSelection(action.cardId)
             is DeckScreenAction.OnCardClick -> onCardClick(action.cardId)
+            is DeckScreenAction.OnOpenCardEditor -> openCardEditor(action.cardId)
             DeckScreenAction.OnDeleteSelectedCardsClick -> {
                 _uiState.update { it.copy(isDeleteSelectedDialogVisible = true) }
             }
@@ -338,6 +370,17 @@ class DeckScreenViewModel(
             return
         }
 
+        val deckId = _uiState.value.deckId
+        val cardExists = _uiState.value.flashcards.any { it.id == cardId }
+        if (deckId.isBlank() || !cardExists) return
+
+        _effects.value = DeckScreenEffect.OpenGallery(
+            deckId = deckId,
+            cardId = cardId,
+        )
+    }
+
+    private fun openCardEditor(cardId: String) {
         val card = _uiState.value.flashcards.firstOrNull { it.id == cardId } ?: return
         _uiState.update {
             it.copy(
@@ -501,8 +544,15 @@ class DeckScreenViewModel(
 }
 
 sealed interface DeckScreenEffect {
-    data class OpenGame(val deckId: String) : DeckScreenEffect
+    data class OpenGame(
+        val deckId: String,
+        val mode: GameLaunchMode,
+    ) : DeckScreenEffect
     data object ShowExportDeckFailed : DeckScreenEffect
+    data class OpenGallery(
+        val deckId: String,
+        val cardId: String? = null,
+    ) : DeckScreenEffect
     data class ShareDeckArchive(
         val filePath: String,
         val fileName: String,
