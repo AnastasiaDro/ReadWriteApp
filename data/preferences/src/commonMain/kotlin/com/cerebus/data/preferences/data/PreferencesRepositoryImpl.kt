@@ -1,6 +1,7 @@
 package com.cerebus.data.preferences.data
 
 import com.cerebus.data.preferences.data.storage.PreferencesStorage
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 
 class PreferencesRepositoryImpl(
@@ -40,6 +41,39 @@ class PreferencesRepositoryImpl(
 
     override fun setPreventWrongKeyPressEnabled(studentId: String, isEnabled: Boolean) {
         storage.setPreventWrongKeyPressEnabled(studentId, isEnabled)
+    }
+
+    override fun getAllowNeighborTyposEnabled(studentId: String): Boolean? {
+        return storage.getAllowNeighborTyposEnabled(studentId)
+    }
+
+    override fun setAllowNeighborTyposEnabled(studentId: String, isEnabled: Boolean) {
+        storage.setAllowNeighborTyposEnabled(studentId, isEnabled)
+    }
+
+    override fun getNeighborTypoSensitivity(studentId: String): NeighborTypoSensitivity? {
+        return storage.getNeighborTypoSensitivity(studentId)
+    }
+
+    override fun setNeighborTypoSensitivity(
+        studentId: String,
+        sensitivity: NeighborTypoSensitivity,
+    ) {
+        storage.setNeighborTypoSensitivity(
+            studentId = studentId,
+            sensitivity = sensitivity,
+        )
+    }
+
+    override fun getFreeNeighborSlipPresses(studentId: String): Int? {
+        return storage.getFreeNeighborSlipPresses(studentId)
+    }
+
+    override fun setFreeNeighborSlipPresses(studentId: String, count: Int) {
+        storage.setFreeNeighborSlipPresses(
+            studentId = studentId,
+            count = count,
+        )
     }
 
     override fun getLastSessionCardIds(

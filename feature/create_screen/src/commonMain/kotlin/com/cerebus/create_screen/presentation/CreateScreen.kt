@@ -55,6 +55,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 
 private const val MAX_DECK_NAME_LENGTH = 40
+private const val MAX_DECKS_PER_EXPORT = 5
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -122,7 +123,12 @@ fun CreateScreen(
                 SelectionBottomBar(
                     selectedCount = state.selectedDeckIds.size,
                     selectedText = strings.selectedCount,
+                    exportText = strings.export,
+                    exportLimitHint = strings.exportLimitHint,
                     deleteText = strings.delete,
+                    isExporting = state.isExportingSelectedDecks,
+                    isDeleting = state.isDeletingSelectedDecks,
+                    onExportClick = { onAction(CreateScreenAction.OnExportSelectedDecksClick) },
                     onDeleteClick = { onAction(CreateScreenAction.OnDeleteSelectedDecksClick) },
                 )
             }
@@ -334,9 +340,16 @@ private fun DeckGridItem(
 private fun SelectionBottomBar(
     selectedCount: Int,
     selectedText: String,
+    exportText: String,
+    exportLimitHint: String,
     deleteText: String,
+    isExporting: Boolean,
+    isDeleting: Boolean,
+    onExportClick: () -> Unit,
     onDeleteClick: () -> Unit,
 ) {
+    val exportLimitExceeded = selectedCount > MAX_DECKS_PER_EXPORT
+
     Surface(
         tonalElevation = 6.dp,
         shadowElevation = 6.dp,
@@ -348,12 +361,36 @@ private fun SelectionBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "$selectedCount $selectedText",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Button(onClick = onDeleteClick) {
-                Text(deleteText)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "$selectedCount $selectedText",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (exportLimitExceeded) {
+                    Text(
+                        text = exportLimitHint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Button(
+                    onClick = onExportClick,
+                    enabled = !isExporting && !isDeleting && !exportLimitExceeded,
+                ) {
+                    Text(exportText)
+                }
+                Button(
+                    onClick = onDeleteClick,
+                    enabled = !isExporting && !isDeleting,
+                ) {
+                    Text(deleteText)
+                }
             }
         }
     }

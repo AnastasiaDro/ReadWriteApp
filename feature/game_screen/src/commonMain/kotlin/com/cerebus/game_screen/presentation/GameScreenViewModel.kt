@@ -2,6 +2,7 @@ package com.cerebus.game_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.customkeyboard.isNeighborKeyboardSlip
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
 import com.cerebus.core.game_engine.domain.logic.interleaveReviewAndNewCards
 import com.cerebus.core.game_engine.domain.logic.selectBalancedNewCardsByDeck
@@ -13,6 +14,7 @@ import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerAndRescheduleUseC
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerCommand
 import com.cerebus.core.utils.localStartOfDayMillis
 import com.cerebus.core.utils.nowMillis
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
@@ -35,6 +37,8 @@ private const val MAX_GUIDED_HINT_THRESHOLD = 5
 private const val RANDOM_REVIEW_LIMIT = 10
 private const val KEY_FEEDBACK_DURATION_MS = 180L
 private const val MIN_KEY_PRESS_INTERVAL_MS = 200L
+private const val FAST_TYPING_INTERVAL_MS = 450L
+private const val FAST_NEIGHBOR_TYPO_SUGGESTION_THRESHOLD = 3
 
 class GameScreenViewModel(
     deckIds: List<String>,
@@ -71,6 +75,7 @@ class GameScreenViewModel(
             is GameScreenAction.OnShiftChanged -> updateKeyboardShift(action.isEnabled)
             is GameScreenAction.OnShowWordHelpToggled -> toggleShowWordHelp(action.isEnabled)
             is GameScreenAction.OnSimplifyKeyboardHelpToggled -> toggleSimplifyKeyboardHelp(action.isEnabled)
+            GameScreenAction.OnTypoSuggestionDismissed -> dismissTypoSuggestion()
             GameScreenAction.OnCheckClick -> checkAnswer()
             GameScreenAction.OnRetryClick -> repeatLastSession()
             GameScreenAction.OnRandomReviewClick -> repeatRandomStudiedCards()
@@ -120,6 +125,18 @@ class GameScreenViewModel(
                 studentId = activeStudentId,
                 preferencesRepository = preferencesRepository,
             )
+            val allowNeighborTypos = loadAllowNeighborTyposEnabled(
+                studentId = activeStudentId,
+                preferencesRepository = preferencesRepository,
+            )
+            val neighborTypoSensitivity = loadNeighborTypoSensitivity(
+                studentId = activeStudentId,
+                preferencesRepository = preferencesRepository,
+            )
+            val freeNeighborSlipPresses = loadFreeNeighborSlipPresses(
+                studentId = activeStudentId,
+                preferencesRepository = preferencesRepository,
+            )
 
             val preparedSession = buildSessionCardsWithPracticeFallback(
                 deckIds = selectedDeckIds,
@@ -142,6 +159,9 @@ class GameScreenViewModel(
                 studentId = activeStudentId,
                 activeSymbols = activeSymbols,
                 preventWrongKeyPress = preventWrongKeyPress,
+                allowNeighborTypos = allowNeighborTypos,
+                neighborTypoSensitivity = neighborTypoSensitivity,
+                freeNeighborSlipPresses = freeNeighborSlipPresses,
                 isShiftEnabled = isShiftEnabled,
                 sessionMode = preparedSession.mode,
                 learningStage = initialLearningStage(preparedSession.cards.firstOrNull()),
@@ -176,6 +196,7 @@ class GameScreenViewModel(
     private fun handleKeyboardSymbolPress(symbol: String) {
         val current = session ?: return
         if (current.isFinished || current.feedback != null) return
+        val isFastTyping = current.isFastTyping()
         val throttledCurrent = current.consumeKeyboardPressThrottle() ?: return
         session = throttledCurrent
 
@@ -195,6 +216,48 @@ class GameScreenViewModel(
                 symbol = symbol,
                 type = TrainingKeyboardFeedbackType.Correct,
             )
+        } else if (
+            expectedSymbol != null &&
+            isNeighborKeyboardSlip(
+                referenceText = throttledCurrent.currentCard?.answer.orEmpty(),
+                expectedSymbol = expectedSymbol,
+                pressedSymbol = symbol,
+                sensitivity = NeighborTypoSensitivity.Normal,
+            )
+        ) {
+            val shouldTreatAsSlip = throttledCurrent.allowNeighborTypos &&
+                isNeighborKeyboardSlip(
+                    referenceText = throttledCurrent.currentCard?.answer.orEmpty(),
+                    expectedSymbol = expectedSymbol,
+                    pressedSymbol = symbol,
+                    sensitivity = throttledCurrent.neighborTypoSensitivity,
+                )
+            val updated = throttledCurrent.registerFastNeighborTypoIfNeeded(
+                isFastTyping = isFastTyping,
+            ).let { base ->
+                if (shouldTreatAsSlip) {
+                    base.copy(
+                        slipPressCount = base.slipPressCount + 1,
+                    )
+                } else {
+                    base.copy(
+                        wrongPressCount = base.wrongPressCount + 1,
+                    )
+                }
+            }
+            session = updated
+            _uiState.value = updated.toActiveUiState()
+            triggerTypingFeedback(
+                symbol = symbol,
+                type = if (shouldTreatAsSlip) {
+                    TrainingKeyboardFeedbackType.Slip
+                } else {
+                    TrainingKeyboardFeedbackType.Wrong
+                },
+            )
+            if (!shouldTreatAsSlip) {
+                playInvalidKeySoundStub()
+            }
         } else {
             val updated = throttledCurrent.copy(
                 wrongPressCount = throttledCurrent.wrongPressCount + 1,
@@ -288,6 +351,16 @@ class GameScreenViewModel(
         val updated = current.copy(
             usedSimplifiedKeyboard = current.usedSimplifiedKeyboard || isEnabled,
             isSimplifiedKeyboardEnabled = isEnabled,
+        )
+        session = updated
+        _uiState.value = updated.toActiveUiState()
+    }
+
+    private fun dismissTypoSuggestion() {
+        val current = session ?: return
+        val updated = current.copy(
+            showTypoSettingsSuggestion = false,
+            hasShownTypoSettingsSuggestion = true,
         )
         session = updated
         _uiState.value = updated.toActiveUiState()
@@ -485,9 +558,12 @@ class GameScreenViewModel(
                 isHintVisible = nextStage == TypingLearningStage.Copy,
                 copySuccessStreak = nextCard?.storedCopySuccessStreak ?: 0,
                 wrongPressCount = 0,
+                slipPressCount = 0,
+                fastNeighborTypoCount = 0,
                 usedShowWord = false,
                 usedSimplifiedKeyboard = false,
                 isSimplifiedKeyboardEnabled = false,
+                showTypoSettingsSuggestion = false,
                 feedback = null,
                 cardShownAtEpochMillis = nowMillis(),
                 attemptStartedAtEpochMillis = nowMillis(),
@@ -679,9 +755,12 @@ class GameScreenViewModel(
             isHintVisible = initialStage == TypingLearningStage.Copy,
             copySuccessStreak = firstCard?.storedCopySuccessStreak ?: 0,
             wrongPressCount = 0,
+            slipPressCount = 0,
+            fastNeighborTypoCount = 0,
             usedShowWord = false,
             usedSimplifiedKeyboard = false,
             isSimplifiedKeyboardEnabled = false,
+            showTypoSettingsSuggestion = false,
             keyboardFeedbackKey = null,
             keyboardFeedbackType = null,
             inputFeedbackType = null,
@@ -721,6 +800,9 @@ private data class GameSessionData(
     val studentId: String,
     val activeSymbols: Set<String>,
     val preventWrongKeyPress: Boolean,
+    val allowNeighborTypos: Boolean,
+    val neighborTypoSensitivity: NeighborTypoSensitivity,
+    val freeNeighborSlipPresses: Int,
     val isShiftEnabled: Boolean,
     val learningStage: TypingLearningStage,
     val keyboardFeedbackKey: String? = null,
@@ -737,8 +819,12 @@ private data class GameSessionData(
     val attemptIndex: Int,
     val copySuccessStreak: Int = 0,
     val wrongPressCount: Int = 0,
+    val slipPressCount: Int = 0,
+    val fastNeighborTypoCount: Int = 0,
     val usedShowWord: Boolean = false,
     val usedSimplifiedKeyboard: Boolean = false,
+    val showTypoSettingsSuggestion: Boolean = false,
+    val hasShownTypoSettingsSuggestion: Boolean = false,
     val lastHintLevel: HintLevel? = null,
     val lastAttemptDurationMs: Long? = null,
     val lastHandledKeyPressAtEpochMillis: Long = 0L,
@@ -764,6 +850,8 @@ private fun GameSessionData.computeCurrentHintLevel(): HintLevel {
     return computeHintLevel(
         TypingAttemptMetrics(
             wrongPressCount = wrongPressCount,
+            slipPressCount = slipPressCount,
+            freeSlipPresses = freeNeighborSlipPresses,
             usedShowWord = usedShowWord,
             usedSimplifiedKeyboard = usedSimplifiedKeyboard,
         )
@@ -772,6 +860,11 @@ private fun GameSessionData.computeCurrentHintLevel(): HintLevel {
 
 private fun GameSessionData.currentAttemptDurationMs(): Long {
     return (nowMillis() - attemptStartedAtEpochMillis).coerceAtLeast(0L)
+}
+
+private fun GameSessionData.isFastTyping(): Boolean {
+    if (lastHandledKeyPressAtEpochMillis == 0L) return false
+    return nowMillis() - lastHandledKeyPressAtEpochMillis <= FAST_TYPING_INTERVAL_MS
 }
 
 private fun GameSessionData.consumeKeyboardPressThrottle(): GameSessionData? {
@@ -793,9 +886,12 @@ private fun GameSessionData.resetAttempt(
         keyboardFeedbackType = null,
         inputFeedbackType = null,
         wrongPressCount = 0,
+        slipPressCount = 0,
+        fastNeighborTypoCount = 0,
         usedShowWord = false,
         usedSimplifiedKeyboard = false,
         isSimplifiedKeyboardEnabled = false,
+        showTypoSettingsSuggestion = false,
         feedback = null,
         cardShownAtEpochMillis = nowMillis(),
         attemptStartedAtEpochMillis = nowMillis(),
@@ -804,6 +900,17 @@ private fun GameSessionData.resetAttempt(
         lastHintLevel = null,
         lastAttemptDurationMs = null,
         lastHandledKeyPressAtEpochMillis = 0L,
+    )
+}
+
+private fun GameSessionData.registerFastNeighborTypoIfNeeded(
+    isFastTyping: Boolean,
+): GameSessionData {
+    if (!isFastTyping || hasShownTypoSettingsSuggestion) return this
+    val nextFastNeighborTypoCount = fastNeighborTypoCount + 1
+    return copy(
+        fastNeighborTypoCount = nextFastNeighborTypoCount,
+        showTypoSettingsSuggestion = nextFastNeighborTypoCount >= FAST_NEIGHBOR_TYPO_SUGGESTION_THRESHOLD,
     )
 }
 
@@ -1108,6 +1215,7 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         learningStage = learningStage,
         activeSymbols = activeKeyboardSymbols,
         preventWrongKeyPress = preventWrongKeyPress,
+        allowNeighborTypos = allowNeighborTypos,
         isShiftEnabled = isShiftEnabled,
         keyboardFeedbackKey = keyboardFeedbackKey,
         keyboardFeedbackType = keyboardFeedbackType,
@@ -1117,8 +1225,10 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         isSimplifiedKeyboardEnabled = isSimplifiedKeyboardEnabled,
         copySuccessStreak = copySuccessStreak,
         wrongPressCount = wrongPressCount,
+        slipPressCount = slipPressCount,
         usedShowWord = usedShowWord,
         usedSimplifiedKeyboard = usedSimplifiedKeyboard,
+        showTypoSettingsSuggestion = showTypoSettingsSuggestion,
         lastHintLevel = lastHintLevel,
         feedback = feedback?.toUi(),
     )
@@ -1151,6 +1261,33 @@ private fun loadPreventWrongKeyPressEnabled(
 ): Boolean {
     if (studentId.isBlank()) return true
     return preferencesRepository.getPreventWrongKeyPressEnabled(studentId) ?: true
+}
+
+private fun loadAllowNeighborTyposEnabled(
+    studentId: String,
+    preferencesRepository: PreferencesRepository,
+): Boolean {
+    if (studentId.isBlank()) return true
+    return preferencesRepository.getAllowNeighborTyposEnabled(studentId) ?: true
+}
+
+private fun loadNeighborTypoSensitivity(
+    studentId: String,
+    preferencesRepository: PreferencesRepository,
+): NeighborTypoSensitivity {
+    if (studentId.isBlank()) return NeighborTypoSensitivity.Strict
+    return preferencesRepository.getNeighborTypoSensitivity(studentId)
+        ?: NeighborTypoSensitivity.Strict
+}
+
+private fun loadFreeNeighborSlipPresses(
+    studentId: String,
+    preferencesRepository: PreferencesRepository,
+): Int {
+    if (studentId.isBlank()) return DEFAULT_FREE_NEIGHBOR_SLIP_PRESSES
+    return preferencesRepository.getFreeNeighborSlipPresses(studentId)
+        ?.coerceIn(0, 2)
+        ?: DEFAULT_FREE_NEIGHBOR_SLIP_PRESSES
 }
 
 private fun String.matchesExpectedSymbol(expectedSymbol: String): Boolean {

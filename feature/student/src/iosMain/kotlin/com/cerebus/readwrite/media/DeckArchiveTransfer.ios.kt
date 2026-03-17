@@ -54,13 +54,9 @@ actual fun rememberDeckArchiveShareLauncher(
 
     return remember {
         object : DeckArchiveShareLauncher {
-            override fun shareArchive(
-                filePath: String,
-                fileName: String,
-            ) {
-                shareArchiveFile(
-                    filePath = filePath,
-                    fileName = fileName,
+            override fun shareArchives(files: List<DeckArchiveShareItem>) {
+                shareArchiveFiles(
+                    files = files,
                     onError = { message -> onErrorState.value(message) },
                 )
             }
@@ -153,13 +149,24 @@ private fun openArchivePicker(
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun shareArchiveFile(
-    filePath: String,
-    fileName: String,
+private fun shareArchiveFiles(
+    files: List<DeckArchiveShareItem>,
     onError: (String) -> Unit,
 ) {
-    val normalizedPath = normalizePath(filePath)
-    if (normalizedPath.isBlank() || !NSFileManager.defaultManager.fileExistsAtPath(normalizedPath)) {
+    if (files.isEmpty()) {
+        onError("No archives to share")
+        return
+    }
+
+    val urls = files.mapNotNull { item ->
+        val normalizedPath = normalizePath(item.filePath)
+        if (normalizedPath.isBlank() || !NSFileManager.defaultManager.fileExistsAtPath(normalizedPath)) {
+            null
+        } else {
+            NSURL.fileURLWithPath(normalizedPath)
+        }
+    }
+    if (urls.size != files.size) {
         onError("Archive file does not exist")
         return
     }
@@ -174,9 +181,8 @@ private fun shareArchiveFile(
         return
     }
 
-    val url = NSURL.fileURLWithPath(normalizedPath)
     val activityController = UIActivityViewController(
-        activityItems = listOf(url),
+        activityItems = urls,
         applicationActivities = null,
     )
     activityController.popoverPresentationController?.let { popover ->

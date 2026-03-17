@@ -27,6 +27,7 @@ class CreateScreenViewModel(
 ) : ViewModel() {
     private companion object {
         const val MAX_DECK_NAME_LENGTH = 40
+        const val MAX_DECKS_PER_EXPORT = 5
     }
 
     private val _uiState = MutableStateFlow(CreateUiState())
@@ -108,6 +109,7 @@ class CreateScreenViewModel(
                 toggleDeckSelection(action.deckId)
             }
 
+            CreateScreenAction.OnExportSelectedDecksClick -> exportSelectedDecks()
             CreateScreenAction.OnDeleteSelectedDecksClick -> {
                 _uiState.update { it.copy(isDeleteSelectedDialogVisible = true) }
             }
@@ -295,6 +297,42 @@ class CreateScreenViewModel(
                     )
                 }
             }
+        }
+    }
+
+    private fun exportSelectedDecks() {
+        val selectedIds = _uiState.value.selectedDeckIds.toList()
+        if (selectedIds.isEmpty() || _uiState.value.isExportingSelectedDecks) return
+
+        if (selectedIds.size > MAX_DECKS_PER_EXPORT) {
+            viewModelScope.launch {
+                _effects.emit(CreateScreenEffect.ShowExportSelectedDecksLimitExceeded)
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isExportingSelectedDecks = true,
+                    validationError = null,
+                )
+            }
+
+            val exportedFiles = mutableListOf<com.cerebus.core.deck_package.domain.service.DeckPackageExportFile>()
+            selectedIds.forEach { deckId ->
+                when (val result = deckPackageService.exportDeck(deckId)) {
+                    is CustomResult.Success -> exportedFiles += result.data
+                    is CustomResult.Failure -> {
+                        _effects.emit(CreateScreenEffect.ShowExportSelectedDecksFailed)
+                        _uiState.update { it.copy(isExportingSelectedDecks = false) }
+                        return@launch
+                    }
+                }
+            }
+
+            _effects.emit(CreateScreenEffect.ShareDeckArchives(exportedFiles))
+            _uiState.update { it.copy(isExportingSelectedDecks = false) }
         }
     }
 

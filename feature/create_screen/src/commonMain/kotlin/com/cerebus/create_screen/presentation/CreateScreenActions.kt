@@ -1,5 +1,7 @@
 package com.cerebus.create_screen.presentation
 
+import com.cerebus.core.deck_package.domain.service.DeckPackageExportFile
+
 sealed interface CreateScreenAction {
     data object OnCreateDeckClick : CreateScreenAction
     data object OnImportDeckClick : CreateScreenAction
@@ -18,6 +20,7 @@ sealed interface CreateScreenAction {
 
     data class OnDeckClick(val deckId: String) : CreateScreenAction
     data class OnDeckLongClick(val deckId: String) : CreateScreenAction
+    data object OnExportSelectedDecksClick : CreateScreenAction
     data object OnDeleteSelectedDecksClick : CreateScreenAction
     data object OnDismissDeleteSelectedDialog : CreateScreenAction
     data object OnConfirmDeleteSelectedDecks : CreateScreenAction
@@ -32,6 +35,9 @@ sealed interface CreateScreenEffect {
     data object OpenCamera : CreateScreenEffect
     data object OpenImportDeckPicker : CreateScreenEffect
     data object ShowImportDeckFailed : CreateScreenEffect
+    data object ShowExportSelectedDecksFailed : CreateScreenEffect
+    data object ShowExportSelectedDecksLimitExceeded : CreateScreenEffect
+    data class ShareDeckArchives(val files: List<DeckPackageExportFile>) : CreateScreenEffect
     data class OpenDeck(
         val deckId: String,
         val openAddCardDialog: Boolean = false,

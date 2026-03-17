@@ -51,6 +51,9 @@
     <string name="error_open_archive_picker_failed">Не удалось открыть выбор файла колоды</string>
     <string name="error_import_deck_failed">Не удалось импортировать колоду</string>
     <string name="error_export_deck_failed">Не удалось экспортировать колоду</string>
+    <string name="error_export_selected_decks_failed">Не удалось подготовить выбранные колоды к отправке</string>
+    <string name="error_export_decks_limit">Пока за один раз можно поделиться максимум 5 колодами</string>
+    <string name="export_decks_limit_hint">За раз можно выбрать до 5 колод</string>
     <string name="error_share_deck_failed">Не удалось поделиться архивом колоды</string>
     <string name="no_students_title">Добавьте ученика, чтобы начать занятие</string>
     <string name="no_students_subtitle">Для каждого ученика сохраняется свой прогресс и колоды</string>

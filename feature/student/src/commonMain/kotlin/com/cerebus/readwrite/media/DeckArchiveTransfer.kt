@@ -6,6 +6,11 @@ interface DeckArchivePicker {
     fun openArchivePicker()
 }
 
+data class DeckArchiveShareItem(
+    val filePath: String,
+    val fileName: String,
+)
+
 @Composable
 expect fun rememberDeckArchivePicker(
     onArchivePicked: (String) -> Unit,
@@ -16,7 +21,18 @@ interface DeckArchiveShareLauncher {
     fun shareArchive(
         filePath: String,
         fileName: String,
-    )
+    ) {
+        shareArchives(
+            listOf(
+                DeckArchiveShareItem(
+                    filePath = filePath,
+                    fileName = fileName,
+                )
+            )
+        )
+    }
+
+    fun shareArchives(files: List<DeckArchiveShareItem>)
 }
 
 @Composable

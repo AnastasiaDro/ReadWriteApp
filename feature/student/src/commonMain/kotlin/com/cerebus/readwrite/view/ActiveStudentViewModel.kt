@@ -14,6 +14,7 @@ import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.studentdeck.domain.models.StudentWithDecks
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
+import com.cerebus.readwrite.navigation.CreateStudentNavigationState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.Flow
@@ -102,8 +103,33 @@ class ActiveStudentViewModel(
             is ActiveStudentAction.OnImportDeckFilePicked -> importDeckArchive(action.uri)
 
             is ActiveStudentAction.OnDeckClick -> {
-                _effects.value = ActiveStudentEffect.OpenDeck(action.deckId)
+                openDeck(action.deckId)
             }
+        }
+    }
+
+    private fun openDeck(deckId: String) {
+        val state = _uiState.value
+        val studentId = state.studentId
+        if (studentId.isNullOrBlank()) {
+            _effects.value = ActiveStudentEffect.OpenDeck(deckId)
+            return
+        }
+
+        val clickedOtherDeck = state.otherDecks.any { it.deck.id == deckId }
+        if (!clickedOtherDeck) {
+            _effects.value = ActiveStudentEffect.OpenDeck(deckId)
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                studentDeckRepository.assignDeckToStudent(
+                    studentId = studentId,
+                    deckId = deckId,
+                )
+            }
+            _effects.value = ActiveStudentEffect.OpenDeck(deckId)
         }
     }
 
@@ -132,6 +158,17 @@ class ActiveStudentViewModel(
     }
 
     fun onScreenShown() {
+        val pendingCreatedStudentId = CreateStudentNavigationState.consumePendingCreatedStudentId()
+        if (!pendingCreatedStudentId.isNullOrBlank()) {
+            if (preferredStudentId.value != pendingCreatedStudentId) {
+                preferredStudentId.value = pendingCreatedStudentId
+            }
+            if (preferencesRepository.getLastActiveStudentId() != pendingCreatedStudentId) {
+                preferencesRepository.setLastActiveStudentId(pendingCreatedStudentId)
+            }
+            return
+        }
+
         val storedId = preferencesRepository.getLastActiveStudentId()
         if (preferredStudentId.value != storedId) {
             preferredStudentId.value = storedId

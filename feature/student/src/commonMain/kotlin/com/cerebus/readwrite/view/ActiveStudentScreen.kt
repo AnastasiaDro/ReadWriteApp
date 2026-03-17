@@ -4,11 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -23,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,13 +51,15 @@ import readwriteapp.feature.student.generated.resources.active_student_no_active
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
 import readwriteapp.feature.student.generated.resources.active_student_other_decks
 import readwriteapp.feature.student.generated.resources.active_student_start
-import readwriteapp.feature.student.generated.resources.active_student_studied_decks
+import readwriteapp.feature.student.generated.resources.active_student_studied_digits
+import readwriteapp.feature.student.generated.resources.active_student_studied_english_letters
 import readwriteapp.feature.student.generated.resources.active_student_error_import_deck_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_open_archive_picker_failed
 import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
 import readwriteapp.feature.student.generated.resources.active_student_keyboard_settings
 import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_studied_letters
+import readwriteapp.feature.student.generated.resources.active_student_studied_russian_letters
 import readwriteapp.feature.student.generated.resources.active_student_deck_progress
 
 @Composable
@@ -151,47 +158,54 @@ private fun ActiveStudentScreen(
     val displayName = state.studentName.ifBlank {
         stringResource(Res.string.active_student_fallback_name)
     }
+    val scrollState = rememberScrollState()
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
+            .statusBarsPadding()
             .padding(
                 start = 20.dp,
                 end = 20.dp,
                 top = 16.dp,
                 bottom = 16.dp,
             ),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        TextButton(
-            onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
-            modifier = Modifier.align(Alignment.TopStart),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = stringResource(Res.string.active_student_change))
-        }
+            TextButton(
+                onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
+            ) {
+                Text(text = stringResource(Res.string.active_student_change))
+            }
 
-        TextButton(
-            onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
-            modifier = Modifier.align(Alignment.TopCenter),
-        ) {
-            Text(text = stringResource(Res.string.active_student_import))
-        }
+            TextButton(
+                onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
+            ) {
+                Text(text = stringResource(Res.string.active_student_import))
+            }
 
-        TextButton(
-            onClick = {
-                state.studentId?.let(onOpenSessionSettings)
-            },
-            enabled = state.studentId != null,
-            modifier = Modifier.align(Alignment.TopEnd),
-        ) {
-            Text(text = stringResource(Res.string.active_student_learning_settings))
+            TextButton(
+                onClick = {
+                    state.studentId?.let(onOpenSessionSettings)
+                },
+                enabled = state.studentId != null,
+            ) {
+                Text(text = stringResource(Res.string.active_student_learning_settings))
+            }
         }
 
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
                 modifier = Modifier
@@ -209,11 +223,13 @@ private fun ActiveStudentScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
+
             Text(
                 text = "$displayName 👧",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
+                textAlign = TextAlign.Center,
             )
 
             Row(
@@ -231,28 +247,49 @@ private fun ActiveStudentScreen(
                 text = stringResource(Res.string.active_student_studied_letters),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth(),
             )
 
             if (state.activeLetters.isBlank()) {
                 Text(
                     text = stringResource(Res.string.active_student_no_studied_letters),
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(state.activeLetters.lowercase().toList()) { letter ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                        ) {
-                            Text(
-                                text = letter.toString(),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
+                val studiedSymbols = state.activeLetters
+                    .lowercase()
+                    .toSet()
+                val digits = studiedSymbols
+                    .filter { it in DIGIT_ORDER }
+                    .sortedBy { DIGIT_ORDER.indexOf(it) }
+                val russianLetters = studiedSymbols
+                    .filter { it in RUSSIAN_LETTER_ORDER }
+                    .sortedBy { RUSSIAN_LETTER_ORDER.indexOf(it) }
+                val englishLetters = studiedSymbols
+                    .filter { it in ENGLISH_LETTER_ORDER }
+                    .sortedBy { ENGLISH_LETTER_ORDER.indexOf(it) }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (digits.isNotEmpty()) {
+                        StudiedSymbolsRow(
+                            title = stringResource(Res.string.active_student_studied_digits),
+                            symbols = digits,
+                        )
+                    }
+                    if (russianLetters.isNotEmpty()) {
+                        StudiedSymbolsRow(
+                            title = stringResource(Res.string.active_student_studied_russian_letters),
+                            symbols = russianLetters,
+                        )
+                    }
+                    if (englishLetters.isNotEmpty()) {
+                        StudiedSymbolsRow(
+                            title = stringResource(Res.string.active_student_studied_english_letters),
+                            symbols = englishLetters,
+                        )
                     }
                 }
             }
@@ -261,16 +298,20 @@ private fun ActiveStudentScreen(
                 text = stringResource(Res.string.active_student_active_decks),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth(),
             )
 
             if (state.activeDecks.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.active_student_no_active_decks),
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             } else {
                 Column(
-                    modifier = Modifier.wrapContentSize(align = Alignment.CenterStart),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentSize(align = Alignment.CenterStart),
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -296,42 +337,17 @@ private fun ActiveStudentScreen(
             }
 
             Text(
-                text = stringResource(Res.string.active_student_studied_decks),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-
-            if (state.studiedDecks.isEmpty()) {
-                Text(
-                    text = stringResource(Res.string.active_student_no_decks),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(state.studiedDecks) { deck ->
-                        DeckInlineItem(
-                            deck = deck.deck,
-                            supportingText = stringResource(
-                                Res.string.active_student_deck_progress,
-                                deck.learnedCards,
-                                deck.totalCards,
-                            ),
-                            onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.deck.id)) },
-                        )
-                    }
-                }
-            }
-
-            Text(
                 text = stringResource(Res.string.active_student_other_decks),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth(),
             )
 
             if (state.otherDecks.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.active_student_no_decks),
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -361,6 +377,47 @@ private fun ActiveStudentScreen(
                 }
                 Button(onClick = { onAction(ActiveStudentAction.OnMoreDecksClick) }) {
                     Text(text = stringResource(Res.string.active_student_all_decks))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+private val DIGIT_ORDER = ('0'..'9').toList()
+private val RUSSIAN_LETTER_ORDER = listOf(
+    'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о',
+    'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ы', 'ь', 'э', 'ю', 'я',
+)
+private val ENGLISH_LETTER_ORDER = ('a'..'z').toList()
+
+@Composable
+private fun StudiedSymbolsRow(
+    title: String,
+    symbols: List<Char>,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(symbols) { symbol ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        text = symbol.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }

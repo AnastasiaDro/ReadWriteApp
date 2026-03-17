@@ -1,5 +1,6 @@
 package com.cerebus.data.preferences.data.storage
 
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.russhwolf.settings.MapSettings
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -171,6 +172,90 @@ class PreferencesStorageImplTest {
         )
 
         val restored = storage.getPreventWrongKeyPressEnabled("student_2")
+
+        assertNull(restored)
+    }
+
+    @Test
+    fun saveAndRestoreAllowNeighborTypos_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setAllowNeighborTyposEnabled(
+            studentId = "student_1",
+            isEnabled = true,
+        )
+
+        val restored = storage.getAllowNeighborTyposEnabled("student_1")
+
+        assertEquals(true, restored)
+    }
+
+    @Test
+    fun allowNeighborTypos_otherStudent_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setAllowNeighborTyposEnabled(
+            studentId = "student_1",
+            isEnabled = true,
+        )
+
+        val restored = storage.getAllowNeighborTyposEnabled("student_2")
+
+        assertNull(restored)
+    }
+
+    @Test
+    fun saveAndRestoreNeighborTypoSensitivity_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setNeighborTypoSensitivity(
+            studentId = "student_1",
+            sensitivity = NeighborTypoSensitivity.Soft,
+        )
+
+        val restored = storage.getNeighborTypoSensitivity("student_1")
+
+        assertEquals(NeighborTypoSensitivity.Soft, restored)
+    }
+
+    @Test
+    fun neighborTypoSensitivity_otherStudent_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setNeighborTypoSensitivity(
+            studentId = "student_1",
+            sensitivity = NeighborTypoSensitivity.Strict,
+        )
+
+        val restored = storage.getNeighborTypoSensitivity("student_2")
+
+        assertNull(restored)
+    }
+
+    @Test
+    fun saveAndRestoreFreeNeighborSlipPresses_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setFreeNeighborSlipPresses(
+            studentId = "student_1",
+            count = 2,
+        )
+
+        val restored = storage.getFreeNeighborSlipPresses("student_1")
+
+        assertEquals(2, restored)
+    }
+
+    @Test
+    fun freeNeighborSlipPresses_otherStudent_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setFreeNeighborSlipPresses(
+            studentId = "student_1",
+            count = 1,
+        )
+
+        val restored = storage.getFreeNeighborSlipPresses("student_2")
 
         assertNull(restored)
     }

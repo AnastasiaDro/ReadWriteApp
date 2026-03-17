@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -72,6 +73,10 @@ import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_ses
 import readwriteapp.feature.game_screen.generated.resources.game_help_show_word
 import readwriteapp.feature.game_screen.generated.resources.game_help_simplify_keyboard
 import readwriteapp.feature.game_screen.generated.resources.game_practice_mode
+import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_body
+import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_confirm
+import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_dismiss
+import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_title
 import readwriteapp.feature.game_screen.generated.resources.Res
 import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session
 
@@ -79,6 +84,7 @@ import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_ses
 fun GameScreenWrapper(
     navController: NavHostController,
     deckIds: List<String>,
+    onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val navigator = remember(navController) { GameScreenNavigatorImpl(navController) }
@@ -90,9 +96,14 @@ fun GameScreenWrapper(
     val effect by viewModel.effects.collectAsState()
 
     LaunchedEffect(effect) {
-        when (effect) {
+        val currentEffect = effect
+        when (currentEffect) {
             GameScreenEffect.OpenActiveStudent -> {
                 navigator.openActiveStudent()
+                viewModel.consumeEffect()
+            }
+            is GameScreenEffect.OpenSessionSettings -> {
+                onOpenSessionSettings(currentEffect.studentId, true)
                 viewModel.consumeEffect()
             }
             GameScreenEffect.CloseGame -> {
@@ -106,6 +117,7 @@ fun GameScreenWrapper(
     GameScreen(
         state = state,
         onAction = viewModel::onAction,
+        onOpenSessionSettings = onOpenSessionSettings,
         onOpenKeyboardSettings = onOpenKeyboardSettings,
     )
 }
@@ -114,6 +126,7 @@ fun GameScreenWrapper(
 fun GameScreen(
     state: GameUiState,
     onAction: (GameScreenAction) -> Unit,
+    onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -136,6 +149,7 @@ fun GameScreen(
                 ActiveGameContent(
                     state = state,
                     onAction = onAction,
+                    onOpenSessionSettings = onOpenSessionSettings,
                     onOpenKeyboardSettings = onOpenKeyboardSettings,
                 )
             }
@@ -163,6 +177,7 @@ fun GameScreen(
 private fun ActiveGameContent(
     state: GameUiState.Active,
     onAction: (GameScreenAction) -> Unit,
+    onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -400,6 +415,35 @@ private fun ActiveGameContent(
                     .heightIn(min = keyboardHeight, max = keyboardHeight),
             )
         }
+
+        if (state.showTypoSettingsSuggestion && state.studentId.isNotBlank()) {
+            AlertDialog(
+                onDismissRequest = { onAction(GameScreenAction.OnTypoSuggestionDismissed) },
+                title = {
+                    Text(stringResource(Res.string.game_typo_settings_suggestion_title))
+                },
+                text = {
+                    Text(stringResource(Res.string.game_typo_settings_suggestion_body))
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onAction(GameScreenAction.OnTypoSuggestionDismissed)
+                            onOpenSessionSettings(state.studentId, true)
+                        },
+                    ) {
+                        Text(stringResource(Res.string.game_typo_settings_suggestion_confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { onAction(GameScreenAction.OnTypoSuggestionDismissed) },
+                    ) {
+                        Text(stringResource(Res.string.game_typo_settings_suggestion_dismiss))
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -533,7 +577,13 @@ private fun AnswerInputSection(
     val checkButtonWidth = 120.dp
     val buttonSpacing = 12.dp
     val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
-    val fieldWidth = minOf(fieldReferenceWidth, maxFieldWidth)
+    val fieldWidth = if (isStacked) {
+        maxFieldWidth
+    } else {
+        minOf(fieldReferenceWidth, maxFieldWidth)
+    }
+    val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
+    val answerFieldHeight = if (allowMultilineAnswer) 84.dp else 56.dp
 
     if (isStacked) {
         Column(
@@ -547,9 +597,10 @@ private fun AnswerInputSection(
                 value = answerInput,
                 expectedAnswer = expectedAnswer,
                 inputFeedbackType = inputFeedbackType,
+                allowMultiline = allowMultilineAnswer,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(answerFieldHeight),
                 onClick = onFieldClick,
             )
 
@@ -591,9 +642,10 @@ private fun AnswerInputSection(
                     value = answerInput,
                     expectedAnswer = expectedAnswer,
                     inputFeedbackType = inputFeedbackType,
+                    allowMultiline = allowMultilineAnswer,
                     modifier = Modifier
                         .width(fieldWidth)
-                        .height(56.dp),
+                        .height(answerFieldHeight),
                     onClick = onFieldClick,
                 )
                 Button(
@@ -699,6 +751,7 @@ private fun ReadOnlyAnswerField(
     value: String,
     expectedAnswer: String,
     inputFeedbackType: TrainingKeyboardFeedbackType?,
+    allowMultiline: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -719,6 +772,7 @@ private fun ReadOnlyAnswerField(
     }
     val feedbackBorderColor = when (inputFeedbackType) {
         TrainingKeyboardFeedbackType.Correct -> Color(0xFF9AD88F)
+        TrainingKeyboardFeedbackType.Slip -> Color(0xFFFFD35C)
         TrainingKeyboardFeedbackType.Wrong -> Color(0xFFFF7A7A)
         null -> MaterialTheme.colorScheme.outline
     }
@@ -729,7 +783,9 @@ private fun ReadOnlyAnswerField(
             onValueChange = {},
             modifier = Modifier.fillMaxSize(),
             textStyle = MaterialTheme.typography.bodyLarge,
-            singleLine = true,
+            singleLine = !allowMultiline,
+            minLines = 1,
+            maxLines = if (allowMultiline) 2 else 1,
             readOnly = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = feedbackBorderColor,
@@ -739,10 +795,10 @@ private fun ReadOnlyAnswerField(
         Text(
             text = displayedValue,
             style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
+            maxLines = if (allowMultiline) 2 else 1,
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(horizontal = 16.dp),
+                .align(if (allowMultiline) Alignment.TopStart else Alignment.CenterStart)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
         )
         Box(
             modifier = Modifier

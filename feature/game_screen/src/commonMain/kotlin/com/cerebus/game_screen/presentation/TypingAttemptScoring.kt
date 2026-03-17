@@ -5,6 +5,8 @@ enum class TypingLearningStage {
     Recall,
 }
 
+const val DEFAULT_FREE_NEIGHBOR_SLIP_PRESSES = 1
+
 enum class HintLevel(val value: Int) {
     None(0),
     WrongPresses(1),
@@ -14,6 +16,8 @@ enum class HintLevel(val value: Int) {
 
 data class TypingAttemptMetrics(
     val wrongPressCount: Int = 0,
+    val slipPressCount: Int = 0,
+    val freeSlipPresses: Int = 1,
     val usedShowWord: Boolean = false,
     val usedSimplifiedKeyboard: Boolean = false,
 )
@@ -23,6 +27,7 @@ fun computeHintLevel(metrics: TypingAttemptMetrics): HintLevel {
         metrics.usedSimplifiedKeyboard -> HintLevel.SimplifiedKeyboard
         metrics.usedShowWord -> HintLevel.ShowWord
         metrics.wrongPressCount > 0 -> HintLevel.WrongPresses
+        metrics.slipPressCount > metrics.freeSlipPresses.coerceAtLeast(0) -> HintLevel.WrongPresses
         else -> HintLevel.None
     }
 }

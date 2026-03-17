@@ -1,11 +1,15 @@
 package com.cerebus.data.preferences.data.storage
 
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.russhwolf.settings.Settings
 
 private const val LAST_ACTIVE_STUDENT_KEY = "last_active_student"
 private const val KEYBOARD_LANGUAGE_PREFIX = "keyboard_language_v1_"
 private const val KEYBOARD_SHIFT_PREFIX = "keyboard_shift_v1_"
 private const val PREVENT_WRONG_KEY_PRESS_PREFIX = "prevent_wrong_key_press_v1_"
+private const val ALLOW_NEIGHBOR_TYPOS_PREFIX = "allow_neighbor_typos_v1_"
+private const val NEIGHBOR_TYPO_SENSITIVITY_PREFIX = "neighbor_typo_sensitivity_v1_"
+private const val FREE_NEIGHBOR_SLIP_PRESSES_PREFIX = "free_neighbor_slip_presses_v1_"
 private const val LAST_SESSION_PREFIX = "last_session_v1_"
 private const val SESSION_IDS_SEPARATOR = ","
 private const val ANONYMOUS_STUDENT_ID = "_anonymous_"
@@ -68,6 +72,52 @@ class PreferencesStorageImpl(
         settings.putBoolean(
             key = buildPreventWrongKeyPressKey(normalizedStudentId),
             value = isEnabled,
+        )
+    }
+
+    override fun getAllowNeighborTyposEnabled(studentId: String): Boolean? {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return null
+        val key = buildAllowNeighborTyposKey(normalizedStudentId)
+        return if (settings.hasKey(key)) settings.getBoolean(key, true) else null
+    }
+
+    override fun setAllowNeighborTyposEnabled(studentId: String, isEnabled: Boolean) {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
+        settings.putBoolean(
+            key = buildAllowNeighborTyposKey(normalizedStudentId),
+            value = isEnabled,
+        )
+    }
+
+    override fun getNeighborTypoSensitivity(studentId: String): NeighborTypoSensitivity? {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return null
+        val key = buildNeighborTypoSensitivityKey(normalizedStudentId)
+        if (!settings.hasKey(key)) return null
+        return NeighborTypoSensitivity.fromStorageValue(settings.getStringOrNull(key))
+    }
+
+    override fun setNeighborTypoSensitivity(
+        studentId: String,
+        sensitivity: NeighborTypoSensitivity,
+    ) {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
+        settings.putString(
+            key = buildNeighborTypoSensitivityKey(normalizedStudentId),
+            value = sensitivity.storageValue,
+        )
+    }
+
+    override fun getFreeNeighborSlipPresses(studentId: String): Int? {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return null
+        val key = buildFreeNeighborSlipPressesKey(normalizedStudentId)
+        return if (settings.hasKey(key)) settings.getInt(key, 1) else null
+    }
+
+    override fun setFreeNeighborSlipPresses(studentId: String, count: Int) {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
+        settings.putInt(
+            key = buildFreeNeighborSlipPressesKey(normalizedStudentId),
+            value = count.coerceIn(0, 2),
         )
     }
 
@@ -144,5 +194,17 @@ class PreferencesStorageImpl(
 
     private fun buildPreventWrongKeyPressKey(studentId: String): String {
         return "$PREVENT_WRONG_KEY_PRESS_PREFIX$studentId"
+    }
+
+    private fun buildAllowNeighborTyposKey(studentId: String): String {
+        return "$ALLOW_NEIGHBOR_TYPOS_PREFIX$studentId"
+    }
+
+    private fun buildNeighborTypoSensitivityKey(studentId: String): String {
+        return "$NEIGHBOR_TYPO_SENSITIVITY_PREFIX$studentId"
+    }
+
+    private fun buildFreeNeighborSlipPressesKey(studentId: String): String {
+        return "$FREE_NEIGHBOR_SLIP_PRESSES_PREFIX$studentId"
     }
 }

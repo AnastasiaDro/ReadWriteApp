@@ -8,6 +8,13 @@
     <string name="session_settings_max_new_per_day">Maximum new cards per day</string>
     <string name="session_settings_allow_near_match">Allow small answer mistakes</string>
     <string name="session_settings_prevent_wrong_key_press">Do not allow pressing wrong keys</string>
+    <string name="session_settings_allow_neighbor_typos">Treat nearby key slips as typos</string>
+    <string name="session_settings_neighbor_typo_sensitivity">Nearby key typo sensitivity</string>
+    <string name="session_settings_neighbor_typo_sensitivity_strict">Strict</string>
+    <string name="session_settings_neighbor_typo_sensitivity_normal">Normal</string>
+    <string name="session_settings_neighbor_typo_sensitivity_soft">Soft</string>
+    <string name="session_settings_free_neighbor_slips">Free nearby key slips</string>
+    <string name="session_settings_free_neighbor_slips_hint">How many nearby key slips in one attempt do not raise the help level.</string>
     <string name="session_settings_active_decks">Active decks</string>
     <string name="session_settings_no_decks">No decks available</string>
     <string name="session_settings_save">Save</string>

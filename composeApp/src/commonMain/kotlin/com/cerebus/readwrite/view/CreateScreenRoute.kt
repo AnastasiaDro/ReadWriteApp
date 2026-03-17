@@ -14,7 +14,9 @@ import com.cerebus.create_screen.presentation.CreateScreenEffect
 import com.cerebus.create_screen.presentation.CreateScreenStrings
 import com.cerebus.create_screen.presentation.CreateScreenViewModel
 import com.cerebus.create_screen.presentation.CreateValidationError
+import com.cerebus.readwrite.media.DeckArchiveShareItem
 import com.cerebus.readwrite.media.rememberDeckArchivePicker
+import com.cerebus.readwrite.media.rememberDeckArchiveShareLauncher
 import com.cerebus.readwrite.media.rememberPlatformMessenger
 import com.cerebus.readwrite.media.rememberCoverImagePicker
 import org.koin.compose.viewmodel.koinViewModel
@@ -39,8 +41,13 @@ import readwriteapp.composeapp.generated.resources.import_deck
 import readwriteapp.composeapp.generated.resources.error_create_deck_failed
 import readwriteapp.composeapp.generated.resources.error_delete_decks_failed
 import readwriteapp.composeapp.generated.resources.error_empty_deck_name
+import readwriteapp.composeapp.generated.resources.error_export_decks_limit
+import readwriteapp.composeapp.generated.resources.error_export_selected_decks_failed
 import readwriteapp.composeapp.generated.resources.error_import_deck_failed
 import readwriteapp.composeapp.generated.resources.error_open_archive_picker_failed
+import readwriteapp.composeapp.generated.resources.error_share_deck_failed
+import readwriteapp.composeapp.generated.resources.export_decks_limit_hint
+import readwriteapp.composeapp.generated.resources.export_deck
 import readwriteapp.composeapp.generated.resources.my_decks
 import readwriteapp.composeapp.generated.resources.no_cover
 import readwriteapp.composeapp.generated.resources.no_decks_yet
@@ -64,6 +71,9 @@ fun CreateScreenRoute(
     val messenger = rememberPlatformMessenger()
     val archivePickerErrorText = stringResource(Res.string.error_open_archive_picker_failed)
     val importDeckErrorText = stringResource(Res.string.error_import_deck_failed)
+    val exportSelectedDecksErrorText = stringResource(Res.string.error_export_selected_decks_failed)
+    val shareDeckErrorText = stringResource(Res.string.error_share_deck_failed)
+    val exportDeckLimitErrorText = stringResource(Res.string.error_export_decks_limit)
 
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
@@ -81,6 +91,11 @@ fun CreateScreenRoute(
             messenger.showMessage(archivePickerErrorText)
         },
     )
+    val deckShareLauncher = rememberDeckArchiveShareLauncher(
+        onError = {
+            messenger.showMessage(shareDeckErrorText)
+        },
+    )
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
@@ -89,6 +104,18 @@ fun CreateScreenRoute(
                 CreateScreenEffect.OpenCamera -> pendingPickerRequest = CreatePickerRequest.CAMERA
                 CreateScreenEffect.OpenImportDeckPicker -> archivePicker.openArchivePicker()
                 CreateScreenEffect.ShowImportDeckFailed -> messenger.showMessage(importDeckErrorText)
+                CreateScreenEffect.ShowExportSelectedDecksFailed -> messenger.showMessage(exportSelectedDecksErrorText)
+                CreateScreenEffect.ShowExportSelectedDecksLimitExceeded -> messenger.showMessage(exportDeckLimitErrorText)
+                is CreateScreenEffect.ShareDeckArchives -> {
+                    deckShareLauncher.shareArchives(
+                        effect.files.map { file ->
+                            DeckArchiveShareItem(
+                                filePath = file.path,
+                                fileName = file.fileName,
+                            )
+                        }
+                    )
+                }
                 is CreateScreenEffect.OpenDeck -> {
                     onNavigateToDeck(effect.deckId, effect.openAddCardDialog)
                 }
@@ -140,7 +167,9 @@ fun CreateScreenRoute(
         takePhoto = stringResource(Res.string.take_photo),
         close = stringResource(Res.string.close),
         delete = stringResource(Res.string.delete),
+        export = stringResource(Res.string.export_deck),
         selectedCount = stringResource(Res.string.selected_count),
+        exportLimitHint = stringResource(Res.string.export_decks_limit_hint),
         confirmDeleteDecksTitle = stringResource(Res.string.confirm_delete_decks_title),
         confirmDeleteDecksMessage = stringResource(Res.string.confirm_delete_decks_message),
         deckCreatedTemplate = stringResource(Res.string.deck_created_message),

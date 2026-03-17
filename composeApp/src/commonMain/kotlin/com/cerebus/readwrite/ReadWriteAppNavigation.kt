@@ -31,6 +31,7 @@ import com.cerebus.readwrite.view.ActiveStudentRoute
 import com.cerebus.readwrite.view.ChangeStudentRoute
 import com.cerebus.readwrite.view.NoStudentsScreen
 import com.cerebus.session_settings.navigation.SessionSettingsNavigationState
+import com.cerebus.session_settings.navigation.SessionSettingsScrollTarget
 import com.cerebus.session_settings.presentation.SessionSettingsRoute
 import com.cerebus.tutube.navigation.Screens
 
@@ -92,8 +93,10 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                         navController.navigate(Screens.CHANGE_STUDENT.route)
                     },
                     onOpenSessionSettings = { studentId ->
-                        SessionSettingsNavigationState.selectedStudentId = studentId
-                        navController.navigate(Screens.SESSION_SETTINGS.route)
+                        navController.openSessionSettings(
+                            studentId = studentId,
+                            returnRoute = Screens.ACTIVE_STUDENT.route,
+                        )
                     },
                     onOpenKeyboardSettings = { studentId ->
                         navController.openKeyboardSettings(
@@ -132,12 +135,11 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                         navController.navigate(Screens.CREATE.route)
                     },
                     onNavigateToActiveStudent = {
-                        val openedFromActiveStack =
-                            navController.popBackStack(Screens.ACTIVE_STUDENT.route, inclusive = false)
-                        if (!openedFromActiveStack) {
-                            navController.navigate(Screens.ACTIVE_STUDENT.route) {
-                                launchSingleTop = true
+                        navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                            popUpTo(Screens.ACTIVE_STUDENT.route) {
+                                inclusive = true
                             }
+                            launchSingleTop = true
                         }
                     },
                 )
@@ -170,6 +172,17 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     deckIds = GameSessionNavigationState.selectedDeckIds.ifEmpty {
                         listOfNotNull(DeckNavigationState.selectedDeckId.takeIf { it.isNotBlank() })
                     },
+                    onOpenSessionSettings = { studentId, scrollToTypos ->
+                        navController.openSessionSettings(
+                            studentId = studentId,
+                            returnRoute = Screens.GAME.route,
+                            scrollTarget = if (scrollToTypos) {
+                                SessionSettingsScrollTarget.TypoSettings
+                            } else {
+                                null
+                            },
+                        )
+                    },
                     onOpenKeyboardSettings = { studentId ->
                         navController.openKeyboardSettings(
                             studentId = studentId,
@@ -179,11 +192,13 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 )
             }
             composable(Screens.SESSION_SETTINGS.route) {
-                val studentId = SessionSettingsNavigationState.selectedStudentId
+                val studentId = remember { SessionSettingsNavigationState.selectedStudentId }
+                val returnRoute = remember { SessionSettingsNavigationState.returnRoute }
+                val scrollTarget = remember { SessionSettingsNavigationState.scrollTarget }
                 if (studentId.isNullOrBlank()) {
-                    SessionSettingsNavigationState.selectedStudentId = null
+                    SessionSettingsNavigationState.clear()
                     LaunchedEffect(Unit) {
-                        val popped = navController.popBackStack()
+                        val popped = navController.returnFromSessionSettings(returnRoute)
                         if (!popped) {
                             navController.navigate(Screens.ACTIVE_STUDENT.route) {
                                 launchSingleTop = true
@@ -194,6 +209,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 }
                 SessionSettingsRoute(
                     studentId = studentId,
+                    scrollTarget = scrollTarget,
                     onOpenKeyboardSettings = {
                         navController.openKeyboardSettings(
                             studentId = studentId,
@@ -201,13 +217,13 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                         )
                     },
                     onClose = {
-                        val popped = navController.popBackStack()
+                        val popped = navController.returnFromSessionSettings(returnRoute)
                         if (!popped) {
-                            navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                            navController.navigate(returnRoute ?: Screens.ACTIVE_STUDENT.route) {
                                 launchSingleTop = true
                             }
                         }
-                        SessionSettingsNavigationState.selectedStudentId = null
+                        SessionSettingsNavigationState.clear()
                     },
                 )
             }
@@ -269,7 +285,31 @@ private fun androidx.navigation.NavHostController.openKeyboardSettings(
     navigate(Screens.KEYBOARD_SETTINGS.route)
 }
 
+private fun androidx.navigation.NavHostController.openSessionSettings(
+    studentId: String,
+    returnRoute: String,
+    scrollTarget: SessionSettingsScrollTarget? = null,
+) {
+    SessionSettingsNavigationState.open(
+        studentId = studentId,
+        returnRoute = returnRoute,
+        scrollTarget = scrollTarget,
+    )
+    navigate(Screens.SESSION_SETTINGS.route)
+}
+
 private fun androidx.navigation.NavHostController.returnFromKeyboardSettings(
+    returnRoute: String?,
+): Boolean {
+    val targetRoute = returnRoute ?: return popBackStack()
+    val poppedToTarget = popBackStack(targetRoute, inclusive = false)
+    if (poppedToTarget) return true
+
+    popBackStack()
+    return false
+}
+
+private fun androidx.navigation.NavHostController.returnFromSessionSettings(
     returnRoute: String?,
 ): Boolean {
     val targetRoute = returnRoute ?: return popBackStack()

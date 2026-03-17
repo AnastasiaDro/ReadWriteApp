@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.cerebus.core.utils.CustomResult
 import com.cerebus.core.game_engine.domain.model.StudentSrsPrefs
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
@@ -55,6 +56,15 @@ class SessionSettingsViewModel(
             is SessionSettingsIntent.ChangePreventWrongKeyPress -> {
                 _state.update { it.copy(preventWrongKeyPress = intent.value) }
             }
+            is SessionSettingsIntent.ChangeAllowNeighborTypos -> {
+                _state.update { it.copy(allowNeighborTypos = intent.value) }
+            }
+            is SessionSettingsIntent.ChangeNeighborTypoSensitivity -> {
+                _state.update { it.copy(neighborTypoSensitivity = intent.value) }
+            }
+            is SessionSettingsIntent.ChangeFreeNeighborSlipPresses -> {
+                _state.update { it.copy(freeNeighborSlipPresses = intent.value.coerceIn(0, 2)) }
+            }
             is SessionSettingsIntent.ToggleDeck -> toggleDeck(intent.deckId, intent.isActive)
             SessionSettingsIntent.SaveClicked -> save()
             SessionSettingsIntent.CancelClicked -> emitClose()
@@ -76,11 +86,23 @@ class SessionSettingsViewModel(
                 val preventWrongKeyPress = preferencesRepository
                     .getPreventWrongKeyPressEnabled(studentId)
                     ?: true
+                val allowNeighborTypos = preferencesRepository
+                    .getAllowNeighborTyposEnabled(studentId)
+                    ?: true
+                val neighborTypoSensitivity = preferencesRepository
+                    .getNeighborTypoSensitivity(studentId)
+                    ?: NeighborTypoSensitivity.Strict
+                val freeNeighborSlipPresses = preferencesRepository
+                    .getFreeNeighborSlipPresses(studentId)
+                    ?: 1
                 LoadedSettingsData(
                     prefs = prefs,
                     allDecks = allDecks,
                     selectedDeckIds = studentDecks,
                     preventWrongKeyPress = preventWrongKeyPress,
+                    allowNeighborTypos = allowNeighborTypos,
+                    neighborTypoSensitivity = neighborTypoSensitivity,
+                    freeNeighborSlipPresses = freeNeighborSlipPresses,
                 )
             }.onSuccess { loaded ->
                 val prefs = loaded.prefs
@@ -97,6 +119,9 @@ class SessionSettingsViewModel(
                     maxNewCardsPerDay = prefs.maxNewCardsPerDay,
                     allowNearMatch = prefs.allowNearMatch,
                     preventWrongKeyPress = loaded.preventWrongKeyPress,
+                    allowNeighborTypos = loaded.allowNeighborTypos,
+                    neighborTypoSensitivity = loaded.neighborTypoSensitivity,
+                    freeNeighborSlipPresses = loaded.freeNeighborSlipPresses,
                     deckOptions = allDecks.map { deck ->
                         SessionDeckOptionUi(
                             deckId = deck.id,
@@ -175,6 +200,18 @@ class SessionSettingsViewModel(
                     studentId = studentId,
                     isEnabled = snapshot.preventWrongKeyPress,
                 )
+                preferencesRepository.setAllowNeighborTyposEnabled(
+                    studentId = studentId,
+                    isEnabled = snapshot.allowNeighborTypos,
+                )
+                preferencesRepository.setNeighborTypoSensitivity(
+                    studentId = studentId,
+                    sensitivity = snapshot.neighborTypoSensitivity,
+                )
+                preferencesRepository.setFreeNeighborSlipPresses(
+                    studentId = studentId,
+                    count = snapshot.freeNeighborSlipPresses,
+                )
                 if (deckIdsToAssign.isNotEmpty()) {
                     when (
                         val result = studentDeckRepository.assignDecksToStudent(
@@ -221,4 +258,7 @@ private data class LoadedSettingsData(
     val allDecks: List<com.cerebus.data.decks.domain.models.Deck>,
     val selectedDeckIds: Set<String>,
     val preventWrongKeyPress: Boolean,
+    val allowNeighborTypos: Boolean,
+    val neighborTypoSensitivity: NeighborTypoSensitivity,
+    val freeNeighborSlipPresses: Int,
 )

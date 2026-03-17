@@ -1,5 +1,6 @@
 package com.cerebus.customkeyboard
 
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,10 +65,12 @@ private val inactiveKeyTextColor = Color(0xFFB0B0B3)
 private val shiftAccentColor = Color(0xFF8000FF)
 private val keyboardContainerShape = RoundedCornerShape(18.dp)
 private val correctKeyBackgroundColor = Color(0xFFCFECC9)
+private val slipKeyBackgroundColor = Color(0xFFFFE59A)
 private val wrongKeyBackgroundColor = Color(0xFFFFC9C9)
 
 enum class TrainingKeyboardFeedbackType {
     Correct,
+    Slip,
     Wrong,
 }
 
@@ -179,8 +182,56 @@ private fun resolveKeyboardRows(
     return if (containsCyrillic(referenceText)) russianRows else englishRows
 }
 
+fun isNeighborKeyboardSlip(
+    referenceText: String,
+    expectedSymbol: String,
+    pressedSymbol: String,
+    sensitivity: NeighborTypoSensitivity,
+): Boolean {
+    val normalizedExpected = expectedSymbol.lowercase()
+    val normalizedPressed = pressedSymbol.lowercase()
+    if (normalizedExpected == normalizedPressed) return false
+
+    val rows = resolveKeyboardRows(referenceText)
+    val positions = buildKeyPositions(rows)
+    val expectedPosition = positions[normalizedExpected] ?: return false
+    val pressedPosition = positions[normalizedPressed] ?: return false
+
+    val rowDistance = kotlin.math.abs(expectedPosition.row - pressedPosition.row)
+    val columnDistance = kotlin.math.abs(expectedPosition.column - pressedPosition.column)
+
+    return when (sensitivity) {
+        NeighborTypoSensitivity.Strict -> {
+            rowDistance == 0 && columnDistance <= 1
+        }
+        NeighborTypoSensitivity.Normal -> {
+            rowDistance <= 1 && columnDistance <= 1
+        }
+        NeighborTypoSensitivity.Soft -> {
+            rowDistance <= 1 && columnDistance <= 2
+        }
+    }
+}
+
 private fun containsCyrillic(text: String): Boolean {
     return text.any { char -> char.lowercaseChar() in 'а'..'я' || char.lowercaseChar() == 'ё' }
+}
+
+private data class KeyPosition(
+    val row: Int,
+    val column: Int,
+)
+
+private fun buildKeyPositions(rows: List<List<String>>): Map<String, KeyPosition> {
+    return buildMap {
+        rows.forEachIndexed { rowIndex, row ->
+            row.forEachIndexed { columnIndex, key ->
+                if (key.length == 1) {
+                    put(key.lowercase(), KeyPosition(row = rowIndex, column = columnIndex))
+                }
+            }
+        }
+    }
 }
 
 private data class KeySpec(
@@ -279,6 +330,7 @@ private fun KeyboardKey(
     val isLandscape = windowWidthDp > windowHeightDp
     val backgroundColor = when {
         feedbackType == TrainingKeyboardFeedbackType.Correct -> correctKeyBackgroundColor
+        feedbackType == TrainingKeyboardFeedbackType.Slip -> slipKeyBackgroundColor
         feedbackType == TrainingKeyboardFeedbackType.Wrong -> wrongKeyBackgroundColor
         isEnabled -> keyBackgroundColor
         else -> inactiveKeyBackgroundColor

@@ -1,5 +1,7 @@
 package com.cerebus.session_settings.presentation
 
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
+
 data class SessionSettingsState(
     val newCardsPerSession: Int = 5,
     val reviewsPerSession: Int = 15,
@@ -8,6 +10,9 @@ data class SessionSettingsState(
     val maxNewCardsPerDay: Int = 15,
     val allowNearMatch: Boolean = true,
     val preventWrongKeyPress: Boolean = true,
+    val allowNeighborTypos: Boolean = true,
+    val neighborTypoSensitivity: NeighborTypoSensitivity = NeighborTypoSensitivity.Strict,
+    val freeNeighborSlipPresses: Int = 1,
     val deckOptions: List<SessionDeckOptionUi> = emptyList(),
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
@@ -28,6 +33,9 @@ sealed interface SessionSettingsIntent {
     data class ChangeMaxNewPerDay(val value: Int) : SessionSettingsIntent
     data class ChangeAllowNearMatch(val value: Boolean) : SessionSettingsIntent
     data class ChangePreventWrongKeyPress(val value: Boolean) : SessionSettingsIntent
+    data class ChangeAllowNeighborTypos(val value: Boolean) : SessionSettingsIntent
+    data class ChangeNeighborTypoSensitivity(val value: NeighborTypoSensitivity) : SessionSettingsIntent
+    data class ChangeFreeNeighborSlipPresses(val value: Int) : SessionSettingsIntent
     data class ToggleDeck(val deckId: String, val isActive: Boolean) : SessionSettingsIntent
     data object SaveClicked : SessionSettingsIntent
     data object CancelClicked : SessionSettingsIntent

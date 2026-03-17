@@ -55,23 +55,33 @@ actual fun rememberDeckArchiveShareLauncher(
 
     return remember {
         object : DeckArchiveShareLauncher {
-            override fun shareArchive(
-                filePath: String,
-                fileName: String,
-            ) {
+            override fun shareArchives(files: List<DeckArchiveShareItem>) {
                 runCatching {
-                    val file = File(filePath)
-                    require(file.exists()) { "Archive file does not exist" }
-                    val uri: Uri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file,
-                    )
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/zip"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        putExtra(Intent.EXTRA_TITLE, fileName)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    require(files.isNotEmpty()) { "No archives to share" }
+                    val uris = files.map { item ->
+                        val file = File(item.filePath)
+                        require(file.exists()) { "Archive file does not exist" }
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file,
+                        )
+                    }
+                    val chooserTitle = files.firstOrNull()?.fileName
+                    val shareIntent = if (uris.size == 1) {
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "application/zip"
+                            putExtra(Intent.EXTRA_STREAM, uris.first())
+                            putExtra(Intent.EXTRA_TITLE, chooserTitle)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    } else {
+                        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            type = "application/zip"
+                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList<Uri>(uris))
+                            putExtra(Intent.EXTRA_TITLE, chooserTitle)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
                     }
                     context.startActivity(
                         Intent.createChooser(shareIntent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),

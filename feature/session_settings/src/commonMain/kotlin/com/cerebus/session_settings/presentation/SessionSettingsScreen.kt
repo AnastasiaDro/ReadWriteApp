@@ -1,6 +1,9 @@
 package com.cerebus.session_settings.presentation
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -32,12 +36,15 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
+import com.cerebus.session_settings.navigation.SessionSettingsScrollTarget
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import readwriteapp.feature.session_settings.generated.resources.Res
 import readwriteapp.feature.session_settings.generated.resources.session_settings_active_decks
 import readwriteapp.feature.session_settings.generated.resources.session_settings_allow_near_match
+import readwriteapp.feature.session_settings.generated.resources.session_settings_allow_neighbor_typos
 import readwriteapp.feature.session_settings.generated.resources.session_settings_cancel
 import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold
 import readwriteapp.feature.session_settings.generated.resources.session_settings_guided_hint_threshold_hint
@@ -45,6 +52,12 @@ import readwriteapp.feature.session_settings.generated.resources.session_setting
 import readwriteapp.feature.session_settings.generated.resources.session_settings_learn_more_step
 import readwriteapp.feature.session_settings.generated.resources.session_settings_load_error
 import readwriteapp.feature.session_settings.generated.resources.session_settings_max_new_per_day
+import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity
+import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity_normal
+import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity_soft
+import readwriteapp.feature.session_settings.generated.resources.session_settings_neighbor_typo_sensitivity_strict
+import readwriteapp.feature.session_settings.generated.resources.session_settings_free_neighbor_slips
+import readwriteapp.feature.session_settings.generated.resources.session_settings_free_neighbor_slips_hint
 import readwriteapp.feature.session_settings.generated.resources.session_settings_prevent_wrong_key_press
 import readwriteapp.feature.session_settings.generated.resources.session_settings_new_cards
 import readwriteapp.feature.session_settings.generated.resources.session_settings_no_decks
@@ -58,6 +71,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SessionSettingsRoute(
     studentId: String,
+    scrollTarget: SessionSettingsScrollTarget? = null,
     onOpenKeyboardSettings: () -> Unit,
     onClose: () -> Unit,
     onError: (String) -> Unit = {},
@@ -85,14 +99,17 @@ fun SessionSettingsRoute(
 
     SessionSettingsScreen(
         state = state,
+        scrollTarget = scrollTarget,
         onIntent = viewModel::onIntent,
         onOpenKeyboardSettings = onOpenKeyboardSettings,
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SessionSettingsScreen(
     state: SessionSettingsState,
+    scrollTarget: SessionSettingsScrollTarget? = null,
     onIntent: (SessionSettingsIntent) -> Unit,
     onOpenKeyboardSettings: () -> Unit,
 ) {
@@ -107,6 +124,15 @@ fun SessionSettingsScreen(
             CircularProgressIndicator()
         }
         return
+    }
+
+    val typoSettingsBringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(scrollTarget, state.isLoading) {
+        if (state.isLoading) return@LaunchedEffect
+        if (scrollTarget == SessionSettingsScrollTarget.TypoSettings) {
+            typoSettingsBringIntoViewRequester.bringIntoView()
+        }
     }
 
     Column(
@@ -182,6 +208,54 @@ fun SessionSettingsScreen(
             Switch(
                 checked = state.preventWrongKeyPress,
                 onCheckedChange = { onIntent(SessionSettingsIntent.ChangePreventWrongKeyPress(it)) },
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(typoSettingsBringIntoViewRequester),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = stringResource(Res.string.session_settings_allow_neighbor_typos))
+                Switch(
+                    checked = state.allowNeighborTypos,
+                    onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNeighborTypos(it)) },
+                )
+            }
+
+            ChoiceChipField(
+                label = stringResource(Res.string.session_settings_neighbor_typo_sensitivity),
+                selected = state.neighborTypoSensitivity,
+                enabled = state.allowNeighborTypos,
+                options = listOf(
+                    NeighborTypoSensitivity.Strict to stringResource(
+                        Res.string.session_settings_neighbor_typo_sensitivity_strict
+                    ),
+                    NeighborTypoSensitivity.Normal to stringResource(
+                        Res.string.session_settings_neighbor_typo_sensitivity_normal
+                    ),
+                    NeighborTypoSensitivity.Soft to stringResource(
+                        Res.string.session_settings_neighbor_typo_sensitivity_soft
+                    ),
+                ),
+                onSelected = {
+                    onIntent(SessionSettingsIntent.ChangeNeighborTypoSensitivity(it))
+                },
+            )
+
+            DiscreteSliderField(
+                label = stringResource(Res.string.session_settings_free_neighbor_slips),
+                helperText = stringResource(Res.string.session_settings_free_neighbor_slips_hint),
+                value = state.freeNeighborSlipPresses,
+                valueRange = 0..2,
+                enabled = state.allowNeighborTypos,
+                onValueChanged = { onIntent(SessionSettingsIntent.ChangeFreeNeighborSlipPresses(it)) },
             )
         }
 
@@ -312,6 +386,7 @@ private fun DiscreteSliderField(
     helperText: String? = null,
     value: Int,
     valueRange: IntRange,
+    enabled: Boolean = true,
     onValueChanged: (Int) -> Unit,
 ) {
     val min = valueRange.first
@@ -340,6 +415,39 @@ private fun DiscreteSliderField(
             },
             valueRange = min.toFloat()..max.toFloat(),
             steps = (max - min - 1).coerceAtLeast(0),
+            enabled = enabled,
         )
+    }
+}
+
+@Composable
+private fun <T> ChoiceChipField(
+    label: String,
+    selected: T,
+    options: List<Pair<T, String>>,
+    enabled: Boolean,
+    onSelected: (T) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { (value, title) ->
+                FilterChip(
+                    selected = selected == value,
+                    onClick = { onSelected(value) },
+                    enabled = enabled,
+                    label = { Text(title) },
+                )
+            }
+        }
     }
 }

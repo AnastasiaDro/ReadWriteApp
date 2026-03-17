@@ -1,5 +1,7 @@
 package com.cerebus.data.preferences.domain.repositories
 
+import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
+
 interface PreferencesRepository {
     fun getLastActiveStudentId(): String?
     fun setLastActiveStudentId(studentId: String)
@@ -10,6 +12,12 @@ interface PreferencesRepository {
     fun setKeyboardShiftEnabled(studentId: String, isEnabled: Boolean)
     fun getPreventWrongKeyPressEnabled(studentId: String): Boolean?
     fun setPreventWrongKeyPressEnabled(studentId: String, isEnabled: Boolean)
+    fun getAllowNeighborTyposEnabled(studentId: String): Boolean?
+    fun setAllowNeighborTyposEnabled(studentId: String, isEnabled: Boolean)
+    fun getNeighborTypoSensitivity(studentId: String): NeighborTypoSensitivity?
+    fun setNeighborTypoSensitivity(studentId: String, sensitivity: NeighborTypoSensitivity)
+    fun getFreeNeighborSlipPresses(studentId: String): Int?
+    fun setFreeNeighborSlipPresses(studentId: String, count: Int)
     fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

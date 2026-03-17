@@ -8,6 +8,13 @@
     <string name="session_settings_max_new_per_day">Максимум новых карточек в день</string>
     <string name="session_settings_allow_near_match">Разрешать небольшие ошибки в ответе</string>
     <string name="session_settings_prevent_wrong_key_press">Не давать нажимать неправильно</string>
+    <string name="session_settings_allow_neighbor_typos">Считать промахи по соседним клавишам опечатками</string>
+    <string name="session_settings_neighbor_typo_sensitivity">Чувствительность опечаток по соседним клавишам</string>
+    <string name="session_settings_neighbor_typo_sensitivity_strict">Строго</string>
+    <string name="session_settings_neighbor_typo_sensitivity_normal">Обычная</string>
+    <string name="session_settings_neighbor_typo_sensitivity_soft">Мягко</string>
+    <string name="session_settings_free_neighbor_slips">Сколько опечаток не штрафовать</string>
+    <string name="session_settings_free_neighbor_slips_hint">Сколько промахов по соседним клавишам в одной попытке не повышают уровень помощи.</string>
     <string name="session_settings_active_decks">Активные колоды</string>
     <string name="session_settings_no_decks">Нет доступных колод</string>
     <string name="session_settings_save">Сохранить</string>

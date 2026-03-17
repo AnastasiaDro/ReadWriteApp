@@ -21,8 +21,11 @@
     <string name="active_student_active_decks">Активные колоды</string>
     <string name="active_student_studied_decks">Изученные колоды</string>
     <string name="active_student_start">▶ Начать</string>
-    <string name="active_student_other_decks">Ваши другие колоды:</string>
+    <string name="active_student_other_decks">Другие колоды на устройстве</string>
     <string name="active_student_studied_letters">Изученные буквы</string>
+    <string name="active_student_studied_digits">Цифры</string>
+    <string name="active_student_studied_russian_letters">Русские буквы</string>
+    <string name="active_student_studied_english_letters">Английские буквы</string>
     <string name="active_student_no_studied_letters">Пока нет изученных букв</string>
     <string name="active_student_deck_progress">Изучено %1$d из %2$d</string>
     <string name="active_student_no_active_decks">Пока нет активных колод</string>
