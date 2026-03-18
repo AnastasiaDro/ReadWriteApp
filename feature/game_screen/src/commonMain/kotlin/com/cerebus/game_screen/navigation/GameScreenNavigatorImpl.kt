@@ -16,6 +16,17 @@ class GameScreenNavigatorImpl(
     }
 
     override fun closeGame() {
+        val returnRoute = GameSessionNavigationState.returnRoute
+        if (!returnRoute.isNullOrBlank()) {
+            val poppedToReturnRoute = navController.popBackStack(returnRoute, inclusive = false)
+            if (poppedToReturnRoute) return
+
+            navController.navigate(returnRoute) {
+                launchSingleTop = true
+            }
+            return
+        }
+
         val closed = navController.popBackStack()
         if (closed) return
 

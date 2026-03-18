@@ -7,17 +7,20 @@ object DeckNavigationState {
     private var openAddCardDialogOnNextOpen: Boolean = false
     private var openGalleryCardIdOnNextOpen: String? = null
     private var openEditCardIdOnNextOpen: String? = null
+    private var reopenGalleryCardIdAfterEditorClose: String? = null
 
     fun selectDeck(
         deckId: String,
         openAddCardDialog: Boolean = false,
         openGalleryCardId: String? = null,
         openEditCardId: String? = null,
+        reopenGalleryCardIdAfterEditorClose: String? = null,
     ) {
         selectedDeckId = deckId
         openAddCardDialogOnNextOpen = openAddCardDialog
         openGalleryCardIdOnNextOpen = openGalleryCardId
         openEditCardIdOnNextOpen = openEditCardId
+        this.reopenGalleryCardIdAfterEditorClose = reopenGalleryCardIdAfterEditorClose
     }
 
     fun consumeOpenAddCardDialogOnNextOpen(): Boolean {
@@ -35,6 +38,12 @@ object DeckNavigationState {
     fun consumeOpenEditCardIdOnNextOpen(): String? {
         val cardId = openEditCardIdOnNextOpen
         openEditCardIdOnNextOpen = null
+        return cardId
+    }
+
+    fun consumeReopenGalleryCardIdAfterEditorClose(): String? {
+        val cardId = reopenGalleryCardIdAfterEditorClose
+        reopenGalleryCardIdAfterEditorClose = null
         return cardId
     }
 }

@@ -86,6 +86,8 @@
     <string name="add_student_next">Next</string>
     <string name="create_student_avatar_placeholder">👤</string>
     <string name="active_student_change">Change</string>
+    <string name="navigation_tab_student">Student</string>
+    <string name="navigation_tab_decks">Decks</string>
     <string name="active_student_fallback_name">Student</string>
     <string name="active_student_last_lesson">Last lesson</string>
     <string name="active_student_start">▶ Start</string>

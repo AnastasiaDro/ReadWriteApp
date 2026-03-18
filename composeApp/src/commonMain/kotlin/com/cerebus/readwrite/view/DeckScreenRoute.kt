@@ -79,6 +79,9 @@ fun DeckScreenRoute(
     val effect by viewModel.effects.collectAsState()
     var shouldOpenAddCardDialog by remember(deckId) { mutableStateOf(false) }
     var editCardIdToOpen by remember(deckId) { mutableStateOf<String?>(null) }
+    var reopenGalleryCardIdAfterEditorClose by remember(deckId) { mutableStateOf<String?>(null) }
+    var waitForGalleryRestoreAfterEditorClose by remember(deckId) { mutableStateOf(false) }
+    var editorDialogWasOpened by remember(deckId) { mutableStateOf(false) }
     val messenger = rememberPlatformMessenger()
     val exportDeckErrorText = stringResource(Res.string.error_export_deck_failed)
     val shareDeckErrorText = stringResource(Res.string.error_share_deck_failed)
@@ -100,6 +103,9 @@ fun DeckScreenRoute(
     LaunchedEffect(deckId) {
         shouldOpenAddCardDialog = DeckNavigationState.consumeOpenAddCardDialogOnNextOpen()
         editCardIdToOpen = DeckNavigationState.consumeOpenEditCardIdOnNextOpen()
+        reopenGalleryCardIdAfterEditorClose = DeckNavigationState.consumeReopenGalleryCardIdAfterEditorClose()
+        waitForGalleryRestoreAfterEditorClose = false
+        editorDialogWasOpened = false
         viewModel.onAction(DeckScreenAction.Initialize(deckId))
     }
 
@@ -158,7 +164,39 @@ fun DeckScreenRoute(
         if (cardId != null && !state.isAddCardDialogVisible) {
             viewModel.onAction(DeckScreenAction.OnOpenCardEditor(cardId))
             editCardIdToOpen = null
+            waitForGalleryRestoreAfterEditorClose = reopenGalleryCardIdAfterEditorClose != null
+            editorDialogWasOpened = false
         }
+    }
+
+    LaunchedEffect(
+        state.isAddCardDialogVisible,
+        state.deckId,
+        state.isLoading,
+        waitForGalleryRestoreAfterEditorClose,
+        editorDialogWasOpened,
+        reopenGalleryCardIdAfterEditorClose,
+    ) {
+        if (!waitForGalleryRestoreAfterEditorClose) return@LaunchedEffect
+        if (state.isLoading) return@LaunchedEffect
+        if (state.deckId != deckId) return@LaunchedEffect
+
+        if (state.isAddCardDialogVisible) {
+            editorDialogWasOpened = true
+            return@LaunchedEffect
+        }
+
+        if (!editorDialogWasOpened) return@LaunchedEffect
+
+        val cardId = reopenGalleryCardIdAfterEditorClose ?: return@LaunchedEffect
+        DeckNavigationState.selectDeck(
+            deckId = state.deckId,
+            openGalleryCardId = cardId,
+        )
+        onOpenGallery(state.deckId)
+        reopenGalleryCardIdAfterEditorClose = null
+        waitForGalleryRestoreAfterEditorClose = false
+        editorDialogWasOpened = false
     }
 
     LaunchedEffect(

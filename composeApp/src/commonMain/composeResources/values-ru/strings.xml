@@ -86,6 +86,8 @@
     <string name="add_student_next">Далее</string>
     <string name="create_student_avatar_placeholder">👤</string>
     <string name="active_student_change">Сменить</string>
+    <string name="navigation_tab_student">Ученик</string>
+    <string name="navigation_tab_decks">Колоды</string>
     <string name="active_student_fallback_name">Ученик</string>
     <string name="active_student_last_lesson">Последнее занятие</string>
     <string name="active_student_start">▶ Начать</string>
