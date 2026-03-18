@@ -2,6 +2,10 @@
     <string name="keyboard_settings_title">Keyboard settings</string>
     <string name="keyboard_settings_close">Close</string>
     <string name="keyboard_settings_subtitle">Choose which letters should stay active for this student.</string>
+    <string name="keyboard_settings_section_language">Language</string>
+    <string name="keyboard_settings_section_behavior">Behavior</string>
+    <string name="keyboard_settings_section_numbers">Numbers</string>
+    <string name="keyboard_settings_section_letters">Letters</string>
     <string name="keyboard_settings_selected">Studied letters</string>
     <string name="keyboard_settings_empty">No letters selected yet</string>
     <string name="keyboard_settings_enable_all">Enable all</string>

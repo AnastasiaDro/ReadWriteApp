@@ -1,6 +1,10 @@
 <resources>
     <string name="session_settings_back">Back</string>
     <string name="session_settings_title">Learning settings</string>
+    <string name="session_settings_section_lesson">Lesson</string>
+    <string name="session_settings_section_help">Help</string>
+    <string name="session_settings_section_typos">Typos</string>
+    <string name="session_settings_section_decks">Decks</string>
     <string name="session_settings_new_cards">New cards per session</string>
     <string name="session_settings_reviews">Reviews per session</string>
     <string name="session_settings_learn_more_step">&quot;Learn more&quot; step</string>

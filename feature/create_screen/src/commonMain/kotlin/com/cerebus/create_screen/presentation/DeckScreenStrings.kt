@@ -4,6 +4,7 @@ data class DeckScreenStrings(
     val back: String,
     val exportDeck: String,
     val addCard: String,
+    val cardsCount: String,
     val startTraining: String,
     val trainingModesTitle: String,
     val trainingPlanTitle: String,

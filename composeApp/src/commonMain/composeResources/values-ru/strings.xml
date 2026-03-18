@@ -29,6 +29,7 @@
     <string name="import_deck">Импорт</string>
     <string name="unnamed_deck">Без названия</string>
     <string name="add_card">Добавить карточку</string>
+    <string name="deck_cards_count">Карточек: %1$d</string>
     <string name="start_training">Начать тренировку</string>
     <string name="deck_training_modes_title">Как заниматься</string>
     <string name="deck_training_mode_plan_title">По плану</string>

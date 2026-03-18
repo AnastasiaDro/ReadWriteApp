@@ -2,6 +2,10 @@
     <string name="keyboard_settings_title">Настройки клавиатуры</string>
     <string name="keyboard_settings_close">Закрыть</string>
     <string name="keyboard_settings_subtitle">Выберите, какие буквы должны оставаться активными для этого ученика.</string>
+    <string name="keyboard_settings_section_language">Язык</string>
+    <string name="keyboard_settings_section_behavior">Поведение</string>
+    <string name="keyboard_settings_section_numbers">Цифры</string>
+    <string name="keyboard_settings_section_letters">Буквы</string>
     <string name="keyboard_settings_selected">Изученные буквы</string>
     <string name="keyboard_settings_empty">Пока не выбрано ни одной буквы</string>
     <string name="keyboard_settings_enable_all">Включить все</string>

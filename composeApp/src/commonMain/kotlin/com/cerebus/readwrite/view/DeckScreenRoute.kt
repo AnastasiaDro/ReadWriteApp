@@ -35,6 +35,7 @@ import readwriteapp.composeapp.generated.resources.close
 import readwriteapp.composeapp.generated.resources.create
 import readwriteapp.composeapp.generated.resources.confirm_delete_cards_message
 import readwriteapp.composeapp.generated.resources.confirm_delete_cards_title
+import readwriteapp.composeapp.generated.resources.deck_cards_count
 import readwriteapp.composeapp.generated.resources.deck_name_label
 import readwriteapp.composeapp.generated.resources.deck_training_mode_plan_hint
 import readwriteapp.composeapp.generated.resources.deck_training_mode_plan_title
@@ -225,6 +226,7 @@ fun DeckScreenRoute(
         back = stringResource(Res.string.back),
         exportDeck = stringResource(Res.string.export_deck),
         addCard = stringResource(Res.string.add_card),
+        cardsCount = stringResource(Res.string.deck_cards_count),
         startTraining = stringResource(Res.string.start_training),
         trainingModesTitle = stringResource(Res.string.deck_training_modes_title),
         trainingPlanTitle = stringResource(Res.string.deck_training_mode_plan_title),

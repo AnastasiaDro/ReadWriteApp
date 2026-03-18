@@ -15,7 +15,7 @@
     <string name="close">Close</string>
     <string name="active_student_change">Change</string>
     <string name="active_student_import">Import deck</string>
-    <string name="active_student_learning_settings">⚙ Learning settings</string>
+    <string name="active_student_learning_settings">Learning settings</string>
     <string name="active_student_keyboard_settings">Keyboard</string>
     <string name="active_student_fallback_name">Student</string>
     <string name="active_student_active_decks">Active decks</string>

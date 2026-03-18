@@ -5,16 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,9 +26,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,23 +38,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import com.cerebus.core.ui.components.AppAnimatedDialog
-import com.cerebus.core.ui.components.AppEntityEditorDialog
-import com.cerebus.core.ui.components.AppEntityEditorMode
-import com.cerebus.core.ui.components.AppConfirmationDialog
-import com.cerebus.data.decks.domain.models.Deck
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
+import com.cerebus.core.ui.components.AppAnimatedDialog
+import com.cerebus.core.ui.components.AppConfirmationDialog
+import com.cerebus.core.ui.components.AppEntityEditorDialog
+import com.cerebus.core.ui.components.AppEntityEditorMode
+import com.cerebus.data.decks.domain.models.Deck
 
 private const val MAX_DECK_NAME_LENGTH = 40
 private const val MAX_DECKS_PER_EXPORT = 5
@@ -84,38 +83,17 @@ fun CreateScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("") },
-                navigationIcon = {
-                    TextButton(
-                        onClick = {
-                            if (isSelectionMode) {
-                                onAction(CreateScreenAction.OnClearDeckSelection)
-                            } else {
-                                onBackClick()
-                            }
-                        },
-                    ) {
-                        Text(strings.back)
-                    }
-                },
-                actions = {
-                    if (!isSelectionMode) {
-                        TextButton(onClick = { onAction(CreateScreenAction.OnImportDeckClick) }) {
-                            Text(strings.importDeck)
+            if (isSelectionMode) {
+                TopAppBar(
+                    title = {
+                        Text(text = "${state.selectedDeckIds.size} ${strings.selectedCount}")
+                    },
+                    navigationIcon = {
+                        TextButton(onClick = { onAction(CreateScreenAction.OnClearDeckSelection) }) {
+                            Text(strings.back)
                         }
-                    }
-                },
-            )
-        },
-        floatingActionButton = {
-            if (!isSelectionMode) {
-                FloatingActionButton(onClick = { onAction(CreateScreenAction.OnCreateDeckClick) }) {
-                    Text(
-                        text = strings.createDeckTitle,
-                        modifier = Modifier.padding(8.dp),
-                    )
-                }
+                    },
+                )
             }
         },
         bottomBar = {
@@ -138,13 +116,19 @@ fun CreateScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                text = strings.myDecks,
-                style = MaterialTheme.typography.titleLarge,
-            )
+            if (!isSelectionMode) {
+                CatalogHeader(
+                    title = strings.myDecks,
+                    createText = strings.createDeckTitle,
+                    importText = strings.importDeck,
+                    onCreateClick = { onAction(CreateScreenAction.OnCreateDeckClick) },
+                    onImportClick = { onAction(CreateScreenAction.OnImportDeckClick) },
+                )
+            }
+
             if (deleteValidationText != null) {
                 Text(
                     text = deleteValidationText,
@@ -152,20 +136,34 @@ fun CreateScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+
             if (state.decks.isEmpty()) {
-                Box(
+                Surface(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 1.dp,
                 ) {
-                    Text(strings.noDecksYet)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = strings.noDecksYet,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(36.dp),
-                    contentPadding = PaddingValues(bottom = if (isSelectionMode) 120.dp else 84.dp),
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                    contentPadding = PaddingValues(bottom = if (isSelectionMode) 120.dp else 24.dp),
                 ) {
                     items(
                         items = state.decks,
@@ -285,6 +283,57 @@ fun CreateScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun CatalogHeader(
+    title: String,
+    createText: String,
+    importText: String,
+    onCreateClick: () -> Unit,
+    onImportClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Button(
+                    onClick = onCreateClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = createText,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                OutlinedButton(
+                    onClick = onImportClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = importText,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
     }
 }
 

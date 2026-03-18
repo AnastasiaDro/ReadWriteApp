@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,11 +17,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,6 +62,10 @@ import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_numbers
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_prevent_wrong_key_press
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_russian
+import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_section_behavior
+import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_section_language
+import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_section_letters
+import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_section_numbers
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_select_language
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_selected
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_subtitle
@@ -252,6 +260,7 @@ fun KeyboardSettingsRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyboardSettingsScreen(
     state: KeyboardSettingsUiState,
@@ -281,77 +290,99 @@ fun KeyboardSettingsScreen(
     val hasAnyCurrentSelected = currentLanguageSymbols.any { it in state.selectedLetters }
     val hasAllCurrentSelected = currentLanguageSymbols.all { it in state.selectedLetters }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
+                title = {
+                    Text(
+                        text = stringResource(Res.string.keyboard_settings_title),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                navigationIcon = {
+                    TextButton(onClick = onClose) {
+                        Text(stringResource(Res.string.keyboard_settings_close))
+                    }
+                },
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = stringResource(Res.string.keyboard_settings_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
+                text = stringResource(Res.string.keyboard_settings_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TextButton(onClick = onClose) {
-                Text(stringResource(Res.string.keyboard_settings_close))
+
+            SelectedLettersBlock(selectedLetters = state.selectedLetters)
+
+            KeyboardSectionCard(
+                title = stringResource(Res.string.keyboard_settings_section_language),
+            ) {
+                LanguageSelectorRow(
+                    currentLanguage = state.currentLanguage,
+                    onClick = { showLanguageDialog = true },
+                )
+            }
+
+            KeyboardSectionCard(
+                title = stringResource(Res.string.keyboard_settings_section_behavior),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.keyboard_settings_prevent_wrong_key_press),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Switch(
+                        checked = state.preventWrongKeyPress,
+                        onCheckedChange = onPreventWrongKeyPressChanged,
+                    )
+                }
+            }
+
+            KeyboardSectionCard(
+                title = stringResource(Res.string.keyboard_settings_section_numbers),
+            ) {
+                KeyboardLettersSection(
+                    title = stringResource(Res.string.keyboard_settings_numbers),
+                    rows = keyboardSettingsNumberRows,
+                    selectedLetters = state.selectedLetters,
+                    onLetterClicked = onLetterClicked,
+                )
+            }
+
+            KeyboardSectionCard(
+                title = stringResource(Res.string.keyboard_settings_section_letters),
+            ) {
+                BulkActionsRow(
+                    hasAnySelected = hasAnyCurrentSelected,
+                    hasAllSelected = hasAllCurrentSelected,
+                    onEnableAllClick = onEnableAllClick,
+                    onDisableAllClick = onDisableAllClick,
+                )
+
+                KeyboardLettersSection(
+                    title = stringResource(state.currentLanguage.sectionTitleRes),
+                    rows = currentLanguageRows(state.currentLanguage),
+                    selectedLetters = state.selectedLetters,
+                    onLetterClicked = onLetterClicked,
+                )
             }
         }
-
-        Text(
-            text = stringResource(Res.string.keyboard_settings_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        SelectedLettersBlock(selectedLetters = state.selectedLetters)
-
-        LanguageSelectorRow(
-            currentLanguage = state.currentLanguage,
-            onClick = { showLanguageDialog = true },
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(Res.string.keyboard_settings_prevent_wrong_key_press),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Switch(
-                checked = state.preventWrongKeyPress,
-                onCheckedChange = onPreventWrongKeyPressChanged,
-            )
-        }
-
-        BulkActionsRow(
-            hasAnySelected = hasAnyCurrentSelected,
-            hasAllSelected = hasAllCurrentSelected,
-            onEnableAllClick = onEnableAllClick,
-            onDisableAllClick = onDisableAllClick,
-        )
-
-        KeyboardLettersSection(
-            title = stringResource(Res.string.keyboard_settings_numbers),
-            rows = keyboardSettingsNumberRows,
-            selectedLetters = state.selectedLetters,
-            onLetterClicked = onLetterClicked,
-        )
-
-        KeyboardLettersSection(
-            title = stringResource(state.currentLanguage.sectionTitleRes),
-            rows = currentLanguageRows(state.currentLanguage),
-            selectedLetters = state.selectedLetters,
-            onLetterClicked = onLetterClicked,
-        )
     }
 
     if (showLanguageDialog) {
@@ -363,6 +394,33 @@ fun KeyboardSettingsScreen(
             },
             onDismiss = { showLanguageDialog = false },
         )
+    }
+}
+
+@Composable
+private fun KeyboardSectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            content()
+        }
     }
 }
 

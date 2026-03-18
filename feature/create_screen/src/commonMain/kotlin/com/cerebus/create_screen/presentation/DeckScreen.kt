@@ -26,7 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -109,7 +108,17 @@ fun DeckScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("") },
+                title = {
+                    Text(
+                        text = if (isSelectionMode) {
+                            "${state.selectedCardIds.size} ${strings.selectedCount}"
+                        } else {
+                            state.deckName.ifBlank { strings.unnamedDeck }
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 windowInsets = WindowInsets(0.dp),
                 navigationIcon = {
                     TextButton(
@@ -125,24 +134,16 @@ fun DeckScreen(
                     }
                 },
                 actions = {
-                    TextButton(
-                        onClick = { onAction(DeckScreenAction.OnExportDeckClick) },
-                        enabled = !state.isExporting && !state.isLoading,
-                    ) {
-                        Text(strings.exportDeck)
+                    if (!isSelectionMode) {
+                        TextButton(
+                            onClick = { onAction(DeckScreenAction.OnExportDeckClick) },
+                            enabled = !state.isExporting && !state.isLoading,
+                        ) {
+                            Text(strings.exportDeck)
+                        }
                     }
                 },
             )
-        },
-        floatingActionButton = {
-            if (!isSelectionMode) {
-                FloatingActionButton(onClick = { onAction(DeckScreenAction.OnAddCardClick) }) {
-                    Text(
-                        text = strings.addCard,
-                        modifier = Modifier.padding(8.dp),
-                    )
-                }
-            }
         },
         bottomBar = {
             if (isSelectionMode) {
@@ -171,54 +172,65 @@ fun DeckScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            DeckHeader(
+            DeckOverviewCard(
                 deckName = state.deckName,
                 coverUri = state.coverUri,
+                cardsCount = state.flashcards.size,
                 isCompact = !isTablet,
                 strings = strings,
                 onEditNameClick = { onAction(DeckScreenAction.OnEditNameClick) },
                 onEditCoverClick = { onAction(DeckScreenAction.OnEditCoverClick) },
             )
 
-            DeckTrainingModesSection(
-                strings = strings,
-                onStartPlanClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
-                onStartRandomLearnedClick = { onAction(DeckScreenAction.OnStartRandomLearnedClick) },
-                onStartRandomAllClick = { onAction(DeckScreenAction.OnStartRandomAllClick) },
-                onOpenGalleryClick = { onAction(DeckScreenAction.OnOpenGalleryClick) },
-            )
-
-            Text(
-                text = strings.cards,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            if (deleteValidationText != null) {
-                Text(
-                    text = deleteValidationText,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+            SectionCard(title = strings.trainingModesTitle) {
+                DeckTrainingModesSection(
+                    strings = strings,
+                    onStartPlanClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
+                    onStartRandomLearnedClick = { onAction(DeckScreenAction.OnStartRandomLearnedClick) },
+                    onStartRandomAllClick = { onAction(DeckScreenAction.OnStartRandomAllClick) },
+                    onOpenGalleryClick = { onAction(DeckScreenAction.OnOpenGalleryClick) },
                 )
             }
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
+            SectionCard(
                 modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = if (isSelectionMode) 120.dp else 140.dp),
+                title = strings.cards,
+                headerAction = {
+                    if (!isSelectionMode) {
+                        OutlinedButton(onClick = { onAction(DeckScreenAction.OnAddCardClick) }) {
+                            Text(strings.addCard)
+                        }
+                    }
+                },
             ) {
-                items(state.flashcards, key = { it.id }) { card ->
-                    FlashcardGridItem(
-                        name = card.name,
-                        imageUrl = card.imageUrl,
-                        isSelectionMode = isSelectionMode,
-                        isSelected = card.id in state.selectedCardIds,
-                        onClick = { onAction(DeckScreenAction.OnCardClick(card.id)) },
-                        onLongPress = { onAction(DeckScreenAction.OnCardLongPress(card.id)) },
+                if (deleteValidationText != null) {
+                    Text(
+                        text = deleteValidationText,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
                     )
+                }
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = if (isSelectionMode) 120.dp else 24.dp),
+                ) {
+                    items(state.flashcards, key = { it.id }) { card ->
+                        FlashcardGridItem(
+                            name = card.name,
+                            imageUrl = card.imageUrl,
+                            isSelectionMode = isSelectionMode,
+                            isSelected = card.id in state.selectedCardIds,
+                            onClick = { onAction(DeckScreenAction.OnCardClick(card.id)) },
+                            onLongPress = { onAction(DeckScreenAction.OnCardLongPress(card.id)) },
+                        )
+                    }
                 }
             }
         }
@@ -405,11 +417,6 @@ private fun DeckTrainingModesSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            text = strings.trainingModesTitle,
-            style = MaterialTheme.typography.titleMedium,
-        )
-
         DeckTrainingModeButton(
             title = strings.trainingPlanTitle,
             hint = strings.trainingPlanHint,
@@ -463,78 +470,130 @@ private fun DeckTrainingModeButton(
 }
 
 @Composable
-private fun DeckHeader(
+private fun DeckOverviewCard(
     deckName: String,
     coverUri: String?,
+    cardsCount: Int,
     isCompact: Boolean,
     strings: DeckScreenStrings,
     onEditNameClick: () -> Unit,
     onEditCoverClick: () -> Unit,
 ) {
-    Column(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
     ) {
-        Text(
-            text = deckName.ifBlank { strings.unnamedDeck },
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        if (isCompact) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = deckName.ifBlank { strings.unnamedDeck },
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                DeckCover(
-                    coverUri = coverUri,
-                    noCoverText = strings.noCover,
-                    modifier = Modifier.size(112.dp),
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+            )
+            Text(
+                text = strings.cardsCount.replace("%1\$d", cardsCount.toString()),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            if (isCompact) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    OutlinedButton(
-                        onClick = onEditCoverClick,
-                        modifier = Modifier.fillMaxWidth(),
+                    DeckCover(
+                        coverUri = coverUri,
+                        noCoverText = strings.noCover,
+                        modifier = Modifier.size(112.dp),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(strings.editCover, maxLines = 1)
+                        OutlinedButton(
+                            onClick = onEditCoverClick,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(strings.editCover, maxLines = 1)
+                        }
+                        OutlinedButton(
+                            onClick = onEditNameClick,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(strings.editName, maxLines = 1)
+                        }
                     }
-                    OutlinedButton(
-                        onClick = onEditNameClick,
-                        modifier = Modifier.fillMaxWidth(),
+                }
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    DeckCover(
+                        coverUri = coverUri,
+                        noCoverText = strings.noCover,
+                        modifier = Modifier.size(112.dp),
+                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(strings.editName, maxLines = 1)
+                        OutlinedButton(onClick = onEditCoverClick) {
+                            Text(strings.editCover)
+                        }
+                        OutlinedButton(onClick = onEditNameClick) {
+                            Text(strings.editName)
+                        }
                     }
                 }
             }
-        } else {
+        }
+    }
+}
+
+@Composable
+private fun SectionCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    headerAction: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                DeckCover(
-                    coverUri = coverUri,
-                    noCoverText = strings.noCover,
-                    modifier = Modifier.size(112.dp),
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                 )
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedButton(onClick = onEditCoverClick) {
-                        Text(strings.editCover)
-                    }
-                    OutlinedButton(onClick = onEditNameClick) {
-                        Text(strings.editName)
-                    }
-                }
+                headerAction?.invoke()
             }
+            content()
         }
     }
 }

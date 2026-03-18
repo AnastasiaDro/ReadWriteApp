@@ -1414,12 +1414,6 @@ private fun answerInputAlignment(
         }
     }
 
-    while (expectedIndex < expectedAnswer.length && expectedAnswer[expectedIndex].isWhitespace()) {
-        val nextInputChar = answerInput.getOrNull(inputIndex)
-        if (nextInputChar?.isWhitespace() == true) break
-        expectedIndex++
-    }
-
     return AnswerInputAlignment(
         nextExpectedIndex = expectedIndex,
     )

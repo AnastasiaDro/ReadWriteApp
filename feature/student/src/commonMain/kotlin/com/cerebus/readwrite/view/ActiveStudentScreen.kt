@@ -4,31 +4,33 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,36 +44,36 @@ import com.cerebus.readwrite.media.rememberPlatformMessenger
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import readwriteapp.feature.student.generated.resources.Res
-import readwriteapp.feature.student.generated.resources.active_student_change
-import readwriteapp.feature.student.generated.resources.active_student_create_in_other
-import readwriteapp.feature.student.generated.resources.active_student_fallback_name
 import readwriteapp.feature.student.generated.resources.active_student_active_decks
 import readwriteapp.feature.student.generated.resources.active_student_all_decks
-import readwriteapp.feature.student.generated.resources.active_student_import
-import readwriteapp.feature.student.generated.resources.active_student_learning_settings
-import readwriteapp.feature.student.generated.resources.active_student_no_active_decks
-import readwriteapp.feature.student.generated.resources.active_student_no_decks
-import readwriteapp.feature.student.generated.resources.active_student_other_decks
-import readwriteapp.feature.student.generated.resources.active_student_start
-import readwriteapp.feature.student.generated.resources.active_student_studied_digits
-import readwriteapp.feature.student.generated.resources.active_student_studied_english_letters
+import readwriteapp.feature.student.generated.resources.active_student_change
+import readwriteapp.feature.student.generated.resources.active_student_create_in_other
+import readwriteapp.feature.student.generated.resources.active_student_deck_progress
 import readwriteapp.feature.student.generated.resources.active_student_error_import_deck_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_open_archive_picker_failed
-import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
+import readwriteapp.feature.student.generated.resources.active_student_fallback_name
+import readwriteapp.feature.student.generated.resources.active_student_gallery_choose_deck_title
+import readwriteapp.feature.student.generated.resources.active_student_import
 import readwriteapp.feature.student.generated.resources.active_student_keyboard_settings
-import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
-import readwriteapp.feature.student.generated.resources.active_student_studied_letters
-import readwriteapp.feature.student.generated.resources.active_student_studied_russian_letters
-import readwriteapp.feature.student.generated.resources.active_student_deck_progress
+import readwriteapp.feature.student.generated.resources.active_student_learning_settings
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_cancel
-import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_hint
-import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_title
-import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_title
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_gallery_hint
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_gallery_title
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_hint
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_title
-import readwriteapp.feature.student.generated.resources.active_student_gallery_choose_deck_title
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_hint
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_title
+import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_title
+import readwriteapp.feature.student.generated.resources.active_student_no_active_decks
+import readwriteapp.feature.student.generated.resources.active_student_no_decks
+import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
+import readwriteapp.feature.student.generated.resources.active_student_other_decks
+import readwriteapp.feature.student.generated.resources.active_student_start
+import readwriteapp.feature.student.generated.resources.active_student_studied_digits
+import readwriteapp.feature.student.generated.resources.active_student_studied_english_letters
+import readwriteapp.feature.student.generated.resources.active_student_studied_letters
+import readwriteapp.feature.student.generated.resources.active_student_studied_russian_letters
+import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
 
 @Composable
 fun ActiveStudentRoute(
@@ -177,97 +179,110 @@ private fun ActiveStudentScreen(
         stringResource(Res.string.active_student_fallback_name)
     }
     val scrollState = rememberScrollState()
+    val studiedSymbols = state.activeLetters.lowercase().toSet()
+    val digits = studiedSymbols
+        .filter { it in DIGIT_ORDER }
+        .sortedBy { DIGIT_ORDER.indexOf(it) }
+    val russianLetters = studiedSymbols
+        .filter { it in RUSSIAN_LETTER_ORDER }
+        .sortedBy { RUSSIAN_LETTER_ORDER.indexOf(it) }
+    val englishLetters = studiedSymbols
+        .filter { it in ENGLISH_LETTER_ORDER }
+        .sortedBy { ENGLISH_LETTER_ORDER.indexOf(it) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .statusBarsPadding()
-            .padding(
-                start = 20.dp,
-                end = 20.dp,
-                top = 16.dp,
-                bottom = 16.dp,
-            ),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
         ) {
             TextButton(
                 onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
             ) {
                 Text(text = stringResource(Res.string.active_student_change))
             }
+        }
 
-            TextButton(
-                onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text(text = stringResource(Res.string.active_student_import))
-            }
+                Box(
+                    modifier = Modifier
+                        .size(124.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.create_student_avatar_placeholder),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
 
-            TextButton(
-                onClick = {
-                    state.studentId?.let(onOpenSessionSettings)
-                },
-                enabled = state.studentId != null,
-            ) {
-                Text(text = stringResource(Res.string.active_student_learning_settings))
+                Text(
+                    text = "$displayName 👧",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                )
+
+                Button(
+                    onClick = { onAction(ActiveStudentAction.OnStartClick) },
+                    enabled = state.activeDecks.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = stringResource(Res.string.active_student_start))
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = { state.studentId?.let(onOpenSessionSettings) },
+                        enabled = state.studentId != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.active_student_learning_settings),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { state.studentId?.let(onOpenKeyboardSettings) },
+                        enabled = state.studentId != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.active_student_keyboard_settings),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        SectionCard(
+            title = stringResource(Res.string.active_student_studied_letters),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(132.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .align(Alignment.CenterHorizontally),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(Res.string.create_student_avatar_placeholder),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "$displayName 👧",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                TextButton(
-                    onClick = { state.studentId?.let(onOpenKeyboardSettings) },
-                    enabled = state.studentId != null,
-                ) {
-                    Text(text = stringResource(Res.string.active_student_keyboard_settings))
-                }
-            }
-
-            Text(
-                text = stringResource(Res.string.active_student_studied_letters),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             if (state.activeLetters.isBlank()) {
                 Text(
                     text = stringResource(Res.string.active_student_no_studied_letters),
@@ -275,22 +290,7 @@ private fun ActiveStudentScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {
-                val studiedSymbols = state.activeLetters
-                    .lowercase()
-                    .toSet()
-                val digits = studiedSymbols
-                    .filter { it in DIGIT_ORDER }
-                    .sortedBy { DIGIT_ORDER.indexOf(it) }
-                val russianLetters = studiedSymbols
-                    .filter { it in RUSSIAN_LETTER_ORDER }
-                    .sortedBy { RUSSIAN_LETTER_ORDER.indexOf(it) }
-                val englishLetters = studiedSymbols
-                    .filter { it in ENGLISH_LETTER_ORDER }
-                    .sortedBy { ENGLISH_LETTER_ORDER.indexOf(it) }
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (digits.isNotEmpty()) {
                         StudiedSymbolsRow(
                             title = stringResource(Res.string.active_student_studied_digits),
@@ -311,14 +311,11 @@ private fun ActiveStudentScreen(
                     }
                 }
             }
+        }
 
-            Text(
-                text = stringResource(Res.string.active_student_active_decks),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
+        SectionCard(
+            title = stringResource(Res.string.active_student_active_decks),
+        ) {
             if (state.activeDecks.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.active_student_no_active_decks),
@@ -346,60 +343,66 @@ private fun ActiveStudentScreen(
                             )
                         }
                     }
-                    Button(
-                        onClick = { onAction(ActiveStudentAction.OnStartClick) },
-                    ) {
-                        Text(text = stringResource(Res.string.active_student_start))
-                    }
                 }
             }
+        }
 
-            Text(
-                text = stringResource(Res.string.active_student_other_decks),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            if (state.otherDecks.isEmpty()) {
-                Text(
-                    text = stringResource(Res.string.active_student_no_decks),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        SectionCard(
+            title = stringResource(Res.string.active_student_other_decks),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Button(onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) }) {
-                        Text(text = stringResource(Res.string.active_student_create_in_other))
+                    OutlinedButton(
+                        onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(text = stringResource(Res.string.active_student_import), textAlign = TextAlign.Center)
                     }
-                    Button(onClick = { onAction(ActiveStudentAction.OnMoreDecksClick) }) {
-                        Text(text = stringResource(Res.string.active_student_all_decks))
+                    OutlinedButton(
+                        onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(text = stringResource(Res.string.active_student_create_in_other), textAlign = TextAlign.Center)
                     }
                 }
-            } else {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(state.otherDecks.take(5)) { deck ->
-                        DeckInlineItem(
-                            deck = deck.deck,
-                            supportingText = stringResource(
-                                Res.string.active_student_deck_progress,
-                                deck.learnedCards,
-                                deck.totalCards,
-                            ),
-                            onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.deck.id)) },
-                        )
+
+                if (state.otherDecks.isEmpty()) {
+                    Text(
+                        text = stringResource(Res.string.active_student_no_decks),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(state.otherDecks.take(5)) { deck ->
+                            DeckInlineItem(
+                                deck = deck.deck,
+                                supportingText = stringResource(
+                                    Res.string.active_student_deck_progress,
+                                    deck.learnedCards,
+                                    deck.totalCards,
+                                ),
+                                onClick = { onAction(ActiveStudentAction.OnDeckClick(deck.deck.id)) },
+                            )
+                        }
                     }
                 }
-                Button(onClick = { onAction(ActiveStudentAction.OnMoreDecksClick) }) {
+
+                Button(
+                    onClick = { onAction(ActiveStudentAction.OnMoreDecksClick) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(text = stringResource(Res.string.active_student_all_decks))
                 }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
     }
 
     if (state.isTrainingModeDialogVisible) {
@@ -520,6 +523,34 @@ private val RUSSIAN_LETTER_ORDER = listOf(
 private val ENGLISH_LETTER_ORDER = ('a'..'z').toList()
 
 @Composable
+private fun SectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                content()
+            },
+        )
+    }
+}
+
+@Composable
 private fun StudiedSymbolsRow(
     title: String,
     symbols: List<Char>,
@@ -537,7 +568,7 @@ private fun StudiedSymbolsRow(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                 ) {
                     Text(

@@ -7,18 +7,22 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -26,11 +30,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +53,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -642,13 +651,20 @@ private fun DeckGalleryScreen(
     val cards = state.cards
     val currentCard = state.currentCard
     val deckTitle = state.deckName.ifBlank { strings.titleFallback }
+    val density = LocalDensity.current
+    val windowInfo = LocalWindowInfo.current
+    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
+    val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
+    val isLandscape = windowWidthDp > windowHeightDp
     var isKeyboardVisible by remember { mutableStateOf(true) }
     val showShowWordToggle = state.learningStage == DeckGalleryLearningStage.Recall
     val showSimplifyToggle = true
 
     Scaffold(
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
                 title = {
                     Text(
                         text = deckTitle,
@@ -675,97 +691,193 @@ private fun DeckGalleryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(MaterialTheme.colorScheme.background),
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (currentCard == null) {
-                    Text(
-                        text = strings.empty,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                    )
-                    return@Column
-                }
-
-                GalleryFeedbackBanner(
-                    feedback = state.feedback,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                StageBadge(
-                    text = if (state.learningStage == DeckGalleryLearningStage.Copy) {
-                        strings.copyStage
-                    } else {
-                        strings.recallStage
-                    },
-                )
-
-                Text(
-                    text = "${state.currentIndex + 1} / ${cards.size}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                GalleryTrainingCard(
-                    card = currentCard,
-                    isHintVisible = state.isHintVisible,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                GalleryAnswerInputSection(
-                    answerInput = state.answerInput,
-                    expectedAnswer = currentCard.name,
-                    inputFeedbackType = state.inputFeedbackType,
-                    showShowWordToggle = showShowWordToggle,
-                    showSimplifyToggle = showSimplifyToggle,
-                    isShowWordEnabled = state.isHintVisible,
-                    isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
-                    usedShowWord = state.usedShowWord,
-                    usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
-                    submitText = strings.submit,
-                    showWordText = strings.showWord,
-                    simplifyKeyboardText = strings.simplifyKeyboard,
-                    onFieldClick = { isKeyboardVisible = true },
-                    onSubmit = onSubmitPressed,
-                    onShowWordToggle = onShowWordToggle,
-                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
-                )
-
+            if (isLandscape) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    OutlinedButton(
-                        onClick = onPreviousClick,
-                        enabled = state.currentIndex > 0,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(strings.previous)
-                    }
-                    OutlinedButton(
-                        onClick = onNextClick,
-                        enabled = state.currentIndex < cards.lastIndex,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(strings.next)
+                    if (currentCard == null) {
+                        Text(
+                            text = strings.empty,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            GalleryTrainingCard(
+                                card = currentCard,
+                                isHintVisible = state.isHintVisible,
+                                modifier = Modifier.fillMaxWidth(),
+                                onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
+                                onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
+                                previousLabel = strings.previous,
+                                nextLabel = strings.next,
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            GallerySectionCard {
+                                GalleryFeedbackBanner(
+                                    feedback = state.feedback,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    StageBadge(
+                                        text = if (state.learningStage == DeckGalleryLearningStage.Copy) {
+                                            strings.copyStage
+                                        } else {
+                                            strings.recallStage
+                                        },
+                                    )
+                                    Text(
+                                        text = "${state.currentIndex + 1} / ${cards.size}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+
+                                GalleryAnswerInputSection(
+                                    answerInput = state.answerInput,
+                                    expectedAnswer = currentCard.name,
+                                    inputFeedbackType = state.inputFeedbackType,
+                                    showShowWordToggle = showShowWordToggle,
+                                    showSimplifyToggle = showSimplifyToggle,
+                                    isShowWordEnabled = state.isHintVisible,
+                                    isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                                    usedShowWord = state.usedShowWord,
+                                    usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
+                                    submitText = strings.submit,
+                                    showWordText = strings.showWord,
+                                    simplifyKeyboardText = strings.simplifyKeyboard,
+                                    onFieldClick = { isKeyboardVisible = true },
+                                    onSubmit = onSubmitPressed,
+                                    onShowWordToggle = onShowWordToggle,
+                                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
+                                )
+                            }
+
+                            GallerySectionCard {
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->
+                                        GalleryCardThumbnail(
+                                            card = card,
+                                            isSelected = index == state.currentIndex,
+                                            onClick = { onCardSelected(index) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->
-                        GalleryCardThumbnail(
-                            card = card,
-                            isSelected = index == state.currentIndex,
-                            onClick = { onCardSelected(index) },
+            } else {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (currentCard == null) {
+                        Text(
+                            text = strings.empty,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
                         )
+                        return@Column
+                    }
+
+                    GalleryFeedbackBanner(
+                        feedback = state.feedback,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StageBadge(
+                            text = if (state.learningStage == DeckGalleryLearningStage.Copy) {
+                                strings.copyStage
+                            } else {
+                                strings.recallStage
+                            },
+                        )
+
+                        Text(
+                            text = "${state.currentIndex + 1} / ${cards.size}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    GalleryTrainingCard(
+                        card = currentCard,
+                        isHintVisible = state.isHintVisible,
+                        modifier = Modifier.fillMaxWidth(),
+                        onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
+                        onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
+                        previousLabel = strings.previous,
+                        nextLabel = strings.next,
+                    )
+
+                    GallerySectionCard {
+                        GalleryAnswerInputSection(
+                            answerInput = state.answerInput,
+                            expectedAnswer = currentCard.name,
+                            inputFeedbackType = state.inputFeedbackType,
+                            showShowWordToggle = showShowWordToggle,
+                            showSimplifyToggle = showSimplifyToggle,
+                            isShowWordEnabled = state.isHintVisible,
+                            isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                            usedShowWord = state.usedShowWord,
+                            usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
+                            submitText = strings.submit,
+                            showWordText = strings.showWord,
+                            simplifyKeyboardText = strings.simplifyKeyboard,
+                            onFieldClick = { isKeyboardVisible = true },
+                            onSubmit = onSubmitPressed,
+                            onShowWordToggle = onShowWordToggle,
+                            onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
+                        )
+                    }
+
+                    GallerySectionCard {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->
+                                GalleryCardThumbnail(
+                                    card = card,
+                                    isSelected = index == state.currentIndex,
+                                    onClick = { onCardSelected(index) },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -776,8 +888,7 @@ private fun DeckGalleryScreen(
                 exit = fadeOut(animationSpec = tween(durationMillis = 120)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                    .padding(start = 6.dp, top = 2.dp, end = 6.dp),
             ) {
                 TrainingKeyboard(
                     referenceText = currentCard?.name.orEmpty(),
@@ -801,10 +912,34 @@ private fun DeckGalleryScreen(
 }
 
 @Composable
+private fun GallerySectionCard(
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
 private fun GalleryTrainingCard(
     card: Flashcard,
     isHintVisible: Boolean,
     modifier: Modifier = Modifier,
+    onSwipePrevious: (() -> Unit)? = null,
+    onSwipeNext: (() -> Unit)? = null,
+    previousLabel: String,
+    nextLabel: String,
 ) {
     val platformContext = LocalPlatformContext.current
     val imageLoader = remember(platformContext) {
@@ -814,44 +949,127 @@ private fun GalleryTrainingCard(
     val normalizedImagePath = card.imageUrl.trim()
     val isTextCard = normalizedImagePath.isBlank() || imageLoadFailed
 
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(24.dp))
-            .border(
-                width = 2.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(24.dp),
-            )
-            .background(MaterialTheme.colorScheme.surface),
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ) {
-        if (isTextCard) {
-            GalleryCardTextFallback(
-                text = card.name,
-                modifier = Modifier.fillMaxSize(),
+        val cardSize = if (maxWidth < 360.dp) maxWidth else 360.dp
+        var dragAccumulation by remember(card.id) { mutableStateOf(0f) }
+
+        Row(
+            modifier = Modifier
+                .widthIn(max = 480.dp)
+                .pointerInput(card.id, onSwipePrevious, onSwipeNext) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { _, dragAmount ->
+                            dragAccumulation += dragAmount
+                        },
+                        onDragEnd = {
+                            when {
+                                dragAccumulation <= -56f -> onSwipeNext?.invoke()
+                                dragAccumulation >= 56f -> onSwipePrevious?.invoke()
+                            }
+                            dragAccumulation = 0f
+                        },
+                        onDragCancel = {
+                            dragAccumulation = 0f
+                        },
+                    )
+                },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            GallerySideArrowButton(
+                symbol = "‹",
+                label = previousLabel,
+                enabled = onSwipePrevious != null,
+                onClick = { onSwipePrevious?.invoke() },
             )
-        } else {
-            AsyncImage(
-                model = normalizedImagePath,
-                contentDescription = null,
-                imageLoader = imageLoader,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                onSuccess = { imageLoadFailed = false },
-                onError = { imageLoadFailed = true },
+
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 360.dp)
+                    .size(cardSize)
+                    .clip(RoundedCornerShape(24.dp))
+                    .border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(24.dp),
+                    )
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isTextCard) {
+                    GalleryCardTextFallback(
+                        text = card.name,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    AsyncImage(
+                        model = normalizedImagePath,
+                        contentDescription = null,
+                        imageLoader = imageLoader,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        onSuccess = { imageLoadFailed = false },
+                        onError = { imageLoadFailed = true },
+                    )
+                }
+
+                GalleryHint(
+                    text = card.name.uppercase(),
+                    visible = isHintVisible && !isTextCard,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp),
+                )
+            }
+
+            GallerySideArrowButton(
+                symbol = "›",
+                label = nextLabel,
+                enabled = onSwipeNext != null,
+                onClick = { onSwipeNext?.invoke() },
             )
         }
-
-        GalleryHint(
-            text = card.name.uppercase(),
-            visible = isHintVisible && !isTextCard,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 12.dp),
-        )
     }
 }
+
+@Composable
+private fun GallerySideArrowButton(
+    symbol: String,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(999.dp),
+        color = if (enabled) {
+            MaterialTheme.colorScheme.surfaceVariant
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        },
+        tonalElevation = if (enabled) 2.dp else 0.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = symbol,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                },
+            )
+        }
+    }
+}
+
 
 @Composable
 private fun GalleryAnswerInputSection(
@@ -873,7 +1091,7 @@ private fun GalleryAnswerInputSection(
     onSimplifyKeyboardToggle: (Boolean) -> Unit,
 ) {
     val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
-    val answerFieldHeight = if (allowMultilineAnswer) 84.dp else 56.dp
+    val answerFieldHeight = if (allowMultilineAnswer) 76.dp else 52.dp
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1126,7 +1344,7 @@ private fun GalleryFeedbackBanner(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.height(if (feedback == null) 0.dp else 84.dp),
+        modifier = modifier.height(if (feedback == null) 0.dp else 64.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
         AnimatedVisibility(
@@ -1212,7 +1430,7 @@ private fun GalleryCardThumbnail(
 
     Box(
         modifier = Modifier
-            .size(84.dp)
+            .size(72.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)

@@ -6,6 +6,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,13 +17,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -72,6 +78,10 @@ import readwriteapp.feature.session_settings.generated.resources.session_setting
 import readwriteapp.feature.session_settings.generated.resources.session_settings_save
 import readwriteapp.feature.session_settings.generated.resources.session_settings_save_error
 import readwriteapp.feature.session_settings.generated.resources.session_settings_saving
+import readwriteapp.feature.session_settings.generated.resources.session_settings_section_decks
+import readwriteapp.feature.session_settings.generated.resources.session_settings_section_help
+import readwriteapp.feature.session_settings.generated.resources.session_settings_section_lesson
+import readwriteapp.feature.session_settings.generated.resources.session_settings_section_typos
 import readwriteapp.feature.session_settings.generated.resources.session_settings_title
 import kotlin.math.roundToInt
 
@@ -113,7 +123,7 @@ fun SessionSettingsRoute(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SessionSettingsScreen(
     state: SessionSettingsState,
@@ -144,233 +154,264 @@ fun SessionSettingsScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(
-                onClick = onClose,
-                modifier = Modifier.align(Alignment.CenterVertically),
-            ) {
-                Text(stringResource(Res.string.session_settings_back))
-            }
-
-            Text(
-                text = stringResource(Res.string.session_settings_title),
-                style = MaterialTheme.typography.headlineSmall,
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
+                title = {
+                    Text(text = stringResource(Res.string.session_settings_title))
+                },
+                navigationIcon = {
+                    TextButton(onClick = onClose) {
+                        Text(stringResource(Res.string.session_settings_back))
+                    }
+                },
+                actions = {
+                    TextButton(onClick = onOpenKeyboardSettings) {
+                        Text(stringResource(Res.string.session_settings_keyboard))
+                    }
+                },
             )
-        }
-
-        TextButton(
-            onClick = onOpenKeyboardSettings,
-            modifier = Modifier.align(Alignment.Start),
-        ) {
-            Text(stringResource(Res.string.session_settings_keyboard))
-        }
-
-        NumericField(
-            label = stringResource(Res.string.session_settings_new_cards),
-            value = state.newCardsPerSession,
-            onValueChanged = { onIntent(SessionSettingsIntent.ChangeNewCards(it)) },
-        )
-
-        NumericField(
-            label = stringResource(Res.string.session_settings_reviews),
-            value = state.reviewsPerSession,
-            onValueChanged = { onIntent(SessionSettingsIntent.ChangeReviews(it)) },
-        )
-
-        NumericField(
-            label = stringResource(Res.string.session_settings_learn_more_step),
-            value = state.learnMoreStep,
-            onValueChanged = { onIntent(SessionSettingsIntent.ChangeLearnMoreStep(it)) },
-        )
-
-        DiscreteSliderField(
-            label = stringResource(Res.string.session_settings_guided_hint_threshold),
-            helperText = stringResource(Res.string.session_settings_guided_hint_threshold_hint),
-            value = state.guidedHintSuccessThreshold,
-            valueRange = 0..5,
-            onValueChanged = { onIntent(SessionSettingsIntent.ChangeGuidedHintSuccessThreshold(it)) },
-        )
-
-        NumericField(
-            label = stringResource(Res.string.session_settings_max_new_per_day),
-            value = state.maxNewCardsPerDay,
-            onValueChanged = { onIntent(SessionSettingsIntent.ChangeMaxNewPerDay(it)) },
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text = stringResource(Res.string.session_settings_allow_near_match))
-            Switch(
-                checked = state.allowNearMatch,
-                onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNearMatch(it)) },
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text = stringResource(Res.string.session_settings_prevent_wrong_key_press))
-            Switch(
-                checked = state.preventWrongKeyPress,
-                onCheckedChange = { onIntent(SessionSettingsIntent.ChangePreventWrongKeyPress(it)) },
-            )
-        }
-
-        ChoiceChipField(
-            label = stringResource(Res.string.session_settings_keyboard_press_delay),
-            helperText = stringResource(Res.string.session_settings_keyboard_press_delay_hint),
-            selected = state.keyboardPressDelay,
-            enabled = true,
-            options = listOf(
-                KeyboardPressDelay.Fast to stringResource(
-                    Res.string.session_settings_keyboard_press_delay_fast
-                ),
-                KeyboardPressDelay.Normal to stringResource(
-                    Res.string.session_settings_keyboard_press_delay_normal
-                ),
-                KeyboardPressDelay.Slow to stringResource(
-                    Res.string.session_settings_keyboard_press_delay_slow
-                ),
-            ),
-            onSelected = {
-                onIntent(SessionSettingsIntent.ChangeKeyboardPressDelay(it))
-            },
-        )
-
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { innerPadding ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .bringIntoViewRequester(typoSettingsBringIntoViewRequester),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            SettingsSectionCard(
+                title = stringResource(Res.string.session_settings_section_lesson),
             ) {
-                Text(text = stringResource(Res.string.session_settings_allow_neighbor_typos))
-                Switch(
-                    checked = state.allowNeighborTypos,
-                    onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNeighborTypos(it)) },
+                NumericField(
+                    label = stringResource(Res.string.session_settings_new_cards),
+                    value = state.newCardsPerSession,
+                    onValueChanged = { onIntent(SessionSettingsIntent.ChangeNewCards(it)) },
+                )
+
+                NumericField(
+                    label = stringResource(Res.string.session_settings_reviews),
+                    value = state.reviewsPerSession,
+                    onValueChanged = { onIntent(SessionSettingsIntent.ChangeReviews(it)) },
+                )
+
+                NumericField(
+                    label = stringResource(Res.string.session_settings_learn_more_step),
+                    value = state.learnMoreStep,
+                    onValueChanged = { onIntent(SessionSettingsIntent.ChangeLearnMoreStep(it)) },
+                )
+
+                NumericField(
+                    label = stringResource(Res.string.session_settings_max_new_per_day),
+                    value = state.maxNewCardsPerDay,
+                    onValueChanged = { onIntent(SessionSettingsIntent.ChangeMaxNewPerDay(it)) },
                 )
             }
 
-            ChoiceChipField(
-                label = stringResource(Res.string.session_settings_neighbor_typo_sensitivity),
-                helperText = stringResource(Res.string.session_settings_neighbor_typo_sensitivity_hint),
-                selected = state.neighborTypoSensitivity
-                    .takeIf { it != NeighborTypoSensitivity.Strict }
-                    ?: NeighborTypoSensitivity.Normal,
-                enabled = state.allowNeighborTypos,
-                options = listOf(
-                    NeighborTypoSensitivity.Normal to stringResource(
-                        Res.string.session_settings_neighbor_typo_sensitivity_normal
-                    ),
-                    NeighborTypoSensitivity.Soft to stringResource(
-                        Res.string.session_settings_neighbor_typo_sensitivity_soft
-                    ),
-                ),
-                onSelected = {
-                    onIntent(SessionSettingsIntent.ChangeNeighborTypoSensitivity(it))
-                },
-            )
+            SettingsSectionCard(
+                title = stringResource(Res.string.session_settings_section_help),
+            ) {
+                DiscreteSliderField(
+                    label = stringResource(Res.string.session_settings_guided_hint_threshold),
+                    helperText = stringResource(Res.string.session_settings_guided_hint_threshold_hint),
+                    value = state.guidedHintSuccessThreshold,
+                    valueRange = 0..5,
+                    onValueChanged = { onIntent(SessionSettingsIntent.ChangeGuidedHintSuccessThreshold(it)) },
+                )
 
-            DiscreteSliderField(
-                label = stringResource(Res.string.session_settings_free_neighbor_slips),
-                helperText = stringResource(Res.string.session_settings_free_neighbor_slips_hint),
-                value = state.freeNeighborSlipPresses,
-                valueRange = 0..3,
-                enabled = state.allowNeighborTypos,
-                onValueChanged = { onIntent(SessionSettingsIntent.ChangeFreeNeighborSlipPresses(it)) },
-            )
-        }
-
-        Text(
-            text = stringResource(Res.string.session_settings_active_decks),
-            style = MaterialTheme.typography.titleMedium,
-        )
-
-        if (state.deckOptions.isEmpty()) {
-            Text(
-                text = stringResource(Res.string.session_settings_no_decks),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            state.deckOptions.forEach { option ->
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(12.dp),
-                        )
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = option.deckName,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
+                    Text(text = stringResource(Res.string.session_settings_allow_near_match))
                     Switch(
-                        checked = option.isActive,
-                        onCheckedChange = { enabled ->
-                            onIntent(
-                                SessionSettingsIntent.ToggleDeck(
-                                    deckId = option.deckId,
-                                    isActive = enabled,
-                                )
-                            )
-                        },
+                        checked = state.allowNearMatch,
+                        onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNearMatch(it)) },
                     )
                 }
-            }
-        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Button(
-                onClick = { onIntent(SessionSettingsIntent.SaveClicked) },
-                enabled = !state.isSaving,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    text = if (state.isSaving) {
-                        stringResource(Res.string.session_settings_saving)
-                    } else {
-                        stringResource(Res.string.session_settings_save)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = stringResource(Res.string.session_settings_prevent_wrong_key_press))
+                    Switch(
+                        checked = state.preventWrongKeyPress,
+                        onCheckedChange = { onIntent(SessionSettingsIntent.ChangePreventWrongKeyPress(it)) },
+                    )
+                }
+
+                ChoiceChipField(
+                    label = stringResource(Res.string.session_settings_keyboard_press_delay),
+                    helperText = stringResource(Res.string.session_settings_keyboard_press_delay_hint),
+                    selected = state.keyboardPressDelay,
+                    enabled = true,
+                    options = listOf(
+                        KeyboardPressDelay.Fast to stringResource(
+                            Res.string.session_settings_keyboard_press_delay_fast
+                        ),
+                        KeyboardPressDelay.Normal to stringResource(
+                            Res.string.session_settings_keyboard_press_delay_normal
+                        ),
+                        KeyboardPressDelay.Slow to stringResource(
+                            Res.string.session_settings_keyboard_press_delay_slow
+                        ),
+                    ),
+                    onSelected = {
+                        onIntent(SessionSettingsIntent.ChangeKeyboardPressDelay(it))
                     },
                 )
             }
 
-            TextButton(
-                onClick = { onIntent(SessionSettingsIntent.CancelClicked) },
-                enabled = !state.isSaving,
-                modifier = Modifier.weight(1f),
+            SettingsSectionCard(
+                title = stringResource(Res.string.session_settings_section_typos),
+                modifier = Modifier.bringIntoViewRequester(typoSettingsBringIntoViewRequester),
             ) {
-                Text(stringResource(Res.string.session_settings_cancel))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = stringResource(Res.string.session_settings_allow_neighbor_typos))
+                    Switch(
+                        checked = state.allowNeighborTypos,
+                        onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNeighborTypos(it)) },
+                    )
+                }
+
+                ChoiceChipField(
+                    label = stringResource(Res.string.session_settings_neighbor_typo_sensitivity),
+                    helperText = stringResource(Res.string.session_settings_neighbor_typo_sensitivity_hint),
+                    selected = state.neighborTypoSensitivity
+                        .takeIf { it != NeighborTypoSensitivity.Strict }
+                        ?: NeighborTypoSensitivity.Normal,
+                    enabled = state.allowNeighborTypos,
+                    options = listOf(
+                        NeighborTypoSensitivity.Normal to stringResource(
+                            Res.string.session_settings_neighbor_typo_sensitivity_normal
+                        ),
+                        NeighborTypoSensitivity.Soft to stringResource(
+                            Res.string.session_settings_neighbor_typo_sensitivity_soft
+                        ),
+                    ),
+                    onSelected = {
+                        onIntent(SessionSettingsIntent.ChangeNeighborTypoSensitivity(it))
+                    },
+                )
+
+                DiscreteSliderField(
+                    label = stringResource(Res.string.session_settings_free_neighbor_slips),
+                    helperText = stringResource(Res.string.session_settings_free_neighbor_slips_hint),
+                    value = state.freeNeighborSlipPresses,
+                    valueRange = 0..3,
+                    enabled = state.allowNeighborTypos,
+                    onValueChanged = { onIntent(SessionSettingsIntent.ChangeFreeNeighborSlipPresses(it)) },
+                )
             }
+
+            SettingsSectionCard(
+                title = stringResource(Res.string.session_settings_section_decks),
+            ) {
+                if (state.deckOptions.isEmpty()) {
+                    Text(
+                        text = stringResource(Res.string.session_settings_no_decks),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    state.deckOptions.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(12.dp),
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = option.deckName,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Switch(
+                                checked = option.isActive,
+                                onCheckedChange = { enabled ->
+                                    onIntent(
+                                        SessionSettingsIntent.ToggleDeck(
+                                            deckId = option.deckId,
+                                            isActive = enabled,
+                                        )
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Button(
+                    onClick = { onIntent(SessionSettingsIntent.SaveClicked) },
+                    enabled = !state.isSaving,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = if (state.isSaving) {
+                            stringResource(Res.string.session_settings_saving)
+                        } else {
+                            stringResource(Res.string.session_settings_save)
+                        },
+                    )
+                }
+
+                TextButton(
+                    onClick = { onIntent(SessionSettingsIntent.CancelClicked) },
+                    enabled = !state.isSaving,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(Res.string.session_settings_cancel))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            content()
         }
     }
 }

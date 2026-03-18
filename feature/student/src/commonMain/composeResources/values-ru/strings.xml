@@ -15,7 +15,7 @@
     <string name="close">Закрыть</string>
     <string name="active_student_change">Сменить</string>
     <string name="active_student_import">Импорт колоды</string>
-    <string name="active_student_learning_settings">⚙ Настройки обучения</string>
+    <string name="active_student_learning_settings">Настройки обучения</string>
     <string name="active_student_keyboard_settings">Клавиатура</string>
     <string name="active_student_fallback_name">Ученик</string>
     <string name="active_student_active_decks">Активные колоды</string>

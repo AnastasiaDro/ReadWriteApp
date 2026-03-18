@@ -1,6 +1,10 @@
 <resources>
     <string name="session_settings_back">Назад</string>
     <string name="session_settings_title">Настройки обучения</string>
+    <string name="session_settings_section_lesson">Занятие</string>
+    <string name="session_settings_section_help">Помощь</string>
+    <string name="session_settings_section_typos">Опечатки</string>
+    <string name="session_settings_section_decks">Колоды</string>
     <string name="session_settings_new_cards">Новых карточек за занятие</string>
     <string name="session_settings_reviews">Повторений за занятие</string>
     <string name="session_settings_learn_more_step">Шаг &quot;Учить ещё&quot;</string>
