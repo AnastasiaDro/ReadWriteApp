@@ -4,10 +4,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -56,6 +59,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -1042,28 +1046,54 @@ private fun GallerySideArrowButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (enabled && isPressed) 0.94f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "gallery_side_arrow_scale",
+    )
     Surface(
         modifier = Modifier
             .size(44.dp)
             .clip(RoundedCornerShape(999.dp))
-            .clickable(enabled = enabled, onClick = onClick),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
         shape = RoundedCornerShape(999.dp),
-        color = if (enabled) {
-            MaterialTheme.colorScheme.surfaceVariant
-        } else {
+        color = if (!enabled) {
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        } else if (isPressed) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
         },
-        tonalElevation = if (enabled) 2.dp else 0.dp,
+        tonalElevation = if (!enabled) {
+            0.dp
+        } else if (isPressed) {
+            4.dp
+        } else {
+            2.dp
+        },
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = symbol,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (enabled) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
+                color = if (!enabled) {
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                } else if (isPressed) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
         }

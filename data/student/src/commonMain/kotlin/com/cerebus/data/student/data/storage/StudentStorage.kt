@@ -11,5 +11,6 @@ interface StudentStorage {
     suspend fun getFirstStudentId(): String?
     suspend fun getActiveLettersById(id: String): String?
     suspend fun updateName(id: String, newName: String): Boolean
+    suspend fun updateAvatarUri(id: String, avatarUri: String?): Boolean
     suspend fun updateActiveLetters(id: String, activeLetters: String): Boolean
 }

@@ -1,6 +1,7 @@
 package com.cerebus.readwrite.view
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,18 +12,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.core.utils.GameLaunchMode
+import com.cerebus.readwrite.media.rememberCoverImagePicker
 import com.cerebus.readwrite.media.rememberDeckArchivePicker
 import com.cerebus.readwrite.media.rememberPlatformMessenger
 import org.jetbrains.compose.resources.stringResource
@@ -50,9 +51,13 @@ import readwriteapp.feature.student.generated.resources.active_student_change
 import readwriteapp.feature.student.generated.resources.active_student_create_in_other
 import readwriteapp.feature.student.generated.resources.active_student_deck_progress
 import readwriteapp.feature.student.generated.resources.active_student_error_import_deck_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_delete_student_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_open_archive_picker_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_open_photo_picker_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_update_student_failed
 import readwriteapp.feature.student.generated.resources.active_student_fallback_name
 import readwriteapp.feature.student.generated.resources.active_student_gallery_choose_deck_title
+import readwriteapp.feature.student.generated.resources.active_student_edit_student_title
 import readwriteapp.feature.student.generated.resources.active_student_import
 import readwriteapp.feature.student.generated.resources.active_student_keyboard_settings
 import readwriteapp.feature.student.generated.resources.active_student_learning_settings
@@ -68,12 +73,24 @@ import readwriteapp.feature.student.generated.resources.active_student_no_active
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
 import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_other_decks
+import readwriteapp.feature.student.generated.resources.active_student_delete
+import readwriteapp.feature.student.generated.resources.active_student_delete_student_message
+import readwriteapp.feature.student.generated.resources.active_student_delete_student_secondary_message
+import readwriteapp.feature.student.generated.resources.active_student_delete_student_title
 import readwriteapp.feature.student.generated.resources.active_student_start
 import readwriteapp.feature.student.generated.resources.active_student_studied_digits
 import readwriteapp.feature.student.generated.resources.active_student_studied_english_letters
 import readwriteapp.feature.student.generated.resources.active_student_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_studied_russian_letters
+import readwriteapp.feature.student.generated.resources.add_photo
+import readwriteapp.feature.student.generated.resources.cancel
+import readwriteapp.feature.student.generated.resources.create_student_name_subtitle
 import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
+import readwriteapp.feature.student.generated.resources.choose_source
+import readwriteapp.feature.student.generated.resources.choose_from_gallery
+import readwriteapp.feature.student.generated.resources.take_photo
+import readwriteapp.feature.student.generated.resources.close
+import readwriteapp.feature.student.generated.resources.save
 
 @Composable
 fun ActiveStudentRoute(
@@ -91,6 +108,9 @@ fun ActiveStudentRoute(
     val messenger = rememberPlatformMessenger()
     val importDeckErrorText = stringResource(Res.string.active_student_error_import_deck_failed)
     val archivePickerErrorText = stringResource(Res.string.active_student_error_open_archive_picker_failed)
+    val photoPickerErrorText = stringResource(Res.string.active_student_error_open_photo_picker_failed)
+    val updateStudentErrorText = stringResource(Res.string.active_student_error_update_student_failed)
+    val deleteStudentErrorText = stringResource(Res.string.active_student_error_delete_student_failed)
     val archivePicker = rememberDeckArchivePicker(
         onArchivePicked = { uri ->
             viewModel.onAction(ActiveStudentAction.OnImportDeckFilePicked(uri))
@@ -99,9 +119,35 @@ fun ActiveStudentRoute(
             messenger.showMessage(archivePickerErrorText)
         },
     )
+    val photoPicker = rememberCoverImagePicker(
+        onImagePicked = { uri ->
+            viewModel.onAction(ActiveStudentAction.OnEditStudentPhotoPicked(uri))
+        },
+        onError = {
+            messenger.showMessage(photoPickerErrorText)
+        },
+    )
 
     LaunchedEffect(viewModel) {
         viewModel.onScreenShown()
+    }
+
+    LaunchedEffect(
+        state.pendingPickerRequest,
+        state.isEditStudentPhotoSourceDialogVisible,
+    ) {
+        if (state.isEditStudentPhotoSourceDialogVisible) return@LaunchedEffect
+        when (state.pendingPickerRequest) {
+            StudentPickerRequest.GALLERY -> {
+                photoPicker.openGallery()
+                viewModel.onAction(ActiveStudentAction.OnEditStudentPickerRequestConsumed)
+            }
+            StudentPickerRequest.CAMERA -> {
+                photoPicker.openCamera()
+                viewModel.onAction(ActiveStudentAction.OnEditStudentPickerRequestConsumed)
+            }
+            null -> Unit
+        }
     }
 
     LaunchedEffect(effect) {
@@ -136,6 +182,16 @@ fun ActiveStudentRoute(
 
             ActiveStudentEffect.ShowImportDeckFailed -> {
                 messenger.showMessage(importDeckErrorText)
+                viewModel.consumeEffect()
+            }
+
+            ActiveStudentEffect.ShowStudentUpdateFailed -> {
+                messenger.showMessage(updateStudentErrorText)
+                viewModel.consumeEffect()
+            }
+
+            ActiveStudentEffect.ShowDeleteStudentFailed -> {
+                messenger.showMessage(deleteStudentErrorText)
                 viewModel.consumeEffect()
             }
 
@@ -198,17 +254,6 @@ private fun ActiveStudentScreen(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            TextButton(
-                onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
-            ) {
-                Text(text = stringResource(Res.string.active_student_change))
-            }
-        }
-
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
@@ -222,27 +267,28 @@ private fun ActiveStudentScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(124.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
+                StudentAvatar(
+                    avatarUri = state.studentAvatarUri,
+                    size = 124.dp,
+                )
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
                     Text(
-                        text = stringResource(Res.string.create_student_avatar_placeholder),
+                        text = "$displayName 👧",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.displaySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
 
-                Text(
-                    text = "$displayName 👧",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                )
+                    TextButton(
+                        onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
+                    ) {
+                        Text(text = stringResource(Res.string.active_student_change))
+                    }
+                }
 
                 Button(
                     onClick = { onAction(ActiveStudentAction.OnStartClick) },
@@ -509,6 +555,146 @@ private fun ActiveStudentScreen(
                     },
                 ) {
                     Text(stringResource(Res.string.active_student_mode_dialog_cancel))
+                }
+            },
+        )
+    }
+
+    if (state.isEditStudentDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { onAction(ActiveStudentAction.OnDismissEditStudentDialog) },
+            title = { Text(stringResource(Res.string.active_student_edit_student_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier.clickable {
+                                onAction(ActiveStudentAction.OnEditStudentAvatarClick)
+                            },
+                        ) {
+                            StudentAvatar(
+                                avatarUri = state.editStudentAvatarUri,
+                                size = 112.dp,
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = { onAction(ActiveStudentAction.OnEditStudentAvatarClick) },
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) {
+                        Text(stringResource(Res.string.add_photo))
+                    }
+
+                    Text(
+                        text = stringResource(Res.string.create_student_name_subtitle),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+
+                    OutlinedTextField(
+                        value = state.editStudentName,
+                        onValueChange = {
+                            onAction(ActiveStudentAction.OnEditStudentNameChanged(it))
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onAction(ActiveStudentAction.OnSaveStudentChanges) },
+                ) {
+                    Text(stringResource(Res.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { onAction(ActiveStudentAction.OnDismissEditStudentDialog) },
+                ) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (state.isEditStudentPhotoSourceDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { onAction(ActiveStudentAction.OnDismissEditStudentPhotoSourceDialog) },
+            title = { Text(stringResource(Res.string.choose_source)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onAction(ActiveStudentAction.OnEditStudentPickFromGalleryClick) }) {
+                        Text(stringResource(Res.string.choose_from_gallery))
+                    }
+                    TextButton(onClick = { onAction(ActiveStudentAction.OnEditStudentTakePhotoClick) }) {
+                        Text(stringResource(Res.string.take_photo))
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { onAction(ActiveStudentAction.OnDismissEditStudentPhotoSourceDialog) }) {
+                    Text(stringResource(Res.string.close))
+                }
+            },
+        )
+    }
+
+    if (state.isDeleteStudentDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { onAction(ActiveStudentAction.OnDismissDeleteStudentDialog) },
+            title = { Text(stringResource(Res.string.active_student_delete_student_title)) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    StudentAvatar(
+                        avatarUri = state.studentAvatarUri,
+                        size = 88.dp,
+                    )
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = stringResource(
+                            Res.string.active_student_delete_student_message,
+                            displayName,
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = stringResource(
+                            Res.string.active_student_delete_student_secondary_message,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { onAction(ActiveStudentAction.OnConfirmDeleteStudent) },
+                ) {
+                    Text(stringResource(Res.string.active_student_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { onAction(ActiveStudentAction.OnDismissDeleteStudentDialog) },
+                ) {
+                    Text(stringResource(Res.string.cancel))
                 }
             },
         )

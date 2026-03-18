@@ -65,6 +65,11 @@ class StudentRepositoryImpl(
         return storage.updateName(id, normalizedName)
     }
 
+    override suspend fun updateAvatarUri(id: String, avatarUri: String?): Boolean {
+        val normalizedAvatarUri = avatarUri?.trim()?.takeIf { it.isNotBlank() }
+        return storage.updateAvatarUri(id, normalizedAvatarUri)
+    }
+
     private fun normalizeLetters(value: String): String {
         return value
             .lowercase()

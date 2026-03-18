@@ -111,6 +111,7 @@ class CreateStudentViewModel(
                 Student(
                     id = newStudentId,
                     name = name,
+                    avatarUri = _uiState.value.avatarUri,
                     activeLetters = "",
                 )
             )

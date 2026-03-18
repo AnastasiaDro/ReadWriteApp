@@ -26,6 +26,9 @@ interface StudentDao {
     @Query("UPDATE students SET name = :newName WHERE id = :id")
     suspend fun updateName(id: String, newName: String): Int
 
+    @Query("UPDATE students SET avatarUri = :avatarUri WHERE id = :id")
+    suspend fun updateAvatarUri(id: String, avatarUri: String?): Int
+
     @Query("UPDATE students SET activeLetters = :activeLetters WHERE id = :id")
     suspend fun updateActiveLetters(id: String, activeLetters: String): Int
 

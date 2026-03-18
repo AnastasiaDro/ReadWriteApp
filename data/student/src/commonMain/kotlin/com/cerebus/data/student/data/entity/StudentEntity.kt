@@ -7,5 +7,6 @@ import androidx.room.PrimaryKey
 data class StudentEntity(
     @PrimaryKey val id: String,
     val name: String,
+    val avatarUri: String? = null,
     val activeLetters: String,
 )

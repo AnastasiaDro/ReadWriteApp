@@ -10,6 +10,7 @@ fun StudentWithDecks.toDomain(): StudentWithDecksDomain {
         student = Student(
             id = student.id,
             name = student.name,
+            avatarUri = student.avatarUri,
             activeLetters = student.activeLetters,
         ),
         decks = decks.map { deck ->

@@ -12,6 +12,7 @@ import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
+import com.cerebus.data.student.domain.repositories.StudentRepository
 import com.cerebus.data.studentdeck.domain.models.StudentWithDecks
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
 import com.cerebus.core.utils.GameLaunchMode
@@ -34,12 +35,19 @@ data class ActiveStudentUiState(
     val isLoading: Boolean = true,
     val studentId: String? = null,
     val studentName: String = "",
+    val studentAvatarUri: String? = null,
     val activeLetters: String = "",
     val activeDecks: List<DeckProgressItem> = emptyList(),
     val studiedDecks: List<DeckProgressItem> = emptyList(),
     val otherDecks: List<DeckProgressItem> = emptyList(),
     val isTrainingModeDialogVisible: Boolean = false,
     val isGalleryDeckDialogVisible: Boolean = false,
+    val isEditStudentDialogVisible: Boolean = false,
+    val isEditStudentPhotoSourceDialogVisible: Boolean = false,
+    val isDeleteStudentDialogVisible: Boolean = false,
+    val editStudentName: String = "",
+    val editStudentAvatarUri: String? = null,
+    val pendingPickerRequest: StudentPickerRequest? = null,
 )
 
 sealed interface ActiveStudentAction {
@@ -55,6 +63,19 @@ sealed interface ActiveStudentAction {
     data object OnImportDeckClick : ActiveStudentAction
     data class OnImportDeckFilePicked(val uri: String) : ActiveStudentAction
     data class OnDeckClick(val deckId: String) : ActiveStudentAction
+    data object OnEditStudentClick : ActiveStudentAction
+    data object OnDismissEditStudentDialog : ActiveStudentAction
+    data class OnEditStudentNameChanged(val value: String) : ActiveStudentAction
+    data object OnEditStudentAvatarClick : ActiveStudentAction
+    data object OnDismissEditStudentPhotoSourceDialog : ActiveStudentAction
+    data object OnEditStudentPickFromGalleryClick : ActiveStudentAction
+    data object OnEditStudentTakePhotoClick : ActiveStudentAction
+    data class OnEditStudentPhotoPicked(val uri: String) : ActiveStudentAction
+    data object OnEditStudentPickerRequestConsumed : ActiveStudentAction
+    data object OnSaveStudentChanges : ActiveStudentAction
+    data object OnDeleteStudentClick : ActiveStudentAction
+    data object OnDismissDeleteStudentDialog : ActiveStudentAction
+    data object OnConfirmDeleteStudent : ActiveStudentAction
 }
 
 sealed interface ActiveStudentEffect {
@@ -67,6 +88,8 @@ sealed interface ActiveStudentEffect {
     data class OpenDeckGallery(val deckId: String) : ActiveStudentEffect
     data object OpenImportDeckPicker : ActiveStudentEffect
     data object ShowImportDeckFailed : ActiveStudentEffect
+    data object ShowStudentUpdateFailed : ActiveStudentEffect
+    data object ShowDeleteStudentFailed : ActiveStudentEffect
     data object OpenChangeStudent : ActiveStudentEffect
 }
 
@@ -77,6 +100,7 @@ class ActiveStudentViewModel(
     private val cardProgressRepository: CardProgressRepository,
     private val preferencesRepository: PreferencesRepository,
     private val deckPackageService: DeckPackageService,
+    private val studentRepository: StudentRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ActiveStudentUiState())
     val uiState: StateFlow<ActiveStudentUiState> = _uiState.asStateFlow()
@@ -132,6 +156,77 @@ class ActiveStudentViewModel(
             ActiveStudentAction.OnChangeStudentClick -> {
                 _effects.value = ActiveStudentEffect.OpenChangeStudent
             }
+
+            ActiveStudentAction.OnEditStudentClick -> {
+                val current = _uiState.value
+                _uiState.update {
+                    it.copy(
+                        isEditStudentDialogVisible = true,
+                        editStudentName = current.studentName,
+                        editStudentAvatarUri = current.studentAvatarUri,
+                    )
+                }
+            }
+
+            ActiveStudentAction.OnDismissEditStudentDialog -> {
+                _uiState.update {
+                    it.copy(
+                        isEditStudentDialogVisible = false,
+                        isEditStudentPhotoSourceDialogVisible = false,
+                        pendingPickerRequest = null,
+                    )
+                }
+            }
+
+            is ActiveStudentAction.OnEditStudentNameChanged -> {
+                _uiState.update { it.copy(editStudentName = action.value) }
+            }
+
+            ActiveStudentAction.OnEditStudentAvatarClick -> {
+                _uiState.update { it.copy(isEditStudentPhotoSourceDialogVisible = true) }
+            }
+
+            ActiveStudentAction.OnDismissEditStudentPhotoSourceDialog -> {
+                _uiState.update { it.copy(isEditStudentPhotoSourceDialogVisible = false) }
+            }
+
+            ActiveStudentAction.OnEditStudentPickFromGalleryClick -> {
+                _uiState.update {
+                    it.copy(
+                        isEditStudentPhotoSourceDialogVisible = false,
+                        pendingPickerRequest = StudentPickerRequest.GALLERY,
+                    )
+                }
+            }
+
+            ActiveStudentAction.OnEditStudentTakePhotoClick -> {
+                _uiState.update {
+                    it.copy(
+                        isEditStudentPhotoSourceDialogVisible = false,
+                        pendingPickerRequest = StudentPickerRequest.CAMERA,
+                    )
+                }
+            }
+
+            is ActiveStudentAction.OnEditStudentPhotoPicked -> {
+                _uiState.update { it.copy(editStudentAvatarUri = action.uri) }
+            }
+
+            ActiveStudentAction.OnEditStudentPickerRequestConsumed -> {
+                _uiState.update { it.copy(pendingPickerRequest = null) }
+            }
+
+            ActiveStudentAction.OnSaveStudentChanges -> saveStudentChanges()
+
+            ActiveStudentAction.OnDeleteStudentClick -> {
+                _uiState.update { it.copy(isDeleteStudentDialogVisible = true) }
+            }
+
+            ActiveStudentAction.OnDismissDeleteStudentDialog -> {
+                _uiState.update { it.copy(isDeleteStudentDialogVisible = false) }
+            }
+
+            ActiveStudentAction.OnConfirmDeleteStudent -> deleteCurrentStudent()
 
             ActiveStudentAction.OnMoreDecksClick -> {
                 _effects.value = ActiveStudentEffect.OpenDeckList(openCreateDialog = false)
@@ -192,6 +287,77 @@ class ActiveStudentViewModel(
                 is CustomResult.Failure -> {
                     _effects.value = ActiveStudentEffect.ShowImportDeckFailed
                 }
+            }
+        }
+    }
+
+    private fun saveStudentChanges() {
+        val current = _uiState.value
+        val studentId = current.studentId ?: return
+        val updatedName = current.editStudentName.trim()
+        if (updatedName.isBlank()) {
+            _effects.value = ActiveStudentEffect.ShowStudentUpdateFailed
+            return
+        }
+        val updatedAvatarUri = current.editStudentAvatarUri?.trim()?.takeIf { it.isNotBlank() }
+
+        viewModelScope.launch {
+            val nameChanged = updatedName != current.studentName
+            val avatarChanged = updatedAvatarUri != current.studentAvatarUri
+            if (!nameChanged && !avatarChanged) {
+                _uiState.update {
+                    it.copy(
+                        isEditStudentDialogVisible = false,
+                        isEditStudentPhotoSourceDialogVisible = false,
+                        pendingPickerRequest = null,
+                    )
+                }
+                return@launch
+            }
+
+            val updatedNameSuccessfully = !nameChanged || studentRepository.updateName(studentId, updatedName)
+            val updatedAvatarSuccessfully = !avatarChanged || studentRepository.updateAvatarUri(studentId, updatedAvatarUri)
+
+            if (updatedNameSuccessfully && updatedAvatarSuccessfully) {
+                _uiState.update {
+                    it.copy(
+                        isEditStudentDialogVisible = false,
+                        isEditStudentPhotoSourceDialogVisible = false,
+                        pendingPickerRequest = null,
+                    )
+                }
+            } else {
+                _effects.value = ActiveStudentEffect.ShowStudentUpdateFailed
+            }
+        }
+    }
+
+    private fun deleteCurrentStudent() {
+        val studentId = _uiState.value.studentId ?: return
+        viewModelScope.launch {
+            val deleted = studentRepository.deleteStudent(studentId)
+            if (!deleted) {
+                _effects.value = ActiveStudentEffect.ShowDeleteStudentFailed
+                return@launch
+            }
+
+            val nextStudentId = studentRepository.getFirstStudentId()
+            _uiState.update {
+                it.copy(
+                    isDeleteStudentDialogVisible = false,
+                    isEditStudentDialogVisible = false,
+                    isEditStudentPhotoSourceDialogVisible = false,
+                    pendingPickerRequest = null,
+                )
+            }
+
+            if (nextStudentId.isNullOrBlank()) {
+                preferredStudentId.value = null
+                preferencesRepository.clearLastActiveStudentId()
+                _effects.value = ActiveStudentEffect.OpenChangeStudent
+            } else {
+                preferredStudentId.value = nextStudentId
+                preferencesRepository.setLastActiveStudentId(nextStudentId)
             }
         }
     }
@@ -259,12 +425,19 @@ class ActiveStudentViewModel(
                         isLoading = false,
                         studentId = relation.student.id,
                         studentName = relation.student.name,
+                        studentAvatarUri = relation.student.avatarUri,
                         activeLetters = relation.student.activeLetters,
                         activeDecks = buckets.activeDecks,
                         studiedDecks = buckets.studiedDecks,
                         otherDecks = buckets.otherDecks,
                         isTrainingModeDialogVisible = _uiState.value.isTrainingModeDialogVisible,
                         isGalleryDeckDialogVisible = _uiState.value.isGalleryDeckDialogVisible,
+                        isEditStudentDialogVisible = _uiState.value.isEditStudentDialogVisible,
+                        isEditStudentPhotoSourceDialogVisible = _uiState.value.isEditStudentPhotoSourceDialogVisible,
+                        isDeleteStudentDialogVisible = _uiState.value.isDeleteStudentDialogVisible,
+                        editStudentName = _uiState.value.editStudentName,
+                        editStudentAvatarUri = _uiState.value.editStudentAvatarUri,
+                        pendingPickerRequest = _uiState.value.pendingPickerRequest,
                     )
                 }
             }.collect { state ->

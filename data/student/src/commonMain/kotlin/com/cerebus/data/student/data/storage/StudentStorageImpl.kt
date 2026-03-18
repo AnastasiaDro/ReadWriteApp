@@ -41,6 +41,10 @@ class StudentStorageImpl(
         return runCatching { dao.updateName(id, newName) > 0 }.getOrDefault(false)
     }
 
+    override suspend fun updateAvatarUri(id: String, avatarUri: String?): Boolean {
+        return runCatching { dao.updateAvatarUri(id, avatarUri) > 0 }.getOrDefault(false)
+    }
+
     override suspend fun updateActiveLetters(id: String, activeLetters: String): Boolean {
         return runCatching { dao.updateActiveLetters(id, activeLetters) > 0 }.getOrDefault(false)
     }
