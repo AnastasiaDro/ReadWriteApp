@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -21,7 +22,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
-import com.cerebus.core.ui.insets.bottomSystemBarPadding
 import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
@@ -70,7 +70,6 @@ fun ReadWriteAppNavigation() = MaterialTheme {
     val pendingImportDeckArchiveUri = CreateNavigationState.pendingImportDeckArchiveUri.collectAsState().value
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
     val currentRoute = currentDestination?.route
-    val containerBottomPadding = bottomSystemBarPadding()
     val topLevelTabs = remember {
         listOf(
             AppTopLevelTab(
@@ -100,8 +99,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
         bottomBar = {
             if (shouldShowTopLevelTabs) {
                 NavigationBar(
-                    modifier = Modifier.padding(bottom = containerBottomPadding),
-                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    windowInsets = NavigationBarDefaults.windowInsets,
                 ) {
                     topLevelTabs.forEach { tab ->
                         NavigationBarItem(
