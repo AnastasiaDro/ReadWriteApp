@@ -7,6 +7,8 @@ data class DeckScreenStrings(
     val cardsCount: String,
     val startTraining: String,
     val trainingModesTitle: String,
+    val trainingModesHelpSubtitle: String,
+    val trainingModesHelpAction: String,
     val trainingPlanTitle: String,
     val trainingPlanHint: String,
     val randomLearnedTitle: String,

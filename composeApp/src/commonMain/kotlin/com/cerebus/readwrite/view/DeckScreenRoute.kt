@@ -45,6 +45,8 @@ import readwriteapp.composeapp.generated.resources.deck_training_mode_gallery_hi
 import readwriteapp.composeapp.generated.resources.deck_training_mode_gallery_title
 import readwriteapp.composeapp.generated.resources.deck_training_mode_random_learned_hint
 import readwriteapp.composeapp.generated.resources.deck_training_mode_random_learned_title
+import readwriteapp.composeapp.generated.resources.deck_training_modes_help_action
+import readwriteapp.composeapp.generated.resources.deck_training_modes_help_subtitle
 import readwriteapp.composeapp.generated.resources.deck_training_modes_title
 import readwriteapp.composeapp.generated.resources.edit_cover
 import readwriteapp.composeapp.generated.resources.edit_card_title
@@ -229,6 +231,8 @@ fun DeckScreenRoute(
         cardsCount = stringResource(Res.string.deck_cards_count),
         startTraining = stringResource(Res.string.start_training),
         trainingModesTitle = stringResource(Res.string.deck_training_modes_title),
+        trainingModesHelpSubtitle = stringResource(Res.string.deck_training_modes_help_subtitle),
+        trainingModesHelpAction = stringResource(Res.string.deck_training_modes_help_action),
         trainingPlanTitle = stringResource(Res.string.deck_training_mode_plan_title),
         trainingPlanHint = stringResource(Res.string.deck_training_mode_plan_hint),
         randomLearnedTitle = stringResource(Res.string.deck_training_mode_random_learned_title),

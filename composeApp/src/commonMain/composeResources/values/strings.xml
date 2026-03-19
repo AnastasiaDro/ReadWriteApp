@@ -32,6 +32,8 @@
     <string name="deck_cards_count">Cards: %1$d</string>
     <string name="start_training">Start training</string>
     <string name="deck_training_modes_title">How to practice</string>
+    <string name="deck_training_modes_help_subtitle">Choose the main mode or a free practice mode here.</string>
+    <string name="deck_training_modes_help_action">Got it</string>
     <string name="deck_training_mode_plan_title">Follow the plan</string>
     <string name="deck_training_mode_plan_hint">New cards and scheduled reviews for this deck</string>
     <string name="deck_training_mode_random_learned_title">Random studied cards</string>

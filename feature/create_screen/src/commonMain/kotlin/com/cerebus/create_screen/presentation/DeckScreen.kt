@@ -2,6 +2,7 @@ package com.cerebus.create_screen.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +15,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -26,9 +30,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -36,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cerebus.core.ui.components.AppAnimatedDialog
 import com.cerebus.core.ui.components.AppEntityEditorDialog
@@ -74,9 +83,15 @@ fun DeckScreen(
     onAction: (DeckScreenAction) -> Unit,
     onBackClick: () -> Unit,
 ) {
+    var isTrainingModesHelpVisible by remember { mutableStateOf(false) }
+    val trainingModesHelpSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+    )
     val density = LocalDensity.current
     val widthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
-    val isTablet = widthDp >= 840.dp
+    val heightDp = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val shortestSideDp = minOf(widthDp, heightDp)
+    val isTablet = shortestSideDp >= 600.dp
     val isSelectionMode = state.selectedCardIds.isNotEmpty()
     val columns = if (isTablet) 4 else 3
     val gridRows = ((state.flashcards.size + columns - 1) / columns).coerceAtLeast(1)
@@ -196,8 +211,21 @@ fun DeckScreen(
                 onEditCoverClick = { onAction(DeckScreenAction.OnEditCoverClick) },
             )
 
-            SectionCard(title = strings.trainingModesTitle) {
+            SectionCard(
+                title = strings.trainingModesTitle,
+                titleTrailing = if (isTablet) {
+                    { TrainingModesHelpButton(onClick = { isTrainingModesHelpVisible = true }) }
+                } else {
+                    null
+                },
+                headerAction = if (!isTablet) {
+                    { TrainingModesHelpButton(onClick = { isTrainingModesHelpVisible = true }) }
+                } else {
+                    null
+                },
+            ) {
                 DeckTrainingModesSection(
+                    isCompact = !isTablet,
                     strings = strings,
                     onStartPlanClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
                     onStartRandomLearnedClick = { onAction(DeckScreenAction.OnStartRandomLearnedClick) },
@@ -416,71 +444,246 @@ fun DeckScreen(
         onConfirm = { onAction(DeckScreenAction.OnConfirmDeleteSelectedCards) },
         onDismiss = { onAction(DeckScreenAction.OnDismissDeleteSelectedCardsDialog) },
     )
+
+    if (isTrainingModesHelpVisible) {
+        ModalBottomSheet(
+            onDismissRequest = { isTrainingModesHelpVisible = false },
+            sheetState = trainingModesHelpSheetState,
+            sheetMaxWidth = Dp.Unspecified,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isTablet) {
+                            Modifier.wrapContentWidth(Alignment.CenterHorizontally)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .widthIn(max = if (isTablet) 560.dp else Dp.Infinity)
+                    .padding(horizontal = 20.dp)
+                    .padding(top = if (isTablet) 18.dp else 4.dp, bottom = 4.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 12.dp),
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp),
+                ) {
+                    Text(
+                        text = strings.trainingModesTitle,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = strings.trainingModesHelpSubtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    TrainingModeHelpItem(
+                        title = strings.trainingPlanTitle,
+                        description = strings.trainingPlanHint,
+                        onClick = {
+                            isTrainingModesHelpVisible = false
+                            onAction(DeckScreenAction.OnStartTrainingClick)
+                        },
+                    )
+                    TrainingModeHelpItem(
+                        title = strings.randomLearnedTitle,
+                        description = strings.randomLearnedHint,
+                        onClick = {
+                            isTrainingModesHelpVisible = false
+                            onAction(DeckScreenAction.OnStartRandomLearnedClick)
+                        },
+                    )
+                    TrainingModeHelpItem(
+                        title = strings.randomAllTitle,
+                        description = strings.randomAllHint,
+                        onClick = {
+                            isTrainingModesHelpVisible = false
+                            onAction(DeckScreenAction.OnStartRandomAllClick)
+                        },
+                    )
+                    TrainingModeHelpItem(
+                        title = strings.galleryTitle,
+                        description = strings.galleryHint,
+                        onClick = {
+                            isTrainingModesHelpVisible = false
+                            onAction(DeckScreenAction.OnOpenGalleryClick)
+                        },
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Button(
+                        onClick = { isTrainingModesHelpVisible = false },
+                    ) {
+                        Text(strings.trainingModesHelpAction)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun DeckTrainingModesSection(
+    isCompact: Boolean,
     strings: DeckScreenStrings,
     onStartPlanClick: () -> Unit,
     onStartRandomLearnedClick: () -> Unit,
     onStartRandomAllClick: () -> Unit,
     onOpenGalleryClick: () -> Unit,
 ) {
+    val modes = listOf(
+        DeckTrainingModeUi(
+            title = strings.trainingPlanTitle,
+            hint = strings.trainingPlanHint,
+            isPrimary = true,
+            onClick = onStartPlanClick,
+        ),
+        DeckTrainingModeUi(
+            title = strings.randomLearnedTitle,
+            hint = strings.randomLearnedHint,
+            onClick = onStartRandomLearnedClick,
+        ),
+        DeckTrainingModeUi(
+            title = strings.randomAllTitle,
+            hint = strings.randomAllHint,
+            onClick = onStartRandomAllClick,
+        ),
+        DeckTrainingModeUi(
+            title = strings.galleryTitle,
+            hint = strings.galleryHint,
+            onClick = onOpenGalleryClick,
+        ),
+    )
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        DeckTrainingModeButton(
-            title = strings.trainingPlanTitle,
-            hint = strings.trainingPlanHint,
-            onClick = onStartPlanClick,
-        )
-        DeckTrainingModeButton(
-            title = strings.randomLearnedTitle,
-            hint = strings.randomLearnedHint,
-            onClick = onStartRandomLearnedClick,
-        )
-        DeckTrainingModeButton(
-            title = strings.randomAllTitle,
-            hint = strings.randomAllHint,
-            onClick = onStartRandomAllClick,
-        )
-        DeckTrainingModeButton(
-            title = strings.galleryTitle,
-            hint = strings.galleryHint,
-            onClick = onOpenGalleryClick,
-        )
+        val modeRows = if (isCompact) modes.chunked(2) else listOf(modes)
+        modeRows.forEach { rowModes ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                rowModes.forEach { mode ->
+                    DeckTrainingModeTile(
+                        title = mode.title,
+                        hint = if (isCompact) null else mode.hint,
+                        isCompact = isCompact,
+                        isPrimary = mode.isPrimary,
+                        onClick = mode.onClick,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (rowModes.size == 1) {
+                    Box(modifier = Modifier.weight(1f))
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun DeckTrainingModeButton(
+private fun DeckTrainingModeTile(
     title: String,
-    hint: String,
+    hint: String?,
+    isCompact: Boolean,
+    isPrimary: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    val content: @Composable () -> Unit = {
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(if (hint != null) 4.dp else 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                style = if (hint != null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                maxLines = if (hint != null) 2 else 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
             )
-            Text(
-                text = hint,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (hint != null) {
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isPrimary) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (isPrimary) {
+        FilledTonalButton(
+            onClick = onClick,
+            modifier = modifier
+                .then(
+                    if (isCompact) {
+                        Modifier.requiredHeight(68.dp)
+                    } else {
+                        Modifier.heightIn(min = 124.dp)
+                    }
+                ),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp),
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+        ) {
+            content()
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier
+                .then(
+                    if (isCompact) {
+                        Modifier.requiredHeight(68.dp)
+                    } else {
+                        Modifier.heightIn(min = 124.dp)
+                    }
+                ),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp),
+        ) {
+            content()
         }
     }
 }
+
+private data class DeckTrainingModeUi(
+    val title: String,
+    val hint: String,
+    val isPrimary: Boolean = false,
+    val onClick: () -> Unit,
+)
 
 @Composable
 private fun DeckOverviewCard(
@@ -601,6 +804,7 @@ private fun DeckOverviewCard(
 private fun SectionCard(
     modifier: Modifier = Modifier,
     title: String,
+    titleTrailing: (@Composable () -> Unit)? = null,
     headerAction: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -621,14 +825,78 @@ private fun SectionCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Box(modifier = Modifier.padding(start = 8.dp)) {
+                        titleTrailing?.invoke()
+                    }
+                }
                 headerAction?.invoke()
             }
             content()
+        }
+    }
+}
+
+@Composable
+private fun TrainingModesHelpButton(
+    onClick: () -> Unit,
+) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = Modifier.size(28.dp),
+        shape = CircleShape,
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Text(
+            text = "?",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun TrainingModeHelpItem(
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

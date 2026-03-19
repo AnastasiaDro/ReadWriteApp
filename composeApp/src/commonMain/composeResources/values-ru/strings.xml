@@ -32,6 +32,8 @@
     <string name="deck_cards_count">Карточек: %1$d</string>
     <string name="start_training">Начать тренировку</string>
     <string name="deck_training_modes_title">Как заниматься</string>
+    <string name="deck_training_modes_help_subtitle">Здесь можно выбрать основной режим или свободную практику.</string>
+    <string name="deck_training_modes_help_action">Понятно</string>
     <string name="deck_training_mode_plan_title">По плану</string>
     <string name="deck_training_mode_plan_hint">Новые карточки и повторения по расписанию для этой колоды</string>
     <string name="deck_training_mode_random_learned_title">Случайные изученные</string>
