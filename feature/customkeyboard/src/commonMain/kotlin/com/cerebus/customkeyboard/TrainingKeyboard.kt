@@ -37,25 +37,31 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+private data class KeyboardRowData(
+    val keys: List<String>,
+    val weight: Float,
+)
+
 private val englishRows = listOf(
-    listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
-    listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
-    listOf("a", "s", "d", "f", "g", "h", "j", "k", "l", "'"),
-    listOf("shift", "?", "z", "x", "c", "v", "b", "n", "m", "⌫"),
-    listOf("abc", ",", "space", ".", "OK"),
+    KeyboardRowData(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), 0.17f),
+    KeyboardRowData(listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"), 0.22f),
+    KeyboardRowData(listOf("a", "s", "d", "f", "g", "h", "j", "k", "l", "'"), 0.22f),
+    KeyboardRowData(listOf("shift", "?", "z", "x", "c", "v", "b", "n", "m", "⌫"), 0.22f),
+    KeyboardRowData(listOf("abc", ",", "space", ".", "OK"), 0.17f),
 )
 
 private val russianRows = listOf(
-    listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
-    listOf("й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"),
-    listOf("ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"),
-    listOf("shift", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "⌫"),
-    listOf("settings", "ъ", "ё", "space", ".", "OK"),
+    KeyboardRowData(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), 0.17f),
+    KeyboardRowData(listOf("й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"), 0.22f),
+    KeyboardRowData(listOf("ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"), 0.22f),
+    KeyboardRowData(listOf("shift", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "⌫"), 0.22f),
+    KeyboardRowData(listOf("settings", "ъ", "ё", "space", ".", "OK"), 0.17f),
 )
 
-private val rowWeights = listOf(0.17f, 0.22f, 0.22f, 0.22f, 0.17f)
+private const val digitsRowWeight = 0.17f
 private val keyShape = RoundedCornerShape(8.dp)
 private val keyBackgroundColor = Color(0xFFDADADA)
 private val keyTextColor = Color(0xFF000000)
@@ -74,11 +80,23 @@ enum class TrainingKeyboardFeedbackType {
     Wrong,
 }
 
+fun resolveTrainingKeyboardHeight(
+    baseHeight: Dp,
+    showDigitsRow: Boolean,
+): Dp {
+    return if (showDigitsRow) {
+        baseHeight
+    } else {
+        baseHeight * (1f - digitsRowWeight)
+    }
+}
+
 @Composable
 fun TrainingKeyboard(
     referenceText: String,
     activeSymbols: Set<String>,
     isShiftEnabled: Boolean,
+    showDigitsRow: Boolean = true,
     feedbackKey: String? = null,
     feedbackType: TrainingKeyboardFeedbackType? = null,
     onShiftChanged: (Boolean) -> Unit,
@@ -94,13 +112,22 @@ fun TrainingKeyboard(
     val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val isLandscape = windowWidthDp > windowHeightDp
-    val keyboardHeight = if (isLandscape) {
+    val baseKeyboardHeight = if (isLandscape) {
         windowHeightDp * 0.5f
     } else {
         windowHeightDp * 0.3f
     }.coerceIn(220.dp, 340.dp)
+    val keyboardHeight = resolveTrainingKeyboardHeight(
+        baseHeight = baseKeyboardHeight,
+        showDigitsRow = showDigitsRow,
+    )
 
-    val rows = remember(referenceText) { resolveKeyboardRows(referenceText = referenceText) }
+    val rows = remember(referenceText, showDigitsRow) {
+        resolveKeyboardLayout(
+            referenceText = referenceText,
+            showDigitsRow = showDigitsRow,
+        )
+    }
     val normalizedActiveSymbols = remember(activeSymbols) {
         activeSymbols.mapTo(mutableSetOf()) { it.lowercase() }
     }
@@ -115,20 +142,19 @@ fun TrainingKeyboard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 220.dp)
                 .height(keyboardHeight)
                 .padding(start = 4.dp, end = 4.dp, top = 3.dp, bottom = 2.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            rows.forEachIndexed { rowIndex, row ->
+            rows.forEach { row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(rowWeights.getOrElse(rowIndex) { 0.2f }),
+                        .weight(row.weight),
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    row.forEach { key ->
+                    row.keys.forEach { key ->
                         val keySpec = resolveKeySpec(key)
                         val isKeyEnabled = isKeyEnabled(
                             key = key,
@@ -176,10 +202,22 @@ fun TrainingKeyboard(
     }
 }
 
+private fun resolveKeyboardLayout(
+    referenceText: String,
+    showDigitsRow: Boolean,
+): List<KeyboardRowData> {
+    val baseRows = if (containsCyrillic(referenceText)) russianRows else englishRows
+    return if (showDigitsRow) baseRows else baseRows.drop(1)
+}
+
 private fun resolveKeyboardRows(
     referenceText: String,
+    showDigitsRow: Boolean,
 ): List<List<String>> {
-    return if (containsCyrillic(referenceText)) russianRows else englishRows
+    return resolveKeyboardLayout(
+        referenceText = referenceText,
+        showDigitsRow = showDigitsRow,
+    ).map { it.keys }
 }
 
 fun isNeighborKeyboardSlip(
@@ -192,7 +230,7 @@ fun isNeighborKeyboardSlip(
     val normalizedPressed = pressedSymbol.lowercase()
     if (normalizedExpected == normalizedPressed) return false
 
-    val rows = resolveKeyboardRows(referenceText)
+    val rows = resolveKeyboardRows(referenceText, showDigitsRow = true)
     val positions = buildKeyPositions(rows)
     val expectedPosition = positions[normalizedExpected] ?: return false
     val pressedPosition = positions[normalizedPressed] ?: return false

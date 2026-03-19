@@ -18,6 +18,7 @@ sealed interface GameUiState {
         val preventWrongKeyPress: Boolean,
         val allowNeighborTypos: Boolean,
         val isShiftEnabled: Boolean,
+        val hideDigitsOnTightScreen: Boolean,
         val keyboardFeedbackKey: String? = null,
         val keyboardFeedbackType: TrainingKeyboardFeedbackType? = null,
         val inputFeedbackType: TrainingKeyboardFeedbackType? = null,

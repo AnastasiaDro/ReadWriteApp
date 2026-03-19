@@ -88,6 +88,17 @@ class PreferencesRepositoryImpl(
         )
     }
 
+    override fun getHideDigitsOnTightScreenEnabled(studentId: String): Boolean? {
+        return storage.getHideDigitsOnTightScreenEnabled(studentId)
+    }
+
+    override fun setHideDigitsOnTightScreenEnabled(studentId: String, isEnabled: Boolean) {
+        storage.setHideDigitsOnTightScreenEnabled(
+            studentId = studentId,
+            isEnabled = isEnabled,
+        )
+    }
+
     override fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

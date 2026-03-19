@@ -21,6 +21,8 @@ interface PreferencesStorage {
     fun setFreeNeighborSlipPresses(studentId: String, count: Int)
     fun getKeyboardPressDelay(studentId: String): KeyboardPressDelay?
     fun setKeyboardPressDelay(studentId: String, delay: KeyboardPressDelay)
+    fun getHideDigitsOnTightScreenEnabled(studentId: String): Boolean?
+    fun setHideDigitsOnTightScreenEnabled(studentId: String, isEnabled: Boolean)
     fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

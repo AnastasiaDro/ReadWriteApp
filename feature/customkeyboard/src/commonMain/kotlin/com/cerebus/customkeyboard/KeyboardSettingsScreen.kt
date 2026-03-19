@@ -59,6 +59,7 @@ import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_language
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_language_english
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_language_russian
+import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_hide_digits_on_tight_screen
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_numbers
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_prevent_wrong_key_press
 import readwriteapp.feature.customkeyboard.generated.resources.keyboard_settings_russian
@@ -126,6 +127,7 @@ data class KeyboardSettingsUiState(
         currentSystemLanguageCode(),
     ),
     val preventWrongKeyPress: Boolean = true,
+    val hideDigitsOnTightScreen: Boolean = true,
 )
 
 class KeyboardSettingsViewModel(
@@ -144,6 +146,7 @@ class KeyboardSettingsViewModel(
                 selectedLetters = emptySet(),
                 currentLanguage = fallbackLanguage,
                 preventWrongKeyPress = true,
+                hideDigitsOnTightScreen = true,
             )
             val loadedState = runCatching {
                 val letters = studentRepository.getActiveLettersById(studentId)
@@ -155,11 +158,15 @@ class KeyboardSettingsViewModel(
                 val preventWrongKeyPress = preferencesRepository
                     .getPreventWrongKeyPressEnabled(studentId)
                     ?: true
+                val hideDigitsOnTightScreen = preferencesRepository
+                    .getHideDigitsOnTightScreenEnabled(studentId)
+                    ?: true
                 KeyboardSettingsUiState(
                     isLoading = false,
                     selectedLetters = letters,
                     currentLanguage = currentLanguage,
                     preventWrongKeyPress = preventWrongKeyPress,
+                    hideDigitsOnTightScreen = hideDigitsOnTightScreen,
                 )
             }.getOrElse { fallbackState }
             _uiState.value = loadedState
@@ -201,6 +208,14 @@ class KeyboardSettingsViewModel(
             isEnabled = isEnabled,
         )
         _uiState.update { it.copy(preventWrongKeyPress = isEnabled) }
+    }
+
+    fun onHideDigitsOnTightScreenChanged(isEnabled: Boolean) {
+        preferencesRepository.setHideDigitsOnTightScreenEnabled(
+            studentId = studentId,
+            isEnabled = isEnabled,
+        )
+        _uiState.update { it.copy(hideDigitsOnTightScreen = isEnabled) }
     }
 
     fun enableAllCurrentLanguage() {
@@ -254,6 +269,7 @@ fun KeyboardSettingsRoute(
         onLetterClicked = viewModel::onLetterClicked,
         onLanguageSelected = viewModel::onLanguageSelected,
         onPreventWrongKeyPressChanged = viewModel::onPreventWrongKeyPressChanged,
+        onHideDigitsOnTightScreenChanged = viewModel::onHideDigitsOnTightScreenChanged,
         onEnableAllClick = viewModel::enableAllCurrentLanguage,
         onDisableAllClick = viewModel::disableAllCurrentLanguage,
         onClose = onClose,
@@ -267,6 +283,7 @@ fun KeyboardSettingsScreen(
     onLetterClicked: (Char) -> Unit,
     onLanguageSelected: (KeyboardSettingsLanguage) -> Unit,
     onPreventWrongKeyPressChanged: (Boolean) -> Unit,
+    onHideDigitsOnTightScreenChanged: (Boolean) -> Unit,
     onEnableAllClick: () -> Unit,
     onDisableAllClick: () -> Unit,
     onClose: () -> Unit,
@@ -350,6 +367,21 @@ fun KeyboardSettingsScreen(
                     Switch(
                         checked = state.preventWrongKeyPress,
                         onCheckedChange = onPreventWrongKeyPressChanged,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.keyboard_settings_hide_digits_on_tight_screen),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Switch(
+                        checked = state.hideDigitsOnTightScreen,
+                        onCheckedChange = onHideDigitsOnTightScreenChanged,
                     )
                 }
             }

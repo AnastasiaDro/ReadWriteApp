@@ -143,6 +143,10 @@ class GameScreenViewModel(
                 studentId = activeStudentId,
                 preferencesRepository = preferencesRepository,
             )
+            val hideDigitsOnTightScreen = loadHideDigitsOnTightScreenEnabled(
+                studentId = activeStudentId,
+                preferencesRepository = preferencesRepository,
+            )
 
             val preparedSession = when (launchMode) {
                 GameLaunchMode.Plan -> buildSessionCardsWithPracticeFallback(
@@ -191,6 +195,7 @@ class GameScreenViewModel(
                 freeNeighborSlipPresses = freeNeighborSlipPresses,
                 keyboardPressDelayMs = keyboardPressDelay.intervalMs,
                 isShiftEnabled = isShiftEnabled,
+                hideDigitsOnTightScreen = hideDigitsOnTightScreen,
                 sessionMode = preparedSession.mode,
                 learningStage = initialLearningStage(preparedSession.cards.firstOrNull()),
                 isHintVisible = initialHintVisible(preparedSession.cards),
@@ -837,6 +842,7 @@ private data class GameSessionData(
     val freeNeighborSlipPresses: Int,
     val keyboardPressDelayMs: Long,
     val isShiftEnabled: Boolean,
+    val hideDigitsOnTightScreen: Boolean,
     val learningStage: TypingLearningStage,
     val keyboardFeedbackKey: String? = null,
     val keyboardFeedbackType: TrainingKeyboardFeedbackType? = null,
@@ -1300,6 +1306,7 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         preventWrongKeyPress = preventWrongKeyPress,
         allowNeighborTypos = allowNeighborTypos,
         isShiftEnabled = isShiftEnabled,
+        hideDigitsOnTightScreen = hideDigitsOnTightScreen,
         keyboardFeedbackKey = keyboardFeedbackKey,
         keyboardFeedbackType = keyboardFeedbackType,
         inputFeedbackType = inputFeedbackType,
@@ -1381,6 +1388,14 @@ private fun loadKeyboardPressDelay(
     if (studentId.isBlank()) return KeyboardPressDelay.Normal
     return preferencesRepository.getKeyboardPressDelay(studentId)
         ?: KeyboardPressDelay.Normal
+}
+
+private fun loadHideDigitsOnTightScreenEnabled(
+    studentId: String,
+    preferencesRepository: PreferencesRepository,
+): Boolean {
+    if (studentId.isBlank()) return true
+    return preferencesRepository.getHideDigitsOnTightScreenEnabled(studentId) ?: true
 }
 
 private data class AnswerInputAlignment(

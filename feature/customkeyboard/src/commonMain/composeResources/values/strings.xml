@@ -13,6 +13,7 @@
     <string name="keyboard_settings_language">Keyboard language</string>
     <string name="keyboard_settings_select_language">Select language</string>
     <string name="keyboard_settings_prevent_wrong_key_press">Do not allow pressing wrong keys</string>
+    <string name="keyboard_settings_hide_digits_on_tight_screen">Hide digits on tight screens when they are not needed</string>
     <string name="keyboard_settings_language_english">English</string>
     <string name="keyboard_settings_language_russian">Russian</string>
     <string name="keyboard_settings_numbers">Numbers</string>
