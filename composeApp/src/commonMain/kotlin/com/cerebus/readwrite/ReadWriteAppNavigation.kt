@@ -3,6 +3,7 @@ package com.cerebus.readwrite
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -13,7 +14,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -22,7 +22,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.cerebus.core.ui.insets.bottomSystemBarPadding
-import com.cerebus.core.ui.insets.topSystemBarPadding
 import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.create_screen.navigation.CreateNavigationState
 import com.cerebus.create_screen.navigation.DeckNavigationState
@@ -71,7 +70,6 @@ fun ReadWriteAppNavigation() = MaterialTheme {
     val pendingImportDeckArchiveUri = CreateNavigationState.pendingImportDeckArchiveUri.collectAsState().value
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
     val currentRoute = currentDestination?.route
-    val containerTopPadding = topSystemBarPadding()
     val containerBottomPadding = bottomSystemBarPadding()
     val topLevelTabs = remember {
         listOf(
@@ -103,6 +101,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
             if (shouldShowTopLevelTabs) {
                 NavigationBar(
                     modifier = Modifier.padding(bottom = containerBottomPadding),
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                 ) {
                     topLevelTabs.forEach { tab ->
                         NavigationBarItem(
@@ -118,13 +117,12 @@ fun ReadWriteAppNavigation() = MaterialTheme {
             }
         },
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = containerTopPadding)
                 .padding(innerPadding)
-                .padding(bottom = if (shouldShowTopLevelTabs) 0.dp else containerBottomPadding),
         ) {
             NavHost(
                 navController = navController,

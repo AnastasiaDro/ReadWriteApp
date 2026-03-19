@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebus.core.ui.insets.topSystemBarPadding
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.readwrite.media.rememberCoverImagePicker
@@ -237,6 +238,7 @@ private fun ActiveStudentScreen(
         stringResource(Res.string.active_student_fallback_name)
     }
     val scrollState = rememberScrollState()
+    val topContentPadding = topSystemBarPadding(minPadding = 16.dp)
     val studiedSymbols = state.activeLetters.lowercase().toSet()
     val digits = studiedSymbols
         .filter { it in DIGIT_ORDER }
@@ -253,7 +255,7 @@ private fun ActiveStudentScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
             .verticalScroll(scrollState)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 20.dp, end = 20.dp, top = topContentPadding, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Surface(

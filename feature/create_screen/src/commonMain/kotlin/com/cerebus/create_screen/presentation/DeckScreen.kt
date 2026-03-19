@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -76,7 +77,16 @@ fun DeckScreen(
     val density = LocalDensity.current
     val widthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     val isTablet = widthDp >= 840.dp
+    val isSelectionMode = state.selectedCardIds.isNotEmpty()
     val columns = if (isTablet) 4 else 3
+    val gridRows = ((state.flashcards.size + columns - 1) / columns).coerceAtLeast(1)
+    val gridSpacing = 16.dp
+    val gridHorizontalPadding = 16.dp + 16.dp + 18.dp + 18.dp
+    val gridAvailableWidth = (widthDp - gridHorizontalPadding - (gridSpacing * (columns - 1))).coerceAtLeast(0.dp)
+    val gridItemWidth = gridAvailableWidth / columns
+    val gridItemHeight = gridItemWidth + 44.dp
+    val gridBottomPadding = if (isSelectionMode) 120.dp else 24.dp
+    val gridHeight = (gridItemHeight * gridRows) + (gridSpacing * (gridRows - 1)) + gridBottomPadding
     val addCardCoverSize = if (isTablet) 88.dp else 180.dp
     val addCardDialogMinHeight = if (isTablet) 300.dp else 430.dp
     val isCardValidationError = state.validationError == DeckValidationError.EMPTY_CARD_NAME ||
@@ -85,7 +95,6 @@ fun DeckScreen(
     val cardValidationText = if (isCardValidationError) validationErrorText else null
     val deleteValidationText =
         if (state.validationError == DeckValidationError.DELETE_CARDS_FAILED) validationErrorText else null
-    val isSelectionMode = state.selectedCardIds.isNotEmpty()
     var editDeckNameFieldValue by remember(state.isEditNameDialogVisible) {
         mutableStateOf(
             TextFieldValue(
@@ -108,6 +117,7 @@ fun DeckScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.padding(top = 8.dp),
                 title = {
                     Text(
                         text = if (isSelectionMode) {
@@ -172,7 +182,8 @@ fun DeckScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             DeckOverviewCard(
@@ -196,7 +207,6 @@ fun DeckScreen(
             }
 
             SectionCard(
-                modifier = Modifier.fillMaxSize(),
                 title = strings.cards,
                 headerAction = {
                     if (!isSelectionMode) {
@@ -216,10 +226,13 @@ fun DeckScreen(
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
-                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = false,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(gridHeight),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = if (isSelectionMode) 120.dp else 24.dp),
+                    contentPadding = PaddingValues(bottom = gridBottomPadding),
                 ) {
                     items(state.flashcards, key = { it.id }) { card ->
                         FlashcardGridItem(
