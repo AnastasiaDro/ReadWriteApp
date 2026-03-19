@@ -47,6 +47,7 @@ kotlin {
                 implementation(libs.kotlin.stdlib)
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)
+                implementation(libs.compose.icons)
                 implementation(libs.compose.material3)
                 implementation(libs.compose.ui)
                 implementation(libs.coil)

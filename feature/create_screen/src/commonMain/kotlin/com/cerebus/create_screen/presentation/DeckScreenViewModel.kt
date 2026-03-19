@@ -145,11 +145,8 @@ class DeckScreenViewModel(
                 _uiState.update {
                     it.copy(
                         isAddCardDialogVisible = false,
-                        cardEditorMode = CardEditorMode.CREATE,
                         editingCardId = null,
                         isCardCoverSourceDialogVisible = false,
-                        cardName = "",
-                        cardImageUrl = null,
                         isCardSaving = false,
                         validationError = null,
                     )
@@ -292,11 +289,8 @@ class DeckScreenViewModel(
                     it.copy(
                         isCardSaving = false,
                         isAddCardDialogVisible = false,
-                        cardEditorMode = CardEditorMode.CREATE,
                         editingCardId = null,
                         isCardCoverSourceDialogVisible = false,
-                        cardName = "",
-                        cardImageUrl = null,
                         validationError = null,
                     )
                 }
@@ -333,11 +327,8 @@ class DeckScreenViewModel(
                     it.copy(
                         isCardSaving = false,
                         isAddCardDialogVisible = false,
-                        cardEditorMode = CardEditorMode.CREATE,
                         editingCardId = null,
                         isCardCoverSourceDialogVisible = false,
-                        cardName = "",
-                        cardImageUrl = null,
                         validationError = null,
                     )
                 }

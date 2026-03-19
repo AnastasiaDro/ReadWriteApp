@@ -7,6 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.padding
@@ -28,12 +31,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -49,6 +55,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +77,8 @@ import com.cerebus.core.ui.components.AppConfirmationDialog
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val MAX_DECK_NAME_LENGTH = 40
 
@@ -87,6 +96,7 @@ fun DeckScreen(
     val trainingModesHelpSheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
     )
+    val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val widthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     val heightDp = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
@@ -126,6 +136,12 @@ fun DeckScreen(
                 text = state.editingName,
                 selection = TextRange(selectionIndex),
             )
+        }
+    }
+
+    LaunchedEffect(isTrainingModesHelpVisible) {
+        if (isTrainingModesHelpVisible) {
+            trainingModesHelpSheetState.show()
         }
     }
 
@@ -269,6 +285,7 @@ fun DeckScreen(
                             isSelectionMode = isSelectionMode,
                             isSelected = card.id in state.selectedCardIds,
                             onClick = { onAction(DeckScreenAction.OnCardClick(card.id)) },
+                            onEditClick = { onAction(DeckScreenAction.OnOpenCardEditor(card.id)) },
                             onLongPress = { onAction(DeckScreenAction.OnCardLongPress(card.id)) },
                         )
                     }
@@ -447,7 +464,13 @@ fun DeckScreen(
 
     if (isTrainingModesHelpVisible) {
         ModalBottomSheet(
-            onDismissRequest = { isTrainingModesHelpVisible = false },
+            onDismissRequest = {
+                scope.launch {
+                    trainingModesHelpSheetState.hide()
+                    delay(100)
+                    isTrainingModesHelpVisible = false
+                }
+            },
             sheetState = trainingModesHelpSheetState,
             sheetMaxWidth = Dp.Unspecified,
         ) {
@@ -490,32 +513,48 @@ fun DeckScreen(
                         title = strings.trainingPlanTitle,
                         description = strings.trainingPlanHint,
                         onClick = {
-                            isTrainingModesHelpVisible = false
-                            onAction(DeckScreenAction.OnStartTrainingClick)
+                            scope.launch {
+                                trainingModesHelpSheetState.hide()
+                                delay(100)
+                                isTrainingModesHelpVisible = false
+                                onAction(DeckScreenAction.OnStartTrainingClick)
+                            }
                         },
                     )
                     TrainingModeHelpItem(
                         title = strings.randomLearnedTitle,
                         description = strings.randomLearnedHint,
                         onClick = {
-                            isTrainingModesHelpVisible = false
-                            onAction(DeckScreenAction.OnStartRandomLearnedClick)
+                            scope.launch {
+                                trainingModesHelpSheetState.hide()
+                                delay(100)
+                                isTrainingModesHelpVisible = false
+                                onAction(DeckScreenAction.OnStartRandomLearnedClick)
+                            }
                         },
                     )
                     TrainingModeHelpItem(
                         title = strings.randomAllTitle,
                         description = strings.randomAllHint,
                         onClick = {
-                            isTrainingModesHelpVisible = false
-                            onAction(DeckScreenAction.OnStartRandomAllClick)
+                            scope.launch {
+                                trainingModesHelpSheetState.hide()
+                                delay(100)
+                                isTrainingModesHelpVisible = false
+                                onAction(DeckScreenAction.OnStartRandomAllClick)
+                            }
                         },
                     )
                     TrainingModeHelpItem(
                         title = strings.galleryTitle,
                         description = strings.galleryHint,
                         onClick = {
-                            isTrainingModesHelpVisible = false
-                            onAction(DeckScreenAction.OnOpenGalleryClick)
+                            scope.launch {
+                                trainingModesHelpSheetState.hide()
+                                delay(100)
+                                isTrainingModesHelpVisible = false
+                                onAction(DeckScreenAction.OnOpenGalleryClick)
+                            }
                         },
                     )
                 }
@@ -526,7 +565,13 @@ fun DeckScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Button(
-                        onClick = { isTrainingModesHelpVisible = false },
+                        onClick = {
+                            scope.launch {
+                                trainingModesHelpSheetState.hide()
+                                delay(100)
+                                isTrainingModesHelpVisible = false
+                            }
+                        },
                     ) {
                         Text(strings.trainingModesHelpAction)
                     }
@@ -908,6 +953,7 @@ private fun FlashcardGridItem(
     isSelectionMode: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onEditClick: () -> Unit,
     onLongPress: () -> Unit,
 ) {
     Column(
@@ -935,6 +981,13 @@ private fun FlashcardGridItem(
                         .padding(8.dp)
                         .align(Alignment.TopStart),
                 )
+            } else {
+                CardEditButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 6.dp, y = (-6).dp),
+                )
             }
         }
         Text(
@@ -945,6 +998,34 @@ private fun FlashcardGridItem(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+@Composable
+private fun CardEditButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        tonalElevation = 3.dp,
+        shadowElevation = 2.dp,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -991,25 +1072,61 @@ private fun CardTextFallback(
     modifier: Modifier = Modifier,
 ) {
     val normalizedText = text.trim().ifBlank { "?" }
-    val textStyle = when {
-        normalizedText.length <= 2 -> MaterialTheme.typography.displayLarge
-        normalizedText.length <= 6 -> MaterialTheme.typography.displayMedium
-        normalizedText.length <= 12 -> MaterialTheme.typography.displaySmall
-        else -> MaterialTheme.typography.headlineLarge
-    }
-
-    Text(
-        text = normalizedText,
-        style = textStyle,
-        fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Center,
-        maxLines = 3,
-        overflow = TextOverflow.Ellipsis,
+    BoxWithConstraints(
         modifier = modifier
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .fillMaxWidth()
-            .wrapContentHeight(align = Alignment.CenterVertically),
-    )
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        val isSmallPreview = minOf(maxWidth, maxHeight) < 110.dp
+        val textStyle = when {
+            normalizedText.length <= 2 -> if (isSmallPreview) {
+                MaterialTheme.typography.displaySmall
+            } else {
+                MaterialTheme.typography.displayLarge
+            }
+            normalizedText.length <= 4 -> if (isSmallPreview) {
+                MaterialTheme.typography.headlineLarge
+            } else {
+                MaterialTheme.typography.displayMedium
+            }
+            normalizedText.length <= 8 -> if (isSmallPreview) {
+                MaterialTheme.typography.headlineMedium
+            } else {
+                MaterialTheme.typography.displaySmall
+            }
+            normalizedText.length <= 12 -> if (isSmallPreview) {
+                MaterialTheme.typography.titleLarge
+            } else {
+                MaterialTheme.typography.headlineLarge
+            }
+            normalizedText.length <= 20 -> if (isSmallPreview) {
+                MaterialTheme.typography.titleMedium
+            } else {
+                MaterialTheme.typography.headlineMedium
+            }
+            normalizedText.length <= 32 -> if (isSmallPreview) {
+                MaterialTheme.typography.bodyLarge
+            } else {
+                MaterialTheme.typography.titleLarge
+            }
+            else -> if (isSmallPreview) {
+                MaterialTheme.typography.bodyMedium
+            } else {
+                MaterialTheme.typography.titleMedium
+            }
+        }
+
+        Text(
+            text = normalizedText,
+            style = textStyle,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable
@@ -1026,6 +1143,7 @@ private fun SelectionBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
