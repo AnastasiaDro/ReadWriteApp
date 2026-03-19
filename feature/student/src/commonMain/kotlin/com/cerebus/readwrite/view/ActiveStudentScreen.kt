@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -66,6 +67,7 @@ import readwriteapp.feature.student.generated.resources.active_student_mode_dial
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_gallery_title
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_hint
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_title
+import readwriteapp.feature.student.generated.resources.active_student_more
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_hint
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_title
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_title
@@ -260,70 +262,82 @@ private fun ActiveStudentScreen(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 2.dp,
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                StudentAvatar(
-                    avatarUri = state.studentAvatarUri,
-                    size = 124.dp,
-                )
-
+            BoxWithConstraints {
+                val compactHeroSpacing = maxWidth < 600.dp
                 Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Text(
-                        text = "$displayName 👧",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center,
+                    StudentAvatar(
+                        avatarUri = state.studentAvatarUri,
+                        size = 124.dp,
                     )
 
-                    TextButton(
-                        onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
+                    Column(
+                        modifier = Modifier.padding(bottom = if (compactHeroSpacing) 0.dp else 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
-                        Text(text = stringResource(Res.string.active_student_change))
-                    }
-                }
+                        Text(
+                            text = "$displayName 👧",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                        )
 
-                Button(
-                    onClick = { onAction(ActiveStudentAction.OnStartClick) },
-                    enabled = state.activeDecks.isNotEmpty(),
+                        TextButton(
+                            onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
+                        ) {
+                            Text(text = stringResource(Res.string.active_student_change))
+                        }
+                    }
+
+                    Button(
+                        onClick = { onAction(ActiveStudentAction.OnStartClick) },
+                        enabled = state.activeDecks.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(text = stringResource(Res.string.active_student_start))
                 }
 
-                Row(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
                 ) {
-                    OutlinedButton(
-                        onClick = { state.studentId?.let(onOpenSessionSettings) },
-                        enabled = state.studentId != null,
-                        modifier = Modifier.weight(1f),
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Text(
-                            text = stringResource(Res.string.active_student_learning_settings),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { state.studentId?.let(onOpenKeyboardSettings) },
-                        enabled = state.studentId != null,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.active_student_keyboard_settings),
-                            textAlign = TextAlign.Center,
-                        )
+                        TextButton(
+                            onClick = { state.studentId?.let(onOpenSessionSettings) },
+                            enabled = state.studentId != null,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.active_student_learning_settings),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                        TextButton(
+                            onClick = { state.studentId?.let(onOpenKeyboardSettings) },
+                            enabled = state.studentId != null,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.active_student_keyboard_settings),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }
+        }
         }
 
         SectionCard(
@@ -397,24 +411,6 @@ private fun ActiveStudentScreen(
             title = stringResource(Res.string.active_student_other_decks),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    OutlinedButton(
-                        onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(text = stringResource(Res.string.active_student_import), textAlign = TextAlign.Center)
-                    }
-                    OutlinedButton(
-                        onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(text = stringResource(Res.string.active_student_create_in_other), textAlign = TextAlign.Center)
-                    }
-                }
-
                 if (state.otherDecks.isEmpty()) {
                     Text(
                         text = stringResource(Res.string.active_student_no_decks),
@@ -444,6 +440,34 @@ private fun ActiveStudentScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(text = stringResource(Res.string.active_student_all_decks))
+                }
+            }
+        }
+
+        SectionCard(
+            title = stringResource(Res.string.active_student_more),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.active_student_import),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                OutlinedButton(
+                    onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.active_student_create_in_other),
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         }
