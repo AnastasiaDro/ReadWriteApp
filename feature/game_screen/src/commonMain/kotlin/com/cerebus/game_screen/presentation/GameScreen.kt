@@ -35,8 +35,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
@@ -90,6 +88,9 @@ import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_s
 import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_title
 import readwriteapp.feature.game_screen.generated.resources.Res
 import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session
+
+private val AnswerFieldHorizontalPadding = 16.dp
+private val AnswerFieldVerticalPadding = 8.dp
 
 @Composable
 fun GameScreenWrapper(
@@ -413,6 +414,7 @@ private fun ActiveGameContent(
                                                     answerInput = state.answerInput,
                                                     expectedAnswer = state.currentCard.answer,
                                                     inputFeedbackType = state.inputFeedbackType,
+                                                    allowMultilineAnswer = allowMultilineAnswer,
                                                     fieldWidth = (tabletContentWidth - 68.dp)
                                                         .coerceAtLeast(112.dp),
                                                     alignToStart = false,
@@ -737,10 +739,11 @@ private fun AnswerInputSection(
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
-    val checkButtonWidth = 120.dp
+    val checkButtonWidth = 56.dp
     val buttonSpacing = 12.dp
     val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
     val fieldWidth = if (isStacked) maxFieldWidth else minOf(fieldReferenceWidth, maxFieldWidth)
+    val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
 
     Column(
         modifier = if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
@@ -751,6 +754,7 @@ private fun AnswerInputSection(
             answerInput = answerInput,
             expectedAnswer = expectedAnswer,
             inputFeedbackType = inputFeedbackType,
+            allowMultilineAnswer = allowMultilineAnswer,
             fieldWidth = fieldWidth,
             alignToStart = alignToStart,
             onFieldClick = onFieldClick,
@@ -764,13 +768,12 @@ private fun AnswerInputRow(
     answerInput: String,
     expectedAnswer: String,
     inputFeedbackType: TrainingKeyboardFeedbackType?,
+    allowMultilineAnswer: Boolean,
     fieldWidth: Dp,
     alignToStart: Boolean,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
-    val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
-
     Row(
         horizontalArrangement = if (alignToStart) Arrangement.Start else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -859,12 +862,6 @@ private fun ReadOnlyAnswerField(
         fontSize = baseTextStyle.fontSize * answerTextScale,
         lineHeight = baseTextStyle.lineHeight * answerTextScale,
     )
-    val minFieldHeight = resolveAnswerFieldMinHeight(
-        baseLineHeight = baseTextStyle.lineHeight,
-        textScale = answerTextScale,
-        allowMultiline = allowMultiline,
-        density = density,
-    )
     val currentSlotBackgroundColor = MaterialTheme.colorScheme.secondaryContainer
     val currentSlotTextColor = MaterialTheme.colorScheme.onSecondaryContainer
     val displayedValue = remember(
@@ -887,32 +884,37 @@ private fun ReadOnlyAnswerField(
         null -> MaterialTheme.colorScheme.outline
     }
 
-    Box(modifier = modifier.heightIn(min = minFieldHeight)) {
-        OutlinedTextField(
-            value = "",
-            onValueChange = {},
-            modifier = Modifier.fillMaxSize(),
-            textStyle = answerTextStyle,
-            singleLine = !allowMultiline,
-            minLines = 1,
-            maxLines = if (allowMultiline) 2 else 1,
-            readOnly = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = feedbackBorderColor,
-                unfocusedBorderColor = feedbackBorderColor,
-            ),
-        )
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .border(
+                width = 1.dp,
+                color = feedbackBorderColor,
+                shape = RoundedCornerShape(16.dp),
+            )
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
         Text(
             text = displayedValue,
             style = answerTextStyle,
             maxLines = if (allowMultiline) 2 else 1,
             modifier = Modifier
-                .align(if (allowMultiline) Alignment.TopStart else Alignment.CenterStart)
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .fillMaxWidth()
+                .padding(
+                    horizontal = AnswerFieldHorizontalPadding,
+                    vertical = AnswerFieldVerticalPadding,
+                )
+                .wrapContentHeight(
+                    align = if (allowMultiline) {
+                        Alignment.Top
+                    } else {
+                        Alignment.CenterVertically
+                    }
+                ),
         )
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .clickable(onClick = onClick),
         )
     }
@@ -926,7 +928,7 @@ private fun resolveAnswerFieldMinHeight(
 ): Dp {
     val lineCount = if (allowMultiline) 2 else 1
     val scaledLineHeight = with(density) { (baseLineHeight * textScale).toDp() }
-    return scaledLineHeight * lineCount
+    return scaledLineHeight * lineCount + (AnswerFieldVerticalPadding * 2)
 }
 
 private fun buildAnswerProgressMask(
