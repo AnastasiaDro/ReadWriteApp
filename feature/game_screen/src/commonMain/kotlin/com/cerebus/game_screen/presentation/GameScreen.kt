@@ -61,7 +61,9 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil3.ImageLoader
@@ -250,18 +252,16 @@ private fun ActiveGameContent(
             val availableContentWidth = maxWidth
             val availableContentHeight = maxHeight
             val allowMultilineAnswer = state.currentCard.answer.length > 10 || state.currentCard.answer.contains(' ')
+            val answerTextScale = if (isTablet) 2f else 1.5f
             val useStackedInput = isLandscape || maxWidth < 420.dp
-            val inputSectionHeight = when {
-                useStackedInput && allowMultilineAnswer -> 152.dp
-                useStackedInput -> 124.dp
-                else -> 56.dp
-            }
+            val inputSectionHeight = resolveAnswerFieldMinHeight(
+                baseLineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
+                textScale = answerTextScale,
+                allowMultiline = allowMultilineAnswer,
+                density = density,
+            )
             val counterHeight = 24.dp
             val verticalSpacing = if (compactMode) 12.dp else 18.dp
-            val portraitCardSize = minOf(
-                availableContentWidth * if (compactMode) 0.62f else 0.72f,
-                availableContentHeight - inputSectionHeight - counterHeight - (verticalSpacing * 3),
-            ).coerceAtLeast(120.dp)
             val landscapeCardSize = minOf(
                 availableContentHeight - 8.dp,
                 availableContentWidth,
@@ -372,7 +372,12 @@ private fun ActiveGameContent(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.BottomCenter,
                                 ) {
-                                    val tabletAnswerRowHeight = if (allowMultilineAnswer) 84.dp else 56.dp
+                                    val tabletAnswerRowHeight = resolveAnswerFieldMinHeight(
+                                        baseLineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
+                                        textScale = 2f,
+                                        allowMultiline = allowMultilineAnswer,
+                                        density = density,
+                                    )
                                     val tabletContentWidth = minOf(
                                         maxWidth,
                                         maxHeight - tabletAnswerRowHeight - 10.dp,
@@ -433,12 +438,12 @@ private fun ActiveGameContent(
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    val portraitContentWidth = portraitCardSize
-
                     Column(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = if (isTablet) 30.dp else 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.SpaceEvenly,
+                        verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                     ) {
                         PracticeModeBadge(
                             visible = state.isPracticeMode,
@@ -450,29 +455,47 @@ private fun ActiveGameContent(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
 
-                        Column(
-                            modifier = Modifier.width(portraitContentWidth),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        BoxWithConstraints(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(
+                                    start = if (isTablet) 40.dp else 16.dp,
+                                    top = if (isTablet) 20.dp else 16.dp,
+                                    end = if (isTablet) 40.dp else 16.dp,
+                                    bottom = if (isTablet) 12.dp else 0.dp,
+                                ),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            GameCard(
-                                cardSize = portraitContentWidth,
-                                imagePath = state.currentCard.imagePath.orEmpty(),
-                                answer = state.currentCard.answer,
-                                isHintVisible = state.isHintVisible,
-                                imageLoader = imageLoader,
-                            )
+                            val portraitContentWidth = minOf(
+                                maxWidth,
+                                maxHeight - inputSectionHeight - verticalSpacing,
+                            ).coerceAtLeast(120.dp)
 
-                            AnswerInputSection(
-                                answerInput = state.answerInput,
-                                expectedAnswer = state.currentCard.answer,
-                                inputFeedbackType = state.inputFeedbackType,
-                                isStacked = useStackedInput,
-                                availableWidth = portraitContentWidth,
-                                fieldReferenceWidth = portraitContentWidth,
-                                onFieldClick = { isKeyboardVisible = true },
-                                onSubmit = { onAction(GameScreenAction.OnCheckClick) },
-                            )
+                            Column(
+                                modifier = Modifier.width(portraitContentWidth),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+                            ) {
+                                GameCard(
+                                    cardSize = portraitContentWidth,
+                                    imagePath = state.currentCard.imagePath.orEmpty(),
+                                    answer = state.currentCard.answer,
+                                    isHintVisible = state.isHintVisible,
+                                    imageLoader = imageLoader,
+                                )
+
+                                AnswerInputSection(
+                                    answerInput = state.answerInput,
+                                    expectedAnswer = state.currentCard.answer,
+                                    inputFeedbackType = state.inputFeedbackType,
+                                    isStacked = useStackedInput,
+                                    availableWidth = portraitContentWidth,
+                                    fieldReferenceWidth = portraitContentWidth,
+                                    onFieldClick = { isKeyboardVisible = true },
+                                    onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                                )
+                            }
                         }
                     }
 
@@ -747,7 +770,6 @@ private fun AnswerInputRow(
     onSubmit: () -> Unit,
 ) {
     val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
-    val answerFieldHeight = if (allowMultilineAnswer) 84.dp else 56.dp
 
     Row(
         horizontalArrangement = if (alignToStart) Arrangement.Start else Arrangement.Center,
@@ -759,8 +781,7 @@ private fun AnswerInputRow(
             inputFeedbackType = inputFeedbackType,
             allowMultiline = allowMultilineAnswer,
             modifier = Modifier
-                .width(fieldWidth)
-                .height(answerFieldHeight),
+                .width(fieldWidth),
             onClick = onFieldClick,
         )
         Button(
@@ -828,6 +849,22 @@ private fun ReadOnlyAnswerField(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val density = LocalDensity.current
+    val windowWidthDp = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
+    val windowHeightDp = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
+    val baseTextStyle = MaterialTheme.typography.bodyLarge
+    val answerTextScale = if (isTablet) 2f else 1.5f
+    val answerTextStyle = baseTextStyle.copy(
+        fontSize = baseTextStyle.fontSize * answerTextScale,
+        lineHeight = baseTextStyle.lineHeight * answerTextScale,
+    )
+    val minFieldHeight = resolveAnswerFieldMinHeight(
+        baseLineHeight = baseTextStyle.lineHeight,
+        textScale = answerTextScale,
+        allowMultiline = allowMultiline,
+        density = density,
+    )
     val currentSlotBackgroundColor = MaterialTheme.colorScheme.secondaryContainer
     val currentSlotTextColor = MaterialTheme.colorScheme.onSecondaryContainer
     val displayedValue = remember(
@@ -850,12 +887,12 @@ private fun ReadOnlyAnswerField(
         null -> MaterialTheme.colorScheme.outline
     }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.heightIn(min = minFieldHeight)) {
         OutlinedTextField(
             value = "",
             onValueChange = {},
             modifier = Modifier.fillMaxSize(),
-            textStyle = MaterialTheme.typography.bodyLarge,
+            textStyle = answerTextStyle,
             singleLine = !allowMultiline,
             minLines = 1,
             maxLines = if (allowMultiline) 2 else 1,
@@ -867,7 +904,7 @@ private fun ReadOnlyAnswerField(
         )
         Text(
             text = displayedValue,
-            style = MaterialTheme.typography.bodyLarge,
+            style = answerTextStyle,
             maxLines = if (allowMultiline) 2 else 1,
             modifier = Modifier
                 .align(if (allowMultiline) Alignment.TopStart else Alignment.CenterStart)
@@ -879,6 +916,17 @@ private fun ReadOnlyAnswerField(
                 .clickable(onClick = onClick),
         )
     }
+}
+
+private fun resolveAnswerFieldMinHeight(
+    baseLineHeight: TextUnit,
+    textScale: Float,
+    allowMultiline: Boolean,
+    density: Density,
+): Dp {
+    val lineCount = if (allowMultiline) 2 else 1
+    val scaledLineHeight = with(density) { (baseLineHeight * textScale).toDp() }
+    return scaledLineHeight * lineCount
 }
 
 private fun buildAnswerProgressMask(
