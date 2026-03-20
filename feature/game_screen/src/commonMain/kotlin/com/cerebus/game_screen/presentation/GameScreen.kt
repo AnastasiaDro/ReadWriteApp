@@ -37,7 +37,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
@@ -82,8 +81,6 @@ import readwriteapp.feature.game_screen.generated.resources.game_learn_more_hint
 import readwriteapp.feature.game_screen.generated.resources.game_random_review
 import readwriteapp.feature.game_screen.generated.resources.game_random_review_hint
 import readwriteapp.feature.game_screen.generated.resources.game_repeat_last_session_hint
-import readwriteapp.feature.game_screen.generated.resources.game_help_show_word
-import readwriteapp.feature.game_screen.generated.resources.game_help_simplify_keyboard
 import readwriteapp.feature.game_screen.generated.resources.game_practice_mode
 import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_body
 import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_confirm
@@ -175,14 +172,28 @@ fun GameScreen(
             }
         }
 
-        TextButton(
-            onClick = { onAction(GameScreenAction.OnCloseClick) },
+        Row(
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(start = 12.dp, top = 8.dp),
+                .navigationBarsPadding()
+                .padding(start = 12.dp, top = 8.dp, end = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
         ) {
-            Text("✕")
+            TextButton(
+                onClick = { onAction(GameScreenAction.OnCloseClick) },
+            ) {
+                Text("✕")
+            }
+
+            if (state is GameUiState.Active) {
+                TopRightHelpChips(
+                    state = state,
+                    onAction = onAction,
+                )
+            }
         }
     }
 }
@@ -231,81 +242,46 @@ private fun ActiveGameContent(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .padding(
-                    top = if (isPhoneLandscape) 20.dp else 56.dp,
-                    bottom = if (isPhoneLandscape) 0.dp else 12.dp,
+                    top = if (isLandscape) 20.dp else 56.dp,
+                    bottom = if (isLandscape) 0.dp else 12.dp,
                 ),
         ) {
             val compactMode = isKeyboardVisible || isLandscape
-            val useLandscapeFeedbackOverlay = isLandscape
-            val showShowWordToggle = state.learningStage == TypingLearningStage.Recall
-            val showSimplifyToggle = true
-            val helpToggleCount = (if (showShowWordToggle) 1 else 0) + (if (showSimplifyToggle) 1 else 0)
             val availableContentWidth = maxWidth
             val availableContentHeight = maxHeight
-            val feedbackReservedHeight = when {
-                useLandscapeFeedbackOverlay -> 0.dp
-                state.feedback == null -> 0.dp
-                compactMode -> 72.dp
-                else -> 126.dp
-            }
+            val allowMultilineAnswer = state.currentCard.answer.length > 10 || state.currentCard.answer.contains(' ')
             val useStackedInput = isLandscape || maxWidth < 420.dp
             val inputSectionHeight = when {
-                useStackedInput && helpToggleCount > 0 -> if (helpToggleCount > 1) 196.dp else 152.dp
+                useStackedInput && allowMultilineAnswer -> 152.dp
                 useStackedInput -> 124.dp
-                helpToggleCount > 0 -> if (helpToggleCount > 1) 128.dp else 104.dp
                 else -> 56.dp
             }
             val counterHeight = 24.dp
             val verticalSpacing = if (compactMode) 12.dp else 18.dp
             val portraitCardSize = minOf(
                 availableContentWidth * if (compactMode) 0.62f else 0.72f,
-                availableContentHeight - feedbackReservedHeight - inputSectionHeight - counterHeight - (verticalSpacing * 3),
+                availableContentHeight - inputSectionHeight - counterHeight - (verticalSpacing * 3),
             ).coerceAtLeast(120.dp)
             val landscapeCardSize = minOf(
-                availableContentHeight - feedbackReservedHeight - if (isPhoneLandscape) 8.dp else (counterHeight + 20.dp),
-                //availableContentWidth * 0.42f,
+                availableContentHeight - 8.dp,
                 availableContentWidth,
             ).coerceAtLeast(120.dp)
-            val landscapeInputWidth = minOf(
-                availableContentWidth * 0.34f,
-                320.dp,
-            ).coerceAtLeast(220.dp)
-            val landscapeBlockSpacing = minOf(
-                availableContentWidth * 0.04f,
-                24.dp,
-            ).coerceAtLeast(12.dp)
-            val effectiveLandscapeBlockSpacing = if (isPhoneLandscape) 8.dp else landscapeBlockSpacing
-            val phoneLandscapeHalfWidth = if (isPhoneLandscape) {
-                ((availableContentWidth - effectiveLandscapeBlockSpacing) / 2f).coerceAtLeast(140.dp)
+            val landscapeHalfWidth = if (isLandscape) {
+                ((availableContentWidth - 8.dp) / 2f).coerceAtLeast(140.dp)
             } else {
                 0.dp
             }
-            val phoneLandscapeCounterWidth = 28.dp
+            val landscapeCounterWidth = 28.dp
             val effectiveLandscapeCardSize = landscapeCardSize
-            val effectiveLandscapeInputWidth = if (isPhoneLandscape) {
-                phoneLandscapeHalfWidth
-            } else {
-                landscapeInputWidth
-            }
+            val effectiveLandscapeInputWidth = landscapeHalfWidth
 
             Box(modifier = Modifier.fillMaxSize()) {
-                if (!useLandscapeFeedbackOverlay) {
-                    FeedbackBanner(
-                        feedback = state.feedback,
-                        compact = compactMode,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth(),
-                    )
-                }
-
                 if (isLandscape && isKeyboardVisible) {
                     Row(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = feedbackReservedHeight),
+                            .fillMaxSize(),
                         horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = if (isPhoneLandscape) Alignment.Top else Alignment.CenterVertically,
+                        verticalAlignment = Alignment.Top,
                     ) {
                         if (isPhoneLandscape) {
                             Box(
@@ -330,7 +306,7 @@ private fun ActiveGameContent(
                                             text = "${state.cardIndex}/${state.totalCards}",
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.width(phoneLandscapeCounterWidth),
+                                            modifier = Modifier.width(landscapeCounterWidth),
                                             textAlign = TextAlign.Center,
                                         )
                                         Box(modifier = Modifier.width(6.dp))
@@ -361,134 +337,106 @@ private fun ActiveGameContent(
                                         answerInput = state.answerInput,
                                         expectedAnswer = state.currentCard.answer,
                                         inputFeedbackType = state.inputFeedbackType,
-                                        showShowWordToggle = false,
-                                        showSimplifyToggle = false,
-                                        isShowWordEnabled = state.isHintVisible,
-                                        isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
-                                        usedShowWord = state.usedShowWord,
-                                        usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
                                         isStacked = false,
                                         availableWidth = minOf(effectiveLandscapeInputWidth, 280.dp),
                                         fieldReferenceWidth = effectiveLandscapeCardSize,
                                         alignToStart = true,
                                         onFieldClick = { isKeyboardVisible = true },
                                         onSubmit = { onAction(GameScreenAction.OnCheckClick) },
-                                        onShowWordToggle = { onAction(GameScreenAction.OnShowWordHelpToggled(it)) },
-                                        onSimplifyKeyboardToggle = {
-                                            onAction(GameScreenAction.OnSimplifyKeyboardHelpToggled(it))
-                                        },
                                     )
                                 }
                             }
                         } else {
                             Box(
-                                modifier = Modifier.width(landscapeCardSize + 12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.CenterEnd,
                             ) {
-                                Column(
-                                    modifier = Modifier.align(Alignment.Center),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center,
+                                Text(
+                                    text = "${state.cardIndex}/${state.totalCards}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.BottomCenter,
+                            ) {
+                                BoxWithConstraints(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.BottomCenter,
                                 ) {
-                                    PracticeModeBadge(
-                                        visible = state.isPracticeMode,
-                                        modifier = Modifier.padding(bottom = 8.dp),
-                                    )
-                                    Text(
-                                        text = "${state.cardIndex} / ${state.totalCards}",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(bottom = 8.dp),
-                                    )
-                                    GameCard(
-                                        cardSize = landscapeCardSize,
-                                        imagePath = state.currentCard.imagePath.orEmpty(),
-                                        answer = state.currentCard.answer,
-                                        isHintVisible = state.isHintVisible,
-                                        imageLoader = imageLoader,
-                                    )
+                                    val tabletAnswerRowHeight = if (allowMultilineAnswer) 84.dp else 56.dp
+                                    val tabletContentWidth = minOf(
+                                        maxWidth,
+                                        maxHeight - tabletAnswerRowHeight - 10.dp,
+                                    ).coerceAtLeast(120.dp)
+
+                                    Column(
+                                        modifier = Modifier.fillMaxHeight(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Bottom,
+                                    ) {
+                                        PracticeModeBadge(
+                                            visible = state.isPracticeMode,
+                                        )
+                                        BoxWithConstraints(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxWidth(),
+                                            contentAlignment = Alignment.BottomCenter,
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.width(tabletContentWidth),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom),
+                                            ) {
+                                                GameCard(
+                                                    cardSize = tabletContentWidth,
+                                                    imagePath = state.currentCard.imagePath.orEmpty(),
+                                                    answer = state.currentCard.answer,
+                                                    isHintVisible = state.isHintVisible,
+                                                    imageLoader = imageLoader,
+                                                )
+                                                AnswerInputRow(
+                                                    answerInput = state.answerInput,
+                                                    expectedAnswer = state.currentCard.answer,
+                                                    inputFeedbackType = state.inputFeedbackType,
+                                                    fieldWidth = (tabletContentWidth - 68.dp)
+                                                        .coerceAtLeast(112.dp),
+                                                    alignToStart = false,
+                                                    onFieldClick = { isKeyboardVisible = true },
+                                                    onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
-                            Box(modifier = Modifier.width(effectiveLandscapeBlockSpacing))
-
-                            Column(
-                                modifier = Modifier.width(landscapeInputWidth),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                AnswerInputSection(
-                                    answerInput = state.answerInput,
-                                    expectedAnswer = state.currentCard.answer,
-                                    inputFeedbackType = state.inputFeedbackType,
-                                    showShowWordToggle = showShowWordToggle,
-                                    showSimplifyToggle = showSimplifyToggle,
-                                    isShowWordEnabled = state.isHintVisible,
-                                    isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
-                                    usedShowWord = state.usedShowWord,
-                                    usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
-                                    isStacked = true,
-                                    availableWidth = effectiveLandscapeInputWidth,
-                                    fieldReferenceWidth = effectiveLandscapeCardSize,
-                                    onFieldClick = { isKeyboardVisible = true },
-                                    onSubmit = { onAction(GameScreenAction.OnCheckClick) },
-                                    onShowWordToggle = { onAction(GameScreenAction.OnShowWordHelpToggled(it)) },
-                                    onSimplifyKeyboardToggle = {
-                                        onAction(GameScreenAction.OnSimplifyKeyboardHelpToggled(it))
-                                    },
-                                )
-                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                            )
                         }
                     }
 
-                    if (isPhoneLandscape && (showShowWordToggle || showSimplifyToggle)) {
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(y = (-20).dp)
-                                .statusBarsPadding()
-                                .navigationBarsPadding()
-                                .padding(top = 8.dp, end = 6.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.End,
-                        ) {
-                            if (showShowWordToggle) {
-                                OverlayHelpToggleChip(
-                                    label = "Word",
-                                    checked = state.isHintVisible,
-                                    wasUsed = state.usedShowWord,
-                                    onClick = {
-                                        onAction(
-                                            GameScreenAction.OnShowWordHelpToggled(!state.isHintVisible)
-                                        )
-                                    },
-                                )
-                            }
-                            if (showSimplifyToggle) {
-                                OverlayHelpToggleChip(
-                                    label = "Aa",
-                                    checked = state.isSimplifiedKeyboardEnabled,
-                                    wasUsed = state.usedSimplifiedKeyboard,
-                                    onClick = {
-                                        onAction(
-                                            GameScreenAction.OnSimplifyKeyboardHelpToggled(
-                                                !state.isSimplifiedKeyboardEnabled
-                                            )
-                                        )
-                                    },
-                                )
-                            }
-                        }
-                    }
-
-                    LandscapeFeedbackOverlay(
+                    FeedbackOverlay(
                         feedback = state.feedback,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
+                    val portraitContentWidth = portraitCardSize
+
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = feedbackReservedHeight),
+                        modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly,
                     ) {
@@ -502,35 +450,36 @@ private fun ActiveGameContent(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
 
-                        GameCard(
-                            cardSize = portraitCardSize,
-                            imagePath = state.currentCard.imagePath.orEmpty(),
-                            answer = state.currentCard.answer,
-                            isHintVisible = state.isHintVisible,
-                            imageLoader = imageLoader,
-                        )
+                        Column(
+                            modifier = Modifier.width(portraitContentWidth),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            GameCard(
+                                cardSize = portraitContentWidth,
+                                imagePath = state.currentCard.imagePath.orEmpty(),
+                                answer = state.currentCard.answer,
+                                isHintVisible = state.isHintVisible,
+                                imageLoader = imageLoader,
+                            )
 
-                        AnswerInputSection(
-                            answerInput = state.answerInput,
-                            expectedAnswer = state.currentCard.answer,
-                            inputFeedbackType = state.inputFeedbackType,
-                            showShowWordToggle = showShowWordToggle,
-                            showSimplifyToggle = showSimplifyToggle,
-                            isShowWordEnabled = state.isHintVisible,
-                            isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
-                            usedShowWord = state.usedShowWord,
-                            usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
-                            isStacked = useStackedInput,
-                            availableWidth = availableContentWidth,
-                            fieldReferenceWidth = portraitCardSize,
-                            onFieldClick = { isKeyboardVisible = true },
-                            onSubmit = { onAction(GameScreenAction.OnCheckClick) },
-                            onShowWordToggle = { onAction(GameScreenAction.OnShowWordHelpToggled(it)) },
-                            onSimplifyKeyboardToggle = {
-                                onAction(GameScreenAction.OnSimplifyKeyboardHelpToggled(it))
-                            },
-                        )
+                            AnswerInputSection(
+                                answerInput = state.answerInput,
+                                expectedAnswer = state.currentCard.answer,
+                                inputFeedbackType = state.inputFeedbackType,
+                                isStacked = useStackedInput,
+                                availableWidth = portraitContentWidth,
+                                fieldReferenceWidth = portraitContentWidth,
+                                onFieldClick = { isKeyboardVisible = true },
+                                onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                            )
+                        }
                     }
+
+                    FeedbackOverlay(
+                        feedback = state.feedback,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
                 }
             }
         }
@@ -545,7 +494,7 @@ private fun ActiveGameContent(
                 .padding(
                     start = 6.dp,
                     end = 6.dp,
-                    top = if (isPhoneLandscape) 8.dp else 4.dp,
+                    top = if (isLandscape) 8.dp else 4.dp,
                     bottom = 4.dp,
                 ),
         ) {
@@ -608,6 +557,44 @@ private fun ActiveGameContent(
 }
 
 @Composable
+private fun TopRightHelpChips(
+    state: GameUiState.Active,
+    onAction: (GameScreenAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val showWordChip = state.learningStage == TypingLearningStage.Recall
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.End,
+    ) {
+        if (showWordChip) {
+            OverlayHelpToggleChip(
+                label = "Word",
+                checked = state.isHintVisible,
+                wasUsed = state.usedShowWord,
+                onClick = {
+                    onAction(GameScreenAction.OnShowWordHelpToggled(!state.isHintVisible))
+                },
+            )
+        }
+        OverlayHelpToggleChip(
+            label = "Aa",
+            checked = state.isSimplifiedKeyboardEnabled,
+            wasUsed = state.usedSimplifiedKeyboard,
+            onClick = {
+                onAction(
+                    GameScreenAction.OnSimplifyKeyboardHelpToggled(
+                        !state.isSimplifiedKeyboardEnabled
+                    )
+                )
+            },
+        )
+    }
+}
+
+@Composable
 private fun PracticeModeBadge(
     visible: Boolean,
     modifier: Modifier = Modifier,
@@ -632,7 +619,7 @@ private fun PracticeModeBadge(
 }
 
 @Composable
-private fun LandscapeFeedbackOverlay(
+private fun FeedbackOverlay(
     feedback: FeedbackUi?,
     modifier: Modifier = Modifier,
 ) {
@@ -720,199 +707,81 @@ private fun AnswerInputSection(
     answerInput: String,
     expectedAnswer: String,
     inputFeedbackType: TrainingKeyboardFeedbackType?,
-    showShowWordToggle: Boolean,
-    showSimplifyToggle: Boolean,
-    isShowWordEnabled: Boolean,
-    isSimplifiedKeyboardEnabled: Boolean,
-    usedShowWord: Boolean,
-    usedSimplifiedKeyboard: Boolean,
     isStacked: Boolean,
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
     alignToStart: Boolean = false,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
-    onShowWordToggle: (Boolean) -> Unit,
-    onSimplifyKeyboardToggle: (Boolean) -> Unit,
 ) {
     val checkButtonWidth = 120.dp
     val buttonSpacing = 12.dp
     val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
-    val fieldWidth = if (isStacked) {
-        maxFieldWidth
-    } else {
-        minOf(fieldReferenceWidth, maxFieldWidth)
+    val fieldWidth = if (isStacked) maxFieldWidth else minOf(fieldReferenceWidth, maxFieldWidth)
+
+    Column(
+        modifier = if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
+        horizontalAlignment = if (alignToStart) Alignment.Start else Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        AnswerInputRow(
+            answerInput = answerInput,
+            expectedAnswer = expectedAnswer,
+            inputFeedbackType = inputFeedbackType,
+            fieldWidth = fieldWidth,
+            alignToStart = alignToStart,
+            onFieldClick = onFieldClick,
+            onSubmit = onSubmit,
+        )
     }
+}
+
+@Composable
+private fun AnswerInputRow(
+    answerInput: String,
+    expectedAnswer: String,
+    inputFeedbackType: TrainingKeyboardFeedbackType?,
+    fieldWidth: Dp,
+    alignToStart: Boolean,
+    onFieldClick: () -> Unit,
+    onSubmit: () -> Unit,
+) {
     val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
     val answerFieldHeight = if (allowMultilineAnswer) 84.dp else 56.dp
 
-    if (isStacked) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ((availableWidth - fieldWidth) / 2).coerceAtLeast(0.dp)),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            ReadOnlyAnswerField(
-                value = answerInput,
-                expectedAnswer = expectedAnswer,
-                inputFeedbackType = inputFeedbackType,
-                allowMultiline = allowMultilineAnswer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(answerFieldHeight),
-                onClick = onFieldClick,
-            )
-
-            Button(
-                onClick = onSubmit,
-                enabled = answerInput.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-            ) {
-                Text("Отправить")
-            }
-
-            if (showShowWordToggle || showSimplifyToggle) {
-                HelpTogglesSection(
-                    showShowWordToggle = showShowWordToggle,
-                    showSimplifyToggle = showSimplifyToggle,
-                    isShowWordEnabled = isShowWordEnabled,
-                    isSimplifiedKeyboardEnabled = isSimplifiedKeyboardEnabled,
-                    usedShowWord = usedShowWord,
-                    usedSimplifiedKeyboard = usedSimplifiedKeyboard,
-                    modifier = Modifier.fillMaxWidth(),
-                    onShowWordToggle = onShowWordToggle,
-                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
-                )
-            }
-        }
-    } else {
-        Column(
-            modifier = if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
-            horizontalAlignment = if (alignToStart) Alignment.Start else Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                horizontalArrangement = if (alignToStart) Arrangement.Start else Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ReadOnlyAnswerField(
-                    value = answerInput,
-                    expectedAnswer = expectedAnswer,
-                    inputFeedbackType = inputFeedbackType,
-                    allowMultiline = allowMultilineAnswer,
-                    modifier = Modifier
-                        .width(fieldWidth)
-                        .height(answerFieldHeight),
-                    onClick = onFieldClick,
-                )
-                Button(
-                    onClick = onSubmit,
-                    enabled = answerInput.isNotBlank(),
-                    modifier = Modifier
-                        .padding(start = buttonSpacing)
-                        .width(56.dp)
-                        .height(56.dp),
-                    shape = CircleShape,
-                    contentPadding = PaddingValues(
-                        horizontal = 8.dp,
-                        vertical = 8.dp,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Send,
-                        contentDescription = "Отправить",
-                        modifier = Modifier.offset(x = 1.dp),
-                    )
-                }
-            }
-
-            if (showShowWordToggle || showSimplifyToggle) {
-                HelpTogglesSection(
-                    showShowWordToggle = showShowWordToggle,
-                    showSimplifyToggle = showSimplifyToggle,
-                    isShowWordEnabled = isShowWordEnabled,
-                    isSimplifiedKeyboardEnabled = isSimplifiedKeyboardEnabled,
-                    usedShowWord = usedShowWord,
-                    usedSimplifiedKeyboard = usedSimplifiedKeyboard,
-                    modifier = Modifier.width(fieldWidth + checkButtonWidth + buttonSpacing),
-                    onShowWordToggle = onShowWordToggle,
-                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HelpTogglesSection(
-    showShowWordToggle: Boolean,
-    showSimplifyToggle: Boolean,
-    isShowWordEnabled: Boolean,
-    isSimplifiedKeyboardEnabled: Boolean,
-    usedShowWord: Boolean,
-    usedSimplifiedKeyboard: Boolean,
-    onShowWordToggle: (Boolean) -> Unit,
-    onSimplifyKeyboardToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (showShowWordToggle) {
-            HelpToggleRow(
-                label = stringResource(Res.string.game_help_show_word),
-                checked = isShowWordEnabled,
-                wasUsed = usedShowWord,
-                onCheckedChange = onShowWordToggle,
-            )
-        }
-
-        if (showSimplifyToggle) {
-            HelpToggleRow(
-                label = stringResource(Res.string.game_help_simplify_keyboard),
-                checked = isSimplifiedKeyboardEnabled,
-                wasUsed = usedSimplifiedKeyboard,
-                onCheckedChange = onSimplifyKeyboardToggle,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HelpToggleRow(
-    label: String,
-    checked: Boolean,
-    wasUsed: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = if (alignToStart) Arrangement.Start else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            color = if (wasUsed) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
+        ReadOnlyAnswerField(
+            value = answerInput,
+            expectedAnswer = expectedAnswer,
+            inputFeedbackType = inputFeedbackType,
+            allowMultiline = allowMultilineAnswer,
+            modifier = Modifier
+                .width(fieldWidth)
+                .height(answerFieldHeight),
+            onClick = onFieldClick,
         )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
+        Button(
+            onClick = onSubmit,
+            enabled = answerInput.isNotBlank(),
+            modifier = Modifier
+                .padding(start = 12.dp)
+                .width(56.dp)
+                .height(56.dp),
+            shape = CircleShape,
+            contentPadding = PaddingValues(
+                horizontal = 8.dp,
+                vertical = 8.dp,
+            ),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Send,
+                contentDescription = "Отправить",
+                modifier = Modifier.offset(x = 1.dp),
+            )
+        }
     }
 }
 
@@ -1113,61 +982,6 @@ private fun CardTextFallback(
             .wrapContentHeight(align = Alignment.CenterVertically)
             .fillMaxWidth(),
     )
-}
-
-@Composable
-private fun FeedbackBanner(
-    feedback: FeedbackUi?,
-    compact: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(if (feedback == null) 0.dp else if (compact) 72.dp else 126.dp),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        AnimatedVisibility(
-            visible = feedback != null,
-            enter = fadeIn(
-                initialAlpha = 0f,
-                animationSpec = tween(durationMillis = 500),
-            ),
-            exit = fadeOut(
-                targetAlpha = 0f,
-                animationSpec = tween(durationMillis = 500),
-            ),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = feedback?.emoji ?: "",
-                    style = if (compact) {
-                        MaterialTheme.typography.headlineLarge
-                    } else {
-                        MaterialTheme.typography.displayLarge
-                    },
-                )
-                Text(
-                    text = feedback?.message ?: "",
-                    style = if (compact) {
-                        MaterialTheme.typography.titleMedium
-                    } else {
-                        MaterialTheme.typography.titleLarge
-                    },
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                )
-            }
-        }
-    }
 }
 
 @Composable
