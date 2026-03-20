@@ -440,6 +440,46 @@ private fun ActiveGameContent(
                         }
                     }
 
+                    if (isPhoneLandscape && (showShowWordToggle || showSimplifyToggle)) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(y = (-20).dp)
+                                .statusBarsPadding()
+                                .navigationBarsPadding()
+                                .padding(top = 8.dp, end = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                            if (showShowWordToggle) {
+                                OverlayHelpToggleChip(
+                                    label = "Word",
+                                    checked = state.isHintVisible,
+                                    wasUsed = state.usedShowWord,
+                                    onClick = {
+                                        onAction(
+                                            GameScreenAction.OnShowWordHelpToggled(!state.isHintVisible)
+                                        )
+                                    },
+                                )
+                            }
+                            if (showSimplifyToggle) {
+                                OverlayHelpToggleChip(
+                                    label = "Aa",
+                                    checked = state.isSimplifiedKeyboardEnabled,
+                                    wasUsed = state.usedSimplifiedKeyboard,
+                                    onClick = {
+                                        onAction(
+                                            GameScreenAction.OnSimplifyKeyboardHelpToggled(
+                                                !state.isSimplifiedKeyboardEnabled
+                                            )
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+
                     LandscapeFeedbackOverlay(
                         feedback = state.feedback,
                         modifier = Modifier.align(Alignment.Center),
@@ -872,6 +912,40 @@ private fun HelpToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+        )
+    }
+}
+
+@Composable
+private fun OverlayHelpToggleChip(
+    label: String,
+    checked: Boolean,
+    wasUsed: Boolean,
+    onClick: () -> Unit,
+) {
+    val backgroundColor = when {
+        checked -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+    }
+    val contentColor = when {
+        checked -> MaterialTheme.colorScheme.onPrimary
+        wasUsed -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = contentColor,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
