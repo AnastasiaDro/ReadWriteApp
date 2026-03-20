@@ -345,6 +345,7 @@ private fun StudentRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
+            .clickable(onClick = onStudentClick)
             .background(rowBackground)
             .border(
                 width = 1.dp,
