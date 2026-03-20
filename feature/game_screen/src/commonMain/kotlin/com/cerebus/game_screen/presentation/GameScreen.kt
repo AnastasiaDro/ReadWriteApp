@@ -245,7 +245,11 @@ private fun ActiveGameContent(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .padding(
-                    top = if (isLandscape) 20.dp else 56.dp,
+                    top = when {
+                        isPhoneLandscape -> 8.dp
+                        isLandscape -> 20.dp
+                        else -> 56.dp
+                    },
                     bottom = if (isLandscape) 0.dp else 12.dp,
                 ),
         ) {
