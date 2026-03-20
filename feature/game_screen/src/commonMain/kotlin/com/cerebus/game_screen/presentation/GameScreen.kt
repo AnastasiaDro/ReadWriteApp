@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,9 +27,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -35,6 +40,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -301,29 +308,78 @@ private fun ActiveGameContent(
                         verticalAlignment = if (isPhoneLandscape) Alignment.Top else Alignment.CenterVertically,
                     ) {
                         if (isPhoneLandscape) {
-                            PracticeModeBadge(
-                                visible = state.isPracticeMode,
-                                modifier = Modifier.padding(top = 8.dp, end = 8.dp),
-                            )
-                            Text(
-                                text = "${state.cardIndex}/${state.totalCards}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            Box(
                                 modifier = Modifier
-                                    .width(phoneLandscapeCounterWidth)
-                                    .align(Alignment.CenterVertically),
-                                textAlign = TextAlign.Center,
-                            )
-                            Box(modifier = Modifier.width(6.dp))
-                            GameCard(
-                                cardSize = effectiveLandscapeCardSize,
-                                imagePath = state.currentCard.imagePath.orEmpty(),
-                                answer = state.currentCard.answer,
-                                isHintVisible = state.isHintVisible,
-                                imageLoader = imageLoader,
-                            )
-                            // Temporarily hide the right input block in phone landscape
-                            // to measure how much space the card can actually take.
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.BottomEnd,
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.Bottom,
+                                ) {
+                                    PracticeModeBadge(
+                                        visible = state.isPracticeMode,
+                                        modifier = Modifier.padding(bottom = 8.dp),
+                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.End,
+                                    ) {
+                                        Text(
+                                            text = "${state.cardIndex}/${state.totalCards}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.width(phoneLandscapeCounterWidth),
+                                            textAlign = TextAlign.Center,
+                                        )
+                                        Box(modifier = Modifier.width(6.dp))
+                                        GameCard(
+                                            cardSize = effectiveLandscapeCardSize,
+                                            imagePath = state.currentCard.imagePath.orEmpty(),
+                                            answer = state.currentCard.answer,
+                                            isHintVisible = state.isHintVisible,
+                                            imageLoader = imageLoader,
+                                        )
+                                    }
+                                }
+                            }
+
+                            Box(modifier = Modifier.width(8.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.BottomStart,
+                            ) {
+                                Box(
+                                    modifier = Modifier.wrapContentWidth(),
+                                    contentAlignment = Alignment.BottomStart,
+                                ) {
+                                    AnswerInputSection(
+                                        answerInput = state.answerInput,
+                                        expectedAnswer = state.currentCard.answer,
+                                        inputFeedbackType = state.inputFeedbackType,
+                                        showShowWordToggle = false,
+                                        showSimplifyToggle = false,
+                                        isShowWordEnabled = state.isHintVisible,
+                                        isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                                        usedShowWord = state.usedShowWord,
+                                        usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
+                                        isStacked = false,
+                                        availableWidth = minOf(effectiveLandscapeInputWidth, 280.dp),
+                                        fieldReferenceWidth = effectiveLandscapeCardSize,
+                                        alignToStart = true,
+                                        onFieldClick = { isKeyboardVisible = true },
+                                        onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                                        onShowWordToggle = { onAction(GameScreenAction.OnShowWordHelpToggled(it)) },
+                                        onSimplifyKeyboardToggle = {
+                                            onAction(GameScreenAction.OnSimplifyKeyboardHelpToggled(it))
+                                        },
+                                    )
+                                }
+                            }
                         } else {
                             Box(
                                 modifier = Modifier.width(landscapeCardSize + 12.dp),
@@ -449,7 +505,7 @@ private fun ActiveGameContent(
                 .padding(
                     start = 6.dp,
                     end = 6.dp,
-                    top = if (isPhoneLandscape) 0.dp else 4.dp,
+                    top = if (isPhoneLandscape) 8.dp else 4.dp,
                     bottom = 4.dp,
                 ),
         ) {
@@ -633,6 +689,7 @@ private fun AnswerInputSection(
     isStacked: Boolean,
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
+    alignToStart: Boolean = false,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
     onShowWordToggle: (Boolean) -> Unit,
@@ -694,12 +751,12 @@ private fun AnswerInputSection(
         }
     } else {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
+            horizontalAlignment = if (alignToStart) Alignment.Start else Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = if (alignToStart) Arrangement.Start else Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ReadOnlyAnswerField(
@@ -717,10 +774,19 @@ private fun AnswerInputSection(
                     enabled = answerInput.isNotBlank(),
                     modifier = Modifier
                         .padding(start = buttonSpacing)
-                        .width(checkButtonWidth)
+                        .width(56.dp)
                         .height(56.dp),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(
+                        horizontal = 8.dp,
+                        vertical = 8.dp,
+                    ),
                 ) {
-                    Text("Отправить")
+                    Icon(
+                        imageVector = Icons.Filled.Send,
+                        contentDescription = "Отправить",
+                        modifier = Modifier.offset(x = 1.dp),
+                    )
                 }
             }
 
