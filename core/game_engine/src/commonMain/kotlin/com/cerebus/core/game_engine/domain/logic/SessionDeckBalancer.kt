@@ -30,7 +30,7 @@ fun <T> takeRoundRobinByDeck(
         orderedDeckIds.forEach { deckId ->
             val queue = queues[deckId] ?: return@forEach
             if (queue.isNotEmpty() && result.size < limit) {
-                result += queue.removeFirst()
+                result += queue.removeAt(0)
             }
         }
     }
@@ -65,7 +65,7 @@ fun <T> selectBalancedNewCardsByDeck(
             ?: break
 
         val queue = queues[nextDeckId] ?: break
-        result += queue.removeFirst()
+        result += queue.removeAt(0)
         shownPerDeck[nextDeckId] = (shownPerDeck[nextDeckId] ?: 0) + 1
     }
 
@@ -87,11 +87,11 @@ fun <T> interleaveReviewAndNewCards(
     while (reviews.isNotEmpty() || news.isNotEmpty()) {
         repeat(reviewToNewRatio) {
             if (reviews.isNotEmpty()) {
-                result += reviews.removeFirst()
+                result += reviews.removeAt(0)
             }
         }
         if (news.isNotEmpty()) {
-            result += news.removeFirst()
+            result += news.removeAt(0)
         }
     }
 

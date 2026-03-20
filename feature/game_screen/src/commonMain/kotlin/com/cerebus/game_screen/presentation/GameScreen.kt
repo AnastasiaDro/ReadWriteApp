@@ -225,7 +225,7 @@ private fun ActiveGameContent(
                 .padding(horizontal = 20.dp)
                 .padding(
                     top = if (isPhoneLandscape) 20.dp else 56.dp,
-                    bottom = 12.dp,
+                    bottom = if (isPhoneLandscape) 0.dp else 12.dp,
                 ),
         ) {
             val compactMode = isKeyboardVisible || isLandscape
@@ -255,8 +255,9 @@ private fun ActiveGameContent(
                 availableContentHeight - feedbackReservedHeight - inputSectionHeight - counterHeight - (verticalSpacing * 3),
             ).coerceAtLeast(120.dp)
             val landscapeCardSize = minOf(
-                availableContentHeight - feedbackReservedHeight - counterHeight - 20.dp,
-                availableContentWidth * 0.42f,
+                availableContentHeight - feedbackReservedHeight - if (isPhoneLandscape) 8.dp else (counterHeight + 20.dp),
+                //availableContentWidth * 0.42f,
+                availableContentWidth,
             ).coerceAtLeast(120.dp)
             val landscapeInputWidth = minOf(
                 availableContentWidth * 0.34f,
@@ -272,14 +273,8 @@ private fun ActiveGameContent(
             } else {
                 0.dp
             }
-            val effectiveLandscapeCardSize = if (isPhoneLandscape) {
-                minOf(
-                    landscapeCardSize,
-                    (phoneLandscapeHalfWidth - 48.dp).coerceAtLeast(120.dp),
-                )
-            } else {
-                landscapeCardSize
-            }
+            val phoneLandscapeCounterWidth = 28.dp
+            val effectiveLandscapeCardSize = landscapeCardSize
             val effectiveLandscapeInputWidth = if (isPhoneLandscape) {
                 phoneLandscapeHalfWidth
             } else {
@@ -305,23 +300,43 @@ private fun ActiveGameContent(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = if (isPhoneLandscape) Alignment.Top else Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = if (isPhoneLandscape) {
-                                Modifier.width(phoneLandscapeHalfWidth)
-                            } else {
-                                Modifier.width(landscapeCardSize + 12.dp)
-                            },
-                        ) {
-                            Column(
-                                modifier = Modifier.align(if (isPhoneLandscape) Alignment.TopEnd else Alignment.Center),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = if (isPhoneLandscape) Arrangement.Top else Arrangement.Center,
+                        if (isPhoneLandscape) {
+                            PracticeModeBadge(
+                                visible = state.isPracticeMode,
+                                modifier = Modifier.padding(top = 8.dp, end = 8.dp),
+                            )
+                            Text(
+                                text = "${state.cardIndex}/${state.totalCards}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier
+                                    .width(phoneLandscapeCounterWidth)
+                                    .align(Alignment.CenterVertically),
+                                textAlign = TextAlign.Center,
+                            )
+                            Box(modifier = Modifier.width(6.dp))
+                            GameCard(
+                                cardSize = effectiveLandscapeCardSize,
+                                imagePath = state.currentCard.imagePath.orEmpty(),
+                                answer = state.currentCard.answer,
+                                isHintVisible = state.isHintVisible,
+                                imageLoader = imageLoader,
+                            )
+                            // Temporarily hide the right input block in phone landscape
+                            // to measure how much space the card can actually take.
+                        } else {
+                            Box(
+                                modifier = Modifier.width(landscapeCardSize + 12.dp),
                             ) {
-                                PracticeModeBadge(
-                                    visible = state.isPracticeMode,
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                )
-                                if (isTablet) {
+                                Column(
+                                    modifier = Modifier.align(Alignment.Center),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    PracticeModeBadge(
+                                        visible = state.isPracticeMode,
+                                        modifier = Modifier.padding(bottom = 8.dp),
+                                    )
                                     Text(
                                         text = "${state.cardIndex} / ${state.totalCards}",
                                         style = MaterialTheme.typography.labelLarge,
@@ -335,65 +350,11 @@ private fun ActiveGameContent(
                                         isHintVisible = state.isHintVisible,
                                         imageLoader = imageLoader,
                                     )
-                                } else {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            text = "${state.cardIndex}/${state.totalCards}",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.width(40.dp),
-                                            textAlign = TextAlign.Center,
-                                        )
-                                        GameCard(
-                                            cardSize = effectiveLandscapeCardSize,
-                                            imagePath = state.currentCard.imagePath.orEmpty(),
-                                            answer = state.currentCard.answer,
-                                            isHintVisible = state.isHintVisible,
-                                            imageLoader = imageLoader,
-                                        )
-                                    }
                                 }
                             }
-                        }
 
-                        Box(modifier = Modifier.width(effectiveLandscapeBlockSpacing))
+                            Box(modifier = Modifier.width(effectiveLandscapeBlockSpacing))
 
-                        if (isPhoneLandscape) {
-                            Box(
-                                modifier = Modifier.width(phoneLandscapeHalfWidth),
-                                contentAlignment = Alignment.TopStart,
-                            ) {
-                                Column(
-                                    modifier = Modifier.widthIn(max = phoneLandscapeHalfWidth),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Top,
-                                ) {
-                                    AnswerInputSection(
-                                        answerInput = state.answerInput,
-                                        expectedAnswer = state.currentCard.answer,
-                                        inputFeedbackType = state.inputFeedbackType,
-                                        showShowWordToggle = showShowWordToggle,
-                                        showSimplifyToggle = showSimplifyToggle,
-                                        isShowWordEnabled = state.isHintVisible,
-                                        isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
-                                        usedShowWord = state.usedShowWord,
-                                        usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
-                                        isStacked = true,
-                                        availableWidth = effectiveLandscapeInputWidth,
-                                        fieldReferenceWidth = effectiveLandscapeCardSize,
-                                        onFieldClick = { isKeyboardVisible = true },
-                                        onSubmit = { onAction(GameScreenAction.OnCheckClick) },
-                                        onShowWordToggle = { onAction(GameScreenAction.OnShowWordHelpToggled(it)) },
-                                        onSimplifyKeyboardToggle = {
-                                            onAction(GameScreenAction.OnSimplifyKeyboardHelpToggled(it))
-                                        },
-                                    )
-                                }
-                            }
-                        } else {
                             Column(
                                 modifier = Modifier.width(landscapeInputWidth),
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -485,7 +446,12 @@ private fun ActiveGameContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 6.dp, vertical = 4.dp),
+                .padding(
+                    start = 6.dp,
+                    end = 6.dp,
+                    top = if (isPhoneLandscape) 0.dp else 4.dp,
+                    bottom = 4.dp,
+                ),
         ) {
             TrainingKeyboard(
                 referenceText = state.currentCard.answer,
