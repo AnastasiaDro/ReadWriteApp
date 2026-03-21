@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -74,8 +76,6 @@ internal fun DeckGalleryScreen(
     val isLandscape = windowWidthDp > windowHeightDp
     val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
     val isPhoneLandscape = isLandscape && !isTablet
-    val navigationControlShift = if (isPhoneLandscape) 58.dp else 0.dp
-    val navigationControlsHorizontalPadding = if (isTablet) 6.dp else 0.dp
     val showDigitsRow = resolveShowDigitsRow(
         isPhoneLandscape = isPhoneLandscape,
         hideDigitsOnTightScreen = state.hideDigitsOnTightScreen,
@@ -107,6 +107,27 @@ internal fun DeckGalleryScreen(
                     PracticeModeStatusIcon(
                         onClick = { showPracticeModeInfo = true },
                         modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
+        },
+        topCenter = {
+            if (currentCard != null && !isPhoneLandscape) {
+                TextButton(
+                    onClick = {},
+                    enabled = false,
+                    colors = ButtonDefaults.textButtonColors(
+                        disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                ) {
+                    Text(
+                        text = "${state.currentIndex + 1} / ${cards.size}",
+                        style = if (isLandscape) {
+                            MaterialTheme.typography.labelMedium
+                        } else {
+                            MaterialTheme.typography.labelLarge
+                        },
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
@@ -186,9 +207,11 @@ internal fun DeckGalleryScreen(
                                 availableContentHeight - 8.dp,
                                 availableContentWidth,
                             ).coerceAtLeast(120.dp)
-                            val landscapeHalfWidth = ((availableContentWidth - 8.dp) / 2f).coerceAtLeast(140.dp)
-                            val counterWidth = 28.dp
-
+                            val landscapeHalfWidth = (availableContentWidth / 2f).coerceAtLeast(140.dp)
+                            val phoneLandscapeAnswerGap = 4.dp
+                            val phoneLandscapeAnswerStart = (availableContentWidth / 2f) +
+                                (landscapeCardSize / 2f) +
+                                phoneLandscapeAnswerGap
                             Row(
                                 modifier = Modifier.fillMaxSize(),
                                 horizontalArrangement = Arrangement.Center,
@@ -196,41 +219,26 @@ internal fun DeckGalleryScreen(
                             ) {
                                 if (isPhoneLandscape) {
                                     Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxSize(),
-                                        contentAlignment = Alignment.BottomEnd,
+                                        modifier = Modifier.fillMaxSize(),
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.End,
-                                        ) {
-                                            Text(
-                                                text = "${state.currentIndex + 1}/${cards.size}",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.widthIn(min = counterWidth),
-                                                textAlign = TextAlign.Center,
-                                            )
-                                            Spacer(modifier = Modifier.widthIn(min = 6.dp, max = 6.dp))
-                                            GalleryTrainingCard(
-                                                card = currentCard,
-                                                isHintVisible = state.isHintVisible,
-                                                modifier = Modifier.widthIn(max = landscapeCardSize),
-                                                onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
-                                                onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
-                                            )
-                                        }
-                                    }
+                                        GalleryTrainingCard(
+                                            cards = cards,
+                                            currentIndex = state.currentIndex,
+                                            isHintVisible = state.isHintVisible,
+                                            isLandscape = true,
+                                            isPhoneLandscape = true,
+                                            preferredCardSize = landscapeCardSize,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .align(Alignment.BottomCenter),
+                                            onCardSelected = view@{ index ->
+                                                when {
+                                                    index < state.currentIndex -> onPreviousClick()
+                                                    index > state.currentIndex -> onNextClick()
+                                                }
+                                            },
+                                        )
 
-                                    Spacer(modifier = Modifier.widthIn(min = 8.dp, max = 8.dp))
-
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxSize(),
-                                        contentAlignment = Alignment.BottomStart,
-                                    ) {
                                         GalleryGameLikeAnswerSection(
                                             answerInput = state.answerInput,
                                             expectedAnswer = currentCard.name,
@@ -239,6 +247,9 @@ internal fun DeckGalleryScreen(
                                             fieldReferenceWidth = landscapeCardSize,
                                             isStacked = false,
                                             alignToStart = true,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .offset(x = phoneLandscapeAnswerStart),
                                             onFieldClick = { isKeyboardVisible = true },
                                             onSubmit = onSubmitPressed,
                                         )
@@ -248,16 +259,7 @@ internal fun DeckGalleryScreen(
                                         modifier = Modifier
                                             .weight(1f)
                                             .fillMaxHeight(),
-                                        contentAlignment = Alignment.CenterEnd,
-                                    ) {
-                                        Text(
-                                            text = "${state.currentIndex + 1}/${cards.size}",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.padding(end = 12.dp),
-                                        )
-                                    }
+                                    )
 
                                     Box(
                                         modifier = Modifier
@@ -280,11 +282,18 @@ internal fun DeckGalleryScreen(
                                                 verticalArrangement = Arrangement.Bottom,
                                             ) {
                                                 GalleryTrainingCard(
-                                                    card = currentCard,
+                                                    cards = cards,
+                                                    currentIndex = state.currentIndex,
                                                     isHintVisible = state.isHintVisible,
+                                                    isLandscape = true,
+                                                    isPhoneLandscape = false,
                                                     modifier = Modifier.fillMaxWidth(),
-                                                    onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
-                                                    onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
+                                                    onCardSelected = view@{ index ->
+                                                        when {
+                                                            index < state.currentIndex -> onPreviousClick()
+                                                            index > state.currentIndex -> onNextClick()
+                                                        }
+                                                    },
                                                 )
                                                 Spacer(modifier = Modifier.height(10.dp))
                                                 GalleryGameLikeAnswerSection(
@@ -316,11 +325,6 @@ internal fun DeckGalleryScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                             ) {
-                                Text(
-                                    text = "${state.currentIndex + 1} / ${cards.size}",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
                                 BoxWithConstraints(
                                     modifier = Modifier
                                         .weight(1f)
@@ -344,11 +348,18 @@ internal fun DeckGalleryScreen(
                                         verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                                     ) {
                                         GalleryTrainingCard(
-                                            card = currentCard,
+                                            cards = cards,
+                                            currentIndex = state.currentIndex,
                                             isHintVisible = state.isHintVisible,
+                                            isLandscape = false,
+                                            isPhoneLandscape = false,
                                             modifier = Modifier.fillMaxWidth(),
-                                            onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
-                                            onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
+                                            onCardSelected = view@{ index ->
+                                                when {
+                                                    index < state.currentIndex -> onPreviousClick()
+                                                    index > state.currentIndex -> onNextClick()
+                                                }
+                                            },
                                         )
 
                                         GalleryGameLikeAnswerSection(
@@ -371,19 +382,6 @@ internal fun DeckGalleryScreen(
                             emoji = state.feedback?.emoji,
                             modifier = Modifier.align(Alignment.Center),
                         )
-
-                        if (currentCard != null) {
-                            GalleryGlobalNavigationControls(
-                                onPreviousClick = if (state.currentIndex > 0) onPreviousClick else null,
-                                onNextClick = if (state.currentIndex < cards.lastIndex) onNextClick else null,
-                                previousLabel = strings.previous,
-                                nextLabel = strings.next,
-                                isLandscape = isLandscape,
-                                horizontalShift = navigationControlShift,
-                                horizontalPadding = navigationControlsHorizontalPadding,
-                                modifier = Modifier.matchParentSize(),
-                            )
-                        }
                     }
                 }
             }

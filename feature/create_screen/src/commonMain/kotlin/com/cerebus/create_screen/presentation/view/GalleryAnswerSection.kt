@@ -24,6 +24,7 @@ internal fun GalleryGameLikeAnswerSection(
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
     isStacked: Boolean,
+    modifier: Modifier = Modifier,
     alignToStart: Boolean = false,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
@@ -35,7 +36,9 @@ internal fun GalleryGameLikeAnswerSection(
     val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
 
     Column(
-        modifier = if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
+        modifier = modifier.then(
+            if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
+        ),
         horizontalAlignment = if (alignToStart) Alignment.Start else Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

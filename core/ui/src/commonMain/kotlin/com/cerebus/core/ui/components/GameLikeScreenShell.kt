@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 fun GameLikeScreenShell(
     modifier: Modifier = Modifier,
     topLeft: @Composable () -> Unit = {},
+    topCenter: @Composable () -> Unit = {},
     topRight: @Composable () -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -26,18 +27,28 @@ fun GameLikeScreenShell(
     ) {
         content()
 
-        Row(
+        Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(start = 12.dp, top = 8.dp, end = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
         ) {
-            topLeft()
-            topRight()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                topLeft()
+                topRight()
+            }
+
+            Box(
+                modifier = Modifier.align(Alignment.TopCenter),
+            ) {
+                topCenter()
+            }
         }
     }
 }
