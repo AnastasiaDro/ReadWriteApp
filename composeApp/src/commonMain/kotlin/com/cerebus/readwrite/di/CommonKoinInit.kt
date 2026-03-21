@@ -4,6 +4,7 @@ import com.cerebus.readwrite.di.core.databaseModule
 import com.cerebus.readwrite.di.feature.createScreenModule
 import com.cerebus.readwrite.di.feature.customKeyboardModule
 import com.cerebus.readwrite.di.feature.decksModule
+import com.cerebus.readwrite.di.feature.fairyTalesModule
 import com.cerebus.readwrite.di.feature.flashcardsModule
 import com.cerebus.readwrite.di.feature.gameScreenModule
 import com.cerebus.readwrite.di.feature.preferencesModule
@@ -27,5 +28,6 @@ val modules = listOf<Module>(
     customKeyboardModule,
     createScreenModule,
     studentFeatureModule,
+    fairyTalesModule,
 )
 expect fun initKoin(modules: List<Module>)

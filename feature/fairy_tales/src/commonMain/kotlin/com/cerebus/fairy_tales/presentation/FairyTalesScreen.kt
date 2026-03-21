@@ -2,79 +2,55 @@ package com.cerebus.fairy_tales.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.cerebus.fairy_tales.presentation.util.rememberPlatformMessenger
-import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
+import io.github.alexzhirkevich.compottie.Compottie
+import io.github.alexzhirkevich.compottie.LottieCompositionSpec
+import io.github.alexzhirkevich.compottie.rememberLottieComposition
+import io.github.alexzhirkevich.compottie.rememberLottiePainter
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 import readwriteapp.feature.fairy_tales.generated.resources.Res
-import readwriteapp.feature.fairy_tales.generated.resources.koza
-
-private val demoFairyTales = listOf(
-    FairyTaleListItem(
-        id = "little-red-riding-hood",
-        title = "Идёт коза рогатая",
-        description = "За малыми ребятами, ножками - топ-топ, ручками - хлоп-хлоп ...",
-        coverColor = Color(0xFFE7A86A),
-        coverRes = Res.drawable.koza,
-    ),
-    FairyTaleListItem(
-        id = "three-little-pigs",
-        title = "Три поросенка",
-        description = "История про домики, ветер и то, как смекалка помогает справиться с бедой.",
-        coverColor = Color(0xFFB8D49C),
-    ),
-    FairyTaleListItem(
-        id = "snow-queen",
-        title = "Снежная королева",
-        description = "Зимняя сказка о дружбе, поиске близкого человека и смелом путешествии.",
-        coverColor = Color(0xFF9EC7E8),
-    ),
-)
 
 @Composable
-fun FairyTalesRoute(
-    onBackClick: () -> Unit = {},
+fun FairyTalesScreenRoute(
+    fairyTaleId: String,
+    onBackClick: () -> Unit,
 ) {
-    val messenger = rememberPlatformMessenger()
+    val viewModel = koinViewModel<FairyTalesViewModel>(
+        parameters = { parametersOf(fairyTaleId) },
+    )
+    val state by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { viewModel.state } }
 
     FairyTalesScreen(
+        state = state,
         onBackClick = onBackClick,
-        onCreateFairyTaleClick = {
-            messenger.showMessage("Функционал сказок еще в разработке")
-        },
     )
 }
 
 @Composable
 fun FairyTalesScreen(
+    state: FairyTalesUiState,
     onBackClick: () -> Unit,
-    onCreateFairyTaleClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -85,109 +61,113 @@ fun FairyTalesScreen(
                 end = 16.dp,
                 top = 10.dp,
                 bottom = 10.dp,
-            ),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            )
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         TextButton(onClick = onBackClick) {
             Text(text = "Назад")
         }
 
         Text(
-            text = "Сказки",
+            text = state.title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
         )
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(demoFairyTales) { fairyTale ->
-                FairyTaleRow(
-                    item = fairyTale,
-                    onClick = {},
-                )
-            }
-        }
+        FairyTaleAnimationSlot(
+            animationAssetPath = state.animationAssetPath,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-        Button(
-            onClick = onCreateFairyTaleClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(text = "Добавить сказку")
+            Text(
+                text = state.description,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+            )
+
+            Text(
+                text = state.storyText,
+                style = MaterialTheme.typography.bodyLarge,
+            )
         }
     }
 }
 
 @Composable
-private fun FairyTaleRow(
-    item: FairyTaleListItem,
-    onClick: () -> Unit,
+private fun FairyTaleAnimationSlot(
+    animationAssetPath: String?,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+    val compositionResult = animationAssetPath?.let { assetPath ->
+        rememberLottieComposition(assetPath) {
+            val json = Res.readBytes(assetPath).decodeToString()
+            LottieCompositionSpec.JsonString(json)
+        }
+    }
+    val composition by (compositionResult ?: androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(null)
+    })
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1.2f)
+            .background(
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(20.dp),
+            )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
-                shape = MaterialTheme.shapes.medium,
+                shape = RoundedCornerShape(20.dp),
             )
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(20.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        if (item.coverRes != null) {
-            Image(
-                painter = painterResource(item.coverRes),
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(MaterialTheme.shapes.medium),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(item.coverColor),
-            )
-        }
+        when {
+            animationAssetPath.isNullOrBlank() -> {
+                Text(
+                    text = "Здесь будет Lottie-анимация",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = item.description,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            composition != null -> {
+                Image(
+                    painter = rememberLottiePainter(
+                        composition = composition,
+                        iterations = Compottie.IterateForever,
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            compositionResult?.isFailure == true -> {
+                Text(
+                    text = "Не удалось загрузить анимацию",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            else -> {
+                Text(
+                    text = "Загружаем анимацию...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
-
-private data class FairyTaleListItem(
-    val id: String,
-    val title: String,
-    val description: String,
-    val coverColor: Color,
-    val coverRes: DrawableResource? = null,
-)

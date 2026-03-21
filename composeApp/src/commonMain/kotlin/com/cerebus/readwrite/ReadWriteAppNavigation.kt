@@ -285,7 +285,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     }
                 }
 
-                fairyTalesGraph()
+                fairyTalesGraph(navController)
 
                 composable(Screens.GAME.route) {
                     GameScreenWrapper(
@@ -397,7 +397,7 @@ private object TopLevelGraphs {
 private val TOP_LEVEL_TAB_SCREEN_ROUTES = setOf(
     Screens.ACTIVE_STUDENT.route,
     Screens.CREATE.route,
-    FairyTalesGraph.SCREEN_ROUTE,
+    FairyTalesGraph.LIST_ROUTE,
 )
 
 private fun onTryDemoClicked() {
