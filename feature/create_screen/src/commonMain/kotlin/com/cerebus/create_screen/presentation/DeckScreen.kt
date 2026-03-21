@@ -522,30 +522,6 @@ fun DeckScreen(
                         },
                     )
                     TrainingModeHelpItem(
-                        title = strings.randomLearnedTitle,
-                        description = strings.randomLearnedHint,
-                        onClick = {
-                            scope.launch {
-                                trainingModesHelpSheetState.hide()
-                                delay(100)
-                                isTrainingModesHelpVisible = false
-                                onAction(DeckScreenAction.OnStartRandomLearnedClick)
-                            }
-                        },
-                    )
-                    TrainingModeHelpItem(
-                        title = strings.randomAllTitle,
-                        description = strings.randomAllHint,
-                        onClick = {
-                            scope.launch {
-                                trainingModesHelpSheetState.hide()
-                                delay(100)
-                                isTrainingModesHelpVisible = false
-                                onAction(DeckScreenAction.OnStartRandomAllClick)
-                            }
-                        },
-                    )
-                    TrainingModeHelpItem(
                         title = strings.galleryTitle,
                         description = strings.galleryHint,
                         onClick = {
@@ -596,16 +572,6 @@ private fun DeckTrainingModesSection(
             hint = strings.trainingPlanHint,
             isPrimary = true,
             onClick = onStartPlanClick,
-        ),
-        DeckTrainingModeUi(
-            title = strings.randomLearnedTitle,
-            hint = strings.randomLearnedHint,
-            onClick = onStartRandomLearnedClick,
-        ),
-        DeckTrainingModeUi(
-            title = strings.randomAllTitle,
-            hint = strings.randomAllHint,
-            onClick = onStartRandomAllClick,
         ),
         DeckTrainingModeUi(
             title = strings.galleryTitle,

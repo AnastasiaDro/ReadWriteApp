@@ -174,10 +174,6 @@ fun ActiveGameContent(
                                     horizontalAlignment = Alignment.End,
                                     verticalArrangement = Arrangement.Bottom,
                                 ) {
-                                    PracticeModeBadge(
-                                        visible = state.isPracticeMode,
-                                        modifier = Modifier.padding(bottom = 8.dp),
-                                    )
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.End,
@@ -263,44 +259,35 @@ fun ActiveGameContent(
                                         maxHeight - tabletAnswerRowHeight - 10.dp,
                                     ).coerceAtLeast(120.dp)
 
-                                    Column(
-                                        modifier = Modifier.fillMaxHeight(),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Bottom,
+                                    BoxWithConstraints(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(),
+                                        contentAlignment = Alignment.BottomCenter,
                                     ) {
-                                        PracticeModeBadge(
-                                            visible = state.isPracticeMode,
-                                        )
-                                        BoxWithConstraints(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxWidth(),
-                                            contentAlignment = Alignment.BottomCenter,
+                                        Column(
+                                            modifier = Modifier.width(tabletContentWidth),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom),
                                         ) {
-                                            Column(
-                                                modifier = Modifier.width(tabletContentWidth),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom),
-                                            ) {
-                                                GameCard(
-                                                    cardSize = tabletContentWidth,
-                                                    imagePath = state.currentCard.imagePath.orEmpty(),
-                                                    answer = state.currentCard.answer,
-                                                    isHintVisible = state.isHintVisible,
-                                                    imageLoader = imageLoader,
-                                                )
-                                                AnswerInputRow(
-                                                    answerInput = state.answerInput,
-                                                    expectedAnswer = state.currentCard.answer,
-                                                    inputFeedbackType = state.inputFeedbackType,
-                                                    allowMultilineAnswer = allowMultilineAnswer,
-                                                    fieldWidth = (tabletContentWidth - 68.dp)
-                                                        .coerceAtLeast(112.dp),
-                                                    alignToStart = false,
-                                                    onFieldClick = { isKeyboardVisible = true },
-                                                    onSubmit = { onAction(GameScreenAction.OnCheckClick) },
-                                                )
-                                            }
+                                            GameCard(
+                                                cardSize = tabletContentWidth,
+                                                imagePath = state.currentCard.imagePath.orEmpty(),
+                                                answer = state.currentCard.answer,
+                                                isHintVisible = state.isHintVisible,
+                                                imageLoader = imageLoader,
+                                            )
+                                            AnswerInputRow(
+                                                answerInput = state.answerInput,
+                                                expectedAnswer = state.currentCard.answer,
+                                                inputFeedbackType = state.inputFeedbackType,
+                                                allowMultilineAnswer = allowMultilineAnswer,
+                                                fieldWidth = (tabletContentWidth - 68.dp)
+                                                    .coerceAtLeast(112.dp),
+                                                alignToStart = false,
+                                                onFieldClick = { isKeyboardVisible = true },
+                                                onSubmit = { onAction(GameScreenAction.OnCheckClick) },
+                                            )
                                         }
                                     }
                                 }
@@ -327,9 +314,6 @@ fun ActiveGameContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                     ) {
-                        PracticeModeBadge(
-                            visible = state.isPracticeMode,
-                        )
                         Text(
                             text = "${state.cardIndex} / ${state.totalCards}",
                             style = MaterialTheme.typography.labelLarge,

@@ -9,6 +9,8 @@
     <string name="game_help_show_word">Показать слово</string>
     <string name="game_help_simplify_keyboard">Упростить клавиатуру</string>
     <string name="game_practice_mode">Режим практики</string>
+    <string name="game_practice_mode_description">Это режим практики. Здесь можно свободно просматривать карточки, и ошибки не влияют на прогресс SRS.</string>
+    <string name="game_practice_mode_understood">Понятно</string>
     <string name="game_typo_settings_suggestion_title">Похоже, здесь много опечаток</string>
     <string name="game_typo_settings_suggestion_body">Похоже, ребенок часто быстро промахивается по соседним клавишам. В настройках обучения можно сделать распознавание таких опечаток мягче или разрешить больше таких промахов без штрафа.</string>
     <string name="game_typo_settings_suggestion_confirm">Открыть настройки обучения</string>

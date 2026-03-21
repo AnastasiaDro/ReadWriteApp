@@ -40,7 +40,7 @@
     <string name="deck_training_mode_random_learned_hint">Свободная практика знакомых карточек без изменения прогресса</string>
     <string name="deck_training_mode_random_all_title">Случайные из колоды</string>
     <string name="deck_training_mode_random_all_hint">Новые и знакомые карточки вперемешку без изменения прогресса</string>
-    <string name="deck_training_mode_gallery_title">Галерея карточек</string>
+    <string name="deck_training_mode_gallery_title">Свободная практика</string>
     <string name="deck_training_mode_gallery_hint">Листать карточки вручную и выбирать нужную</string>
     <string name="deck_gallery_empty">В этой колоде пока нет карточек</string>
     <string name="deck_gallery_previous">Назад</string>
@@ -50,6 +50,7 @@
     <string name="deck_gallery_show_word">Показать слово</string>
     <string name="deck_gallery_simplify_keyboard">Упростить клавиатуру</string>
     <string name="deck_gallery_practice_mode">Режим практики</string>
+    <string name="deck_gallery_practice_mode_description">Это режим практики. Здесь можно свободно просматривать карточки, и ошибки не влияют на прогресс SRS.</string>
     <string name="deck_gallery_copy_stage">Перепечатывание</string>
     <string name="deck_gallery_recall_stage">По памяти</string>
     <string name="deck_gallery_correct_feedback">Верно</string>

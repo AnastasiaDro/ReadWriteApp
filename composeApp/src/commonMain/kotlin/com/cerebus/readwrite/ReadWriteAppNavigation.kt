@@ -57,11 +57,13 @@ import readwriteapp.composeapp.generated.resources.deck_gallery_empty
 import readwriteapp.composeapp.generated.resources.deck_gallery_next
 import readwriteapp.composeapp.generated.resources.deck_gallery_previous
 import readwriteapp.composeapp.generated.resources.deck_gallery_practice_mode
+import readwriteapp.composeapp.generated.resources.deck_gallery_practice_mode_description
 import readwriteapp.composeapp.generated.resources.deck_gallery_recall_stage
 import readwriteapp.composeapp.generated.resources.deck_gallery_show_word
 import readwriteapp.composeapp.generated.resources.deck_gallery_simplify_keyboard
 import readwriteapp.composeapp.generated.resources.deck_gallery_submit
 import readwriteapp.composeapp.generated.resources.deck_gallery_wrong_feedback
+import readwriteapp.composeapp.generated.resources.deck_training_modes_help_action
 import readwriteapp.composeapp.generated.resources.navigation_tab_decks
 import readwriteapp.composeapp.generated.resources.navigation_tab_fairy_tales
 import readwriteapp.composeapp.generated.resources.navigation_tab_student
@@ -267,7 +269,9 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                                 previous = stringResource(Res.string.deck_gallery_previous),
                                 next = stringResource(Res.string.deck_gallery_next),
                                 empty = stringResource(Res.string.deck_gallery_empty),
-                                practiceMode = stringResource(Res.string.deck_gallery_practice_mode),
+                                practiceModeTitle = stringResource(Res.string.deck_gallery_practice_mode),
+                                practiceModeDescription = stringResource(Res.string.deck_gallery_practice_mode_description),
+                                practiceModeUnderstood = stringResource(Res.string.deck_training_modes_help_action),
                                 correctFeedback = stringResource(Res.string.deck_gallery_correct_feedback),
                                 wrongFeedback = stringResource(Res.string.deck_gallery_wrong_feedback),
                             ),

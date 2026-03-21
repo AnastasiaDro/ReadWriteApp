@@ -40,7 +40,7 @@
     <string name="deck_training_mode_random_learned_hint">Free practice with familiar cards without changing progress</string>
     <string name="deck_training_mode_random_all_title">Random from this deck</string>
     <string name="deck_training_mode_random_all_hint">New and familiar cards mixed together without changing progress</string>
-    <string name="deck_training_mode_gallery_title">Card gallery</string>
+    <string name="deck_training_mode_gallery_title">Free practice</string>
     <string name="deck_training_mode_gallery_hint">Browse cards manually and pick what to look at</string>
     <string name="deck_gallery_empty">There are no cards in this deck yet</string>
     <string name="deck_gallery_previous">Back</string>
@@ -50,6 +50,7 @@
     <string name="deck_gallery_show_word">Show the word</string>
     <string name="deck_gallery_simplify_keyboard">Simplify the keyboard</string>
     <string name="deck_gallery_practice_mode">Practice mode</string>
+    <string name="deck_gallery_practice_mode_description">This is a practice mode. You can freely browse cards here, and mistakes do not affect SRS progress.</string>
     <string name="deck_gallery_copy_stage">Copying</string>
     <string name="deck_gallery_recall_stage">From memory</string>
     <string name="deck_gallery_correct_feedback">Correct</string>

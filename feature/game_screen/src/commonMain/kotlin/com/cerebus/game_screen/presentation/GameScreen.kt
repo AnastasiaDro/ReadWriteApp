@@ -7,7 +7,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,12 +29,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.cerebus.core.ui.components.GameLikeScreenShell
+import com.cerebus.core.ui.components.PracticeModeStatusIcon
 import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.game_screen.navigation.GameScreenNavigatorImpl
 import com.cerebus.game_screen.presentation.view.FinishedGameContent
@@ -40,7 +44,9 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import readwriteapp.feature.game_screen.generated.resources.Res
+import readwriteapp.feature.game_screen.generated.resources.game_practice_mode_description
 import readwriteapp.feature.game_screen.generated.resources.game_practice_mode
+import readwriteapp.feature.game_screen.generated.resources.game_practice_mode_understood
 
 
 @Composable
@@ -92,12 +98,23 @@ fun GameScreen(
     onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
+    var showPracticeModeInfo by remember { mutableStateOf(false) }
+
     GameLikeScreenShell(
         topLeft = {
-            TextButton(
-                onClick = { onAction(GameScreenAction.OnCloseClick) },
-            ) {
-                Text("✕")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = { onAction(GameScreenAction.OnCloseClick) },
+                ) {
+                    Text("✕")
+                }
+
+                if (state is GameUiState.Active && state.isPracticeMode) {
+                    PracticeModeStatusIcon(
+                        onClick = { showPracticeModeInfo = true },
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
         },
         topRight = {
@@ -140,5 +157,22 @@ fun GameScreen(
                 )
             }
         }
+    }
+
+    if (showPracticeModeInfo) {
+        AlertDialog(
+            onDismissRequest = { showPracticeModeInfo = false },
+            title = {
+                Text(stringResource(Res.string.game_practice_mode))
+            },
+            text = {
+                Text(stringResource(Res.string.game_practice_mode_description))
+            },
+            confirmButton = {
+                TextButton(onClick = { showPracticeModeInfo = false }) {
+                    Text(stringResource(Res.string.game_practice_mode_understood))
+                }
+            },
+        )
     }
 }
