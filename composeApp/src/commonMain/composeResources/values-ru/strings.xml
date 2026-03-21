@@ -49,6 +49,7 @@
     <string name="deck_gallery_submit">Проверить</string>
     <string name="deck_gallery_show_word">Показать слово</string>
     <string name="deck_gallery_simplify_keyboard">Упростить клавиатуру</string>
+    <string name="deck_gallery_practice_mode">Режим практики</string>
     <string name="deck_gallery_copy_stage">Перепечатывание</string>
     <string name="deck_gallery_recall_stage">По памяти</string>
     <string name="deck_gallery_correct_feedback">Верно</string>

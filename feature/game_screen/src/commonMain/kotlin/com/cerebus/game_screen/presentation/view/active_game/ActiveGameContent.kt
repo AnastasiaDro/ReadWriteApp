@@ -37,6 +37,7 @@ import com.cerebus.core.ui.components.AnswerFieldVerticalPadding
 import com.cerebus.core.ui.components.GameLikeActiveScreenShell
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
+import com.cerebus.customkeyboard.resolveShowDigitsRow
 import com.cerebus.game_screen.presentation.GameScreenAction
 import com.cerebus.game_screen.presentation.GameUiState
 import com.cerebus.game_screen.presentation.view.AnswerInputRow
@@ -63,11 +64,11 @@ fun ActiveGameContent(
     val isLandscape = windowWidthDp > windowHeightDp
     val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
     val isPhoneLandscape = isLandscape && !isTablet
-    val showDigitsRow = !(
-            isPhoneLandscape &&
-                    state.hideDigitsOnTightScreen &&
-                    state.currentCard.answer.none { it.isDigit() }
-            )
+    val showDigitsRow = resolveShowDigitsRow(
+        isPhoneLandscape = isPhoneLandscape,
+        hideDigitsOnTightScreen = state.hideDigitsOnTightScreen,
+        referenceText = state.currentCard.answer,
+    )
     var isKeyboardVisible by remember { mutableStateOf(true) }
     val keyboardHeight = remember(windowWidthDp, windowHeightDp, showDigitsRow) {
         val baseHeight = if (isLandscape) {

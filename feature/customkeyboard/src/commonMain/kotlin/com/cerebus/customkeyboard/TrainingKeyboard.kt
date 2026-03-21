@@ -91,6 +91,18 @@ fun resolveTrainingKeyboardHeight(
     }
 }
 
+fun resolveShowDigitsRow(
+    isPhoneLandscape: Boolean,
+    hideDigitsOnTightScreen: Boolean,
+    referenceText: String,
+): Boolean {
+    return !(
+            isPhoneLandscape &&
+                    hideDigitsOnTightScreen &&
+                    referenceText.none { it.isDigit() }
+            )
+}
+
 @Composable
 fun TrainingKeyboard(
     referenceText: String,

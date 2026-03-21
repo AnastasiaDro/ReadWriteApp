@@ -86,6 +86,8 @@ import com.cerebus.core.utils.nowMillis
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
 import com.cerebus.customkeyboard.isNeighborKeyboardSlip
+import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
+import com.cerebus.customkeyboard.resolveShowDigitsRow
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
@@ -116,8 +118,7 @@ data class DeckGalleryStrings(
     val submit: String,
     val showWord: String,
     val simplifyKeyboard: String,
-    val copyStage: String,
-    val recallStage: String,
+    val practiceMode: String,
     val correctFeedback: String,
     val wrongFeedback: String,
 )
@@ -142,6 +143,7 @@ data class DeckGalleryUiState(
     val answerInput: String = "",
     val isHintVisible: Boolean = true,
     val isSimplifiedKeyboardEnabled: Boolean = false,
+    val hideDigitsOnTightScreen: Boolean = true,
     val copySuccessStreak: Int = 0,
     val wrongPressCount: Int = 0,
     val slipPressCount: Int = 0,
@@ -207,6 +209,8 @@ class DeckGalleryViewModel(
                     isLoading = true,
                     deckId = deckId,
                     isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
+                    hideDigitsOnTightScreen = preferencesRepository
+                        .getHideDigitsOnTightScreenEnabled(studentId) ?: true,
                 )
             }
 
@@ -419,6 +423,7 @@ class DeckGalleryViewModel(
         lastHandledKeyPressAtEpochMillis = 0L
         feedbackJob?.cancel()
         keyFeedbackJob?.cancel()
+        val keepHintVisible = _uiState.value.isHintVisible
         _uiState.update { state ->
             state.copy(
                 learningStage = DeckGalleryLearningStage.Copy,
@@ -426,7 +431,7 @@ class DeckGalleryViewModel(
                 keyboardFeedbackType = null,
                 inputFeedbackType = null,
                 answerInput = "",
-                isHintVisible = true,
+                isHintVisible = keepHintVisible,
                 isSimplifiedKeyboardEnabled = false,
                 copySuccessStreak = 0,
                 wrongPressCount = 0,
@@ -609,10 +614,26 @@ private fun DeckGalleryScreen(
     val isLandscape = windowWidthDp > windowHeightDp
     val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
     val isPhoneLandscape = isLandscape && !isTablet
+    val showDigitsRow = resolveShowDigitsRow(
+        isPhoneLandscape = isPhoneLandscape,
+        hideDigitsOnTightScreen = state.hideDigitsOnTightScreen,
+        referenceText = currentCard?.name.orEmpty(),
+    )
     var isKeyboardVisible by remember { mutableStateOf(true) }
     val showShowWordToggle = true
     val showSimplifyToggle = true
     val allowMultilineAnswer = currentCard?.name?.let { it.length > 10 || it.contains(' ') } == true
+    val keyboardHeight = remember(windowWidthDp, windowHeightDp, showDigitsRow) {
+        val baseHeight = if (isLandscape) {
+            (windowHeightDp * 0.5f).coerceIn(220.dp, 340.dp)
+        } else {
+            (windowHeightDp * 0.3f).coerceIn(220.dp, 340.dp)
+        }
+        resolveTrainingKeyboardHeight(
+            baseHeight = baseHeight,
+            showDigitsRow = showDigitsRow,
+        )
+    }
 
     GameLikeScreenShell(
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
@@ -651,9 +672,10 @@ private fun DeckGalleryScreen(
                     onSpacePressed = { onSymbolPressed(" ") },
                     onSubmitPressed = onSubmitPressed,
                     onSettingsPressed = {},
+                    showDigitsRow = showDigitsRow,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 220.dp),
+                        .heightIn(min = keyboardHeight, max = keyboardHeight),
                 )
             },
         ) {
@@ -714,8 +736,8 @@ private fun DeckGalleryScreen(
                                         horizontalAlignment = Alignment.End,
                                         verticalArrangement = Arrangement.Bottom,
                                     ) {
-                                        StageBadge(
-                                            text = strings.copyStage,
+                                        GalleryPracticeModeBadge(
+                                            text = strings.practiceMode,
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Row(
@@ -801,8 +823,8 @@ private fun DeckGalleryScreen(
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                             verticalArrangement = Arrangement.Bottom,
                                         ) {
-                                            StageBadge(
-                                                text = strings.copyStage,
+                                            GalleryPracticeModeBadge(
+                                                text = strings.practiceMode,
                                             )
                                             Spacer(modifier = Modifier.height(10.dp))
                                             GalleryTrainingCard(
@@ -844,8 +866,8 @@ private fun DeckGalleryScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                         ) {
-                            StageBadge(
-                                text = strings.copyStage,
+                            GalleryPracticeModeBadge(
+                                text = strings.practiceMode,
                             )
                             Text(
                                 text = "${state.currentIndex + 1} / ${cards.size}",
@@ -1041,9 +1063,10 @@ private fun GalleryTrainingCard(
         val cardSize = if (maxWidth < 360.dp) maxWidth else 360.dp
         var dragAccumulation by remember(card.id) { mutableStateOf(0f) }
 
-        Row(
+        Box(
             modifier = Modifier
                 .widthIn(max = 480.dp)
+                .align(Alignment.Center)
                 .pointerInput(card.id, onSwipePrevious, onSwipeNext) {
                     detectHorizontalDragGestures(
                         onHorizontalDrag = { _, dragAmount ->
@@ -1061,16 +1084,7 @@ private fun GalleryTrainingCard(
                         },
                     )
                 },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            GallerySideArrowButton(
-                symbol = "‹",
-                label = previousLabel,
-                enabled = onSwipePrevious != null,
-                onClick = { onSwipePrevious?.invoke() },
-            )
-
             Box(
                 modifier = Modifier
                     .widthIn(max = 360.dp)
@@ -1109,14 +1123,27 @@ private fun GalleryTrainingCard(
                         .padding(bottom = 12.dp),
                 )
             }
-
-            GallerySideArrowButton(
-                symbol = "›",
-                label = nextLabel,
-                enabled = onSwipeNext != null,
-                onClick = { onSwipeNext?.invoke() },
-            )
         }
+
+        GallerySideArrowButton(
+            symbol = "‹",
+            label = previousLabel,
+            enabled = onSwipePrevious != null,
+            onClick = { onSwipePrevious?.invoke() },
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 8.dp),
+        )
+
+        GallerySideArrowButton(
+            symbol = "›",
+            label = nextLabel,
+            enabled = onSwipeNext != null,
+            onClick = { onSwipeNext?.invoke() },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 8.dp),
+        )
     }
 }
 
@@ -1126,6 +1153,7 @@ private fun GallerySideArrowButton(
     label: String,
     enabled: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -1135,7 +1163,7 @@ private fun GallerySideArrowButton(
         label = "gallery_side_arrow_scale",
     )
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .size(44.dp)
             .clip(RoundedCornerShape(999.dp))
             .graphicsLayer {
@@ -1487,7 +1515,7 @@ private fun GalleryFeedbackBanner(
 }
 
 @Composable
-private fun StageBadge(
+private fun GalleryPracticeModeBadge(
     text: String,
 ) {
     Text(

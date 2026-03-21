@@ -49,6 +49,7 @@
     <string name="deck_gallery_submit">Check</string>
     <string name="deck_gallery_show_word">Show the word</string>
     <string name="deck_gallery_simplify_keyboard">Simplify the keyboard</string>
+    <string name="deck_gallery_practice_mode">Practice mode</string>
     <string name="deck_gallery_copy_stage">Copying</string>
     <string name="deck_gallery_recall_stage">From memory</string>
     <string name="deck_gallery_correct_feedback">Correct</string>

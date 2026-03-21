@@ -56,6 +56,7 @@ import readwriteapp.composeapp.generated.resources.deck_gallery_edit
 import readwriteapp.composeapp.generated.resources.deck_gallery_empty
 import readwriteapp.composeapp.generated.resources.deck_gallery_next
 import readwriteapp.composeapp.generated.resources.deck_gallery_previous
+import readwriteapp.composeapp.generated.resources.deck_gallery_practice_mode
 import readwriteapp.composeapp.generated.resources.deck_gallery_recall_stage
 import readwriteapp.composeapp.generated.resources.deck_gallery_show_word
 import readwriteapp.composeapp.generated.resources.deck_gallery_simplify_keyboard
@@ -272,8 +273,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                                 submit = stringResource(Res.string.deck_gallery_submit),
                                 showWord = stringResource(Res.string.deck_gallery_show_word),
                                 simplifyKeyboard = stringResource(Res.string.deck_gallery_simplify_keyboard),
-                                copyStage = stringResource(Res.string.deck_gallery_copy_stage),
-                                recallStage = stringResource(Res.string.deck_gallery_recall_stage),
+                                practiceMode = stringResource(Res.string.deck_gallery_practice_mode),
                                 correctFeedback = stringResource(Res.string.deck_gallery_correct_feedback),
                                 wrongFeedback = stringResource(Res.string.deck_gallery_wrong_feedback),
                             ),
