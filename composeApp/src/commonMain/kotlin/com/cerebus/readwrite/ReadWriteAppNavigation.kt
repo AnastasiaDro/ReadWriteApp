@@ -60,6 +60,7 @@ import readwriteapp.composeapp.generated.resources.deck_gallery_simplify_keyboar
 import readwriteapp.composeapp.generated.resources.deck_gallery_submit
 import readwriteapp.composeapp.generated.resources.deck_gallery_wrong_feedback
 import readwriteapp.composeapp.generated.resources.navigation_tab_decks
+import readwriteapp.composeapp.generated.resources.navigation_tab_fairy_tales
 import readwriteapp.composeapp.generated.resources.navigation_tab_student
 import readwriteapp.composeapp.generated.resources.unnamed_deck
 
@@ -81,6 +82,12 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 route = TopLevelGraphs.DECKS,
                 labelRes = Res.string.navigation_tab_decks,
                 icon = "🗂",
+            ),
+            AppTopLevelTab(
+                route = TopLevelGraphs.FAIRY_TALES,
+                labelRes = Res.string.navigation_tab_fairy_tales,
+                icon = "📖",
+                isPlaceholder = true,
             ),
         )
     }
@@ -106,7 +113,11 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                             selected = currentDestination
                                 ?.hierarchy
                                 ?.any { it.route == tab.route } == true,
-                            onClick = { navController.navigateToTopLevelTab(tab.route) },
+                            onClick = {
+                                if (!tab.isPlaceholder) {
+                                    navController.navigateToTopLevelTab(tab.route)
+                                }
+                            },
                             icon = { Text(text = tab.icon) },
                             label = { Text(text = stringResource(tab.labelRes)) },
                         )
@@ -377,11 +388,13 @@ private data class AppTopLevelTab(
     val route: String,
     val labelRes: StringResource,
     val icon: String,
+    val isPlaceholder: Boolean = false,
 )
 
 private object TopLevelGraphs {
     const val STUDENT = "student_graph"
     const val DECKS = "decks_graph"
+    const val FAIRY_TALES = "fairy_tales_graph"
 }
 
 private val TOP_LEVEL_TAB_SCREEN_ROUTES = setOf(
