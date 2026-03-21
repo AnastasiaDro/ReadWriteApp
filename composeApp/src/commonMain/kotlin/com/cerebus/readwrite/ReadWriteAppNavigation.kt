@@ -264,23 +264,14 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                             deckId = DeckNavigationState.selectedDeckId,
                             initialCardId = initialCardId,
                             strings = DeckGalleryStrings(
-                                back = stringResource(Res.string.back),
-                                titleFallback = stringResource(Res.string.unnamed_deck),
                                 previous = stringResource(Res.string.deck_gallery_previous),
                                 next = stringResource(Res.string.deck_gallery_next),
                                 empty = stringResource(Res.string.deck_gallery_empty),
-                                edit = stringResource(Res.string.deck_gallery_edit),
-                                submit = stringResource(Res.string.deck_gallery_submit),
-                                showWord = stringResource(Res.string.deck_gallery_show_word),
-                                simplifyKeyboard = stringResource(Res.string.deck_gallery_simplify_keyboard),
                                 practiceMode = stringResource(Res.string.deck_gallery_practice_mode),
                                 correctFeedback = stringResource(Res.string.deck_gallery_correct_feedback),
                                 wrongFeedback = stringResource(Res.string.deck_gallery_wrong_feedback),
                             ),
                             onBackClick = { navController.closeDeckGallery() },
-                            onEditCard = { deckId, cardId ->
-                                navController.openDeckEditor(deckId, cardId)
-                            },
                         )
                     }
                 }
