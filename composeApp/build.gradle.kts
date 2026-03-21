@@ -70,6 +70,7 @@ kotlin {
             implementation(project(":feature:student"))
             implementation(project(":feature:session_settings"))
             implementation(project(":feature:customkeyboard"))
+            implementation(project(":feature:fairy_tales"))
             implementation(libs.coil)
             implementation(libs.compose.icons)
         }

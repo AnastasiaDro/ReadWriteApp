@@ -29,6 +29,8 @@ import com.cerebus.create_screen.presentation.DeckGalleryRoute
 import com.cerebus.create_screen.presentation.DeckGalleryStrings
 import com.cerebus.customkeyboard.KeyboardSettingsRoute
 import com.cerebus.customkeyboard.navigation.KeyboardSettingsNavigationState
+import com.cerebus.fairy_tales.navigation.FairyTalesGraph
+import com.cerebus.fairy_tales.navigation.fairyTalesGraph
 import com.cerebus.game_screen.navigation.GameSessionNavigationState
 import com.cerebus.game_screen.presentation.GameScreenWrapper
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
@@ -84,10 +86,9 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                 icon = "🗂",
             ),
             AppTopLevelTab(
-                route = TopLevelGraphs.FAIRY_TALES,
+                route = FairyTalesGraph.GRAPH_ROUTE,
                 labelRes = Res.string.navigation_tab_fairy_tales,
                 icon = "📖",
-                isPlaceholder = true,
             ),
         )
     }
@@ -113,11 +114,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                             selected = currentDestination
                                 ?.hierarchy
                                 ?.any { it.route == tab.route } == true,
-                            onClick = {
-                                if (!tab.isPlaceholder) {
-                                    navController.navigateToTopLevelTab(tab.route)
-                                }
-                            },
+                            onClick = { navController.navigateToTopLevelTab(tab.route) },
                             icon = { Text(text = tab.icon) },
                             label = { Text(text = stringResource(tab.labelRes)) },
                         )
@@ -288,6 +285,8 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     }
                 }
 
+                fairyTalesGraph()
+
                 composable(Screens.GAME.route) {
                     GameScreenWrapper(
                         navController = navController,
@@ -388,18 +387,17 @@ private data class AppTopLevelTab(
     val route: String,
     val labelRes: StringResource,
     val icon: String,
-    val isPlaceholder: Boolean = false,
 )
 
 private object TopLevelGraphs {
     const val STUDENT = "student_graph"
     const val DECKS = "decks_graph"
-    const val FAIRY_TALES = "fairy_tales_graph"
 }
 
 private val TOP_LEVEL_TAB_SCREEN_ROUTES = setOf(
     Screens.ACTIVE_STUDENT.route,
     Screens.CREATE.route,
+    FairyTalesGraph.SCREEN_ROUTE,
 )
 
 private fun onTryDemoClicked() {
