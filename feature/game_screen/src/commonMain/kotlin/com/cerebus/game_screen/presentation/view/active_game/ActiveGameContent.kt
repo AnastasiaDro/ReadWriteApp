@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import com.cerebus.core.ui.components.AnswerFieldVerticalPadding
+import com.cerebus.core.ui.components.FeedbackOverlay
 import com.cerebus.core.ui.components.GameLikeActiveScreenShell
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
@@ -314,7 +315,8 @@ fun ActiveGameContent(
                     }
 
                     FeedbackOverlay(
-                        feedback = state.feedback,
+                        message = state.feedback?.message,
+                        emoji = state.feedback?.emoji,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
@@ -378,7 +380,8 @@ fun ActiveGameContent(
                     }
 
                     FeedbackOverlay(
-                        feedback = state.feedback,
+                        message = state.feedback?.message,
+                        emoji = state.feedback?.emoji,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 }

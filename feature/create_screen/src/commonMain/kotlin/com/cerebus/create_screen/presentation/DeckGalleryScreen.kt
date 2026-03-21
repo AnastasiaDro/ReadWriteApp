@@ -1,8 +1,5 @@
 package com.cerebus.create_screen.presentation
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -79,6 +76,7 @@ import coil3.compose.LocalPlatformContext
 import com.cerebus.core.ui.components.AnswerFieldVerticalPadding
 import com.cerebus.core.ui.components.GameLikeActiveScreenShell
 import com.cerebus.core.ui.components.AnswerInputRow
+import com.cerebus.core.ui.components.FeedbackOverlay
 import com.cerebus.core.ui.components.GameLikeScreenShell
 import com.cerebus.core.ui.components.OverlayHelpToggleChip
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
@@ -868,8 +866,9 @@ private fun DeckGalleryScreen(
                             }
                         }
 
-                        GalleryFeedbackBanner(
-                            feedback = state.feedback,
+                        FeedbackOverlay(
+                            message = state.feedback?.message,
+                            emoji = state.feedback?.emoji,
                             modifier = Modifier.align(Alignment.Center),
                         )
 
@@ -1196,43 +1195,6 @@ private fun GalleryCardTextFallback(
         modifier = modifier
             .padding(horizontal = 16.dp, vertical = 12.dp),
     )
-}
-
-@Composable
-private fun GalleryFeedbackBanner(
-    feedback: DeckGalleryFeedbackUi?,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier.height(if (feedback == null) 0.dp else 64.dp),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        AnimatedVisibility(
-            visible = feedback != null,
-            enter = fadeIn(animationSpec = tween(durationMillis = 180)),
-            exit = fadeOut(animationSpec = tween(durationMillis = 120)),
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = feedback?.emoji.orEmpty(),
-                    style = MaterialTheme.typography.headlineLarge,
-                )
-                Text(
-                    text = feedback?.message.orEmpty(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                )
-            }
-        }
-    }
 }
 
 @Composable
