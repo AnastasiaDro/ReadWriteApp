@@ -1,9 +1,5 @@
 package com.cerebus.game_screen.presentation.view.active_game
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -38,11 +33,12 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
+import com.cerebus.core.ui.components.AnswerFieldVerticalPadding
+import com.cerebus.core.ui.components.GameLikeActiveScreenShell
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
 import com.cerebus.game_screen.presentation.GameScreenAction
 import com.cerebus.game_screen.presentation.GameUiState
-import com.cerebus.game_screen.presentation.view.AnswerFieldVerticalPadding
 import com.cerebus.game_screen.presentation.view.AnswerInputRow
 import org.jetbrains.compose.resources.stringResource
 import readwriteapp.feature.game_screen.generated.resources.Res
@@ -85,10 +81,37 @@ fun ActiveGameContent(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primaryContainer)
+    GameLikeActiveScreenShell(
+        modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer),
+        showKeyboard = isKeyboardVisible,
+        isLandscape = isLandscape,
+        keyboard = {
+            TrainingKeyboard(
+                referenceText = state.currentCard.answer,
+                activeSymbols = state.activeSymbols,
+                isShiftEnabled = state.isShiftEnabled,
+                feedbackKey = state.keyboardFeedbackKey,
+                feedbackType = state.keyboardFeedbackType,
+                onShiftChanged = { onAction(GameScreenAction.OnShiftChanged(it)) },
+                onSymbolPressed = { symbol -> onAction(GameScreenAction.OnKeyboardSymbolPressed(symbol)) },
+                onBackspacePressed = { onAction(GameScreenAction.OnBackspacePressed) },
+                onSpacePressed = {
+                    if (!state.answerInput.endsWith(" ")) {
+                        onAction(GameScreenAction.OnKeyboardSymbolPressed(" "))
+                    }
+                },
+                onSubmitPressed = { onAction(GameScreenAction.OnCheckClick) },
+                onSettingsPressed = {
+                    if (state.studentId.isNotBlank()) {
+                        onOpenKeyboardSettings(state.studentId)
+                    }
+                },
+                showDigitsRow = showDigitsRow,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = keyboardHeight, max = keyboardHeight),
+            )
+        },
     ) {
         BoxWithConstraints(
             modifier = Modifier
@@ -360,76 +383,35 @@ fun ActiveGameContent(
                 }
             }
         }
+    }
 
-        AnimatedVisibility(
-            visible = isKeyboardVisible,
-            enter = fadeIn(animationSpec = tween(durationMillis = 180)),
-            exit = fadeOut(animationSpec = tween(durationMillis = 120)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(
-                    start = 6.dp,
-                    end = 6.dp,
-                    top = if (isLandscape) 8.dp else 4.dp,
-                    bottom = 4.dp,
-                ),
-        ) {
-            TrainingKeyboard(
-                referenceText = state.currentCard.answer,
-                activeSymbols = state.activeSymbols,
-                isShiftEnabled = state.isShiftEnabled,
-                feedbackKey = state.keyboardFeedbackKey,
-                feedbackType = state.keyboardFeedbackType,
-                onShiftChanged = { onAction(GameScreenAction.OnShiftChanged(it)) },
-                onSymbolPressed = { symbol -> onAction(GameScreenAction.OnKeyboardSymbolPressed(symbol)) },
-                onBackspacePressed = { onAction(GameScreenAction.OnBackspacePressed) },
-                onSpacePressed = {
-                    if (!state.answerInput.endsWith(" ")) {
-                        onAction(GameScreenAction.OnKeyboardSymbolPressed(" "))
-                    }
-                },
-                onSubmitPressed = { onAction(GameScreenAction.OnCheckClick) },
-                onSettingsPressed = {
-                    if (state.studentId.isNotBlank()) {
-                        onOpenKeyboardSettings(state.studentId)
-                    }
-                },
-                showDigitsRow = showDigitsRow,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = keyboardHeight, max = keyboardHeight),
-            )
-        }
-
-        if (state.showTypoSettingsSuggestion && state.studentId.isNotBlank()) {
-            AlertDialog(
-                onDismissRequest = { onAction(GameScreenAction.OnTypoSuggestionDismissed) },
-                title = {
-                    Text(stringResource(Res.string.game_typo_settings_suggestion_title))
-                },
-                text = {
-                    Text(stringResource(Res.string.game_typo_settings_suggestion_body))
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            onAction(GameScreenAction.OnTypoSuggestionDismissed)
-                            onOpenSessionSettings(state.studentId, true)
-                        },
-                    ) {
-                        Text(stringResource(Res.string.game_typo_settings_suggestion_confirm))
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { onAction(GameScreenAction.OnTypoSuggestionDismissed) },
-                    ) {
-                        Text(stringResource(Res.string.game_typo_settings_suggestion_dismiss))
-                    }
-                },
-            )
-        }
+    if (state.showTypoSettingsSuggestion && state.studentId.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = { onAction(GameScreenAction.OnTypoSuggestionDismissed) },
+            title = {
+                Text(stringResource(Res.string.game_typo_settings_suggestion_title))
+            },
+            text = {
+                Text(stringResource(Res.string.game_typo_settings_suggestion_body))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onAction(GameScreenAction.OnTypoSuggestionDismissed)
+                        onOpenSessionSettings(state.studentId, true)
+                    },
+                ) {
+                    Text(stringResource(Res.string.game_typo_settings_suggestion_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { onAction(GameScreenAction.OnTypoSuggestionDismissed) },
+                ) {
+                    Text(stringResource(Res.string.game_typo_settings_suggestion_dismiss))
+                }
+            },
+        )
     }
 }
 

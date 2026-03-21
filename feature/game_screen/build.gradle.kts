@@ -71,6 +71,7 @@ kotlin {
                 implementation(libs.androidx.navigation.compose)
                 implementation(libs.koin.compose.viewmodel)
                 implementation(libs.coil)
+                implementation(project(":core:ui"))
                 implementation(project(":core:utils"))
                 implementation(project(":core:game_engine"))
                 implementation(project(":data:decks"))

@@ -6,17 +6,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import com.cerebus.core.ui.components.GameLikeScreenShell
 import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.game_screen.navigation.GameScreenNavigatorImpl
 import com.cerebus.game_screen.presentation.view.FinishedGameContent
@@ -100,7 +92,23 @@ fun GameScreen(
     onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    GameLikeScreenShell(
+        topLeft = {
+            TextButton(
+                onClick = { onAction(GameScreenAction.OnCloseClick) },
+            ) {
+                Text("✕")
+            }
+        },
+        topRight = {
+            if (state is GameUiState.Active) {
+                TopRightHelpChips(
+                    state = state,
+                    onAction = onAction,
+                )
+            }
+        },
+    ) {
         when (state) {
             GameUiState.Loading -> {
                 Box(
@@ -127,30 +135,6 @@ fun GameScreen(
 
             is GameUiState.Finished -> {
                 FinishedGameContent(
-                    state = state,
-                    onAction = onAction,
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(start = 12.dp, top = 8.dp, end = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            TextButton(
-                onClick = { onAction(GameScreenAction.OnCloseClick) },
-            ) {
-                Text("✕")
-            }
-
-            if (state is GameUiState.Active) {
-                TopRightHelpChips(
                     state = state,
                     onAction = onAction,
                 )

@@ -23,7 +23,8 @@ internal object FairyTalesCatalog {
             description = "За малыми ребятами, ножками - топ-топ, ручками - хлоп-хлоп ...",
             coverColor = Color(0xFFE7A86A),
             coverRes = Res.drawable.koza,
-            animationAssetPath = "files/koza.json",
+           // animationAssetPath = "files/koza.json",
+            animationAssetPath = "files/koza_top_top.json",
             storyText = "Здесь будет полный текст сказки и разметка для чтения.",
         ),
         FairyTaleContent(

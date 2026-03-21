@@ -17,15 +17,19 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -38,12 +42,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,12 +68,19 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
+import com.cerebus.core.ui.components.AnswerFieldVerticalPadding
+import com.cerebus.core.ui.components.GameLikeActiveScreenShell
+import com.cerebus.core.ui.components.AnswerInputRow
+import com.cerebus.core.ui.components.GameLikeScreenShell
+import com.cerebus.core.ui.components.OverlayHelpToggleChip
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.core.utils.nowMillis
 import com.cerebus.customkeyboard.TrainingKeyboard
@@ -173,7 +182,6 @@ class DeckGalleryViewModel(
     private var neighborTypoSensitivity: NeighborTypoSensitivity = NeighborTypoSensitivity.Strict
     private var freeNeighborSlipPresses: Int = 1
     private var keyboardPressDelayMs: Long = KeyboardPressDelay.Normal.intervalMs
-    private var copyStageSuccessThreshold: Int = 2
     private var lastHandledKeyPressAtEpochMillis: Long = 0L
 
     fun load() {
@@ -194,10 +202,6 @@ class DeckGalleryViewModel(
                 .coerceIn(0, 3)
             keyboardPressDelayMs = (preferencesRepository.getKeyboardPressDelay(studentId)
                 ?: KeyboardPressDelay.Normal).intervalMs
-            copyStageSuccessThreshold = runCatching {
-                studentPrefsRepository.getPrefs(studentId).guidedHintSuccessThreshold
-            }.getOrDefault(2).coerceAtLeast(1)
-
             _uiState.update {
                 it.copy(
                     isLoading = true,
@@ -350,9 +354,6 @@ class DeckGalleryViewModel(
         val userInput = current.answerInput.canonicalizeOptionalSpacesForExpected(currentCard.name)
         val isCorrect = userInput.trim().equals(currentCard.name.trim(), ignoreCase = true)
         if (!isCorrect) {
-            if (current.learningStage == DeckGalleryLearningStage.Copy) {
-                _uiState.update { it.copy(copySuccessStreak = 0) }
-            }
             showAttemptFeedback(
                 feedback = DeckGalleryFeedbackUi(
                     message = strings.wrongFeedback,
@@ -365,53 +366,6 @@ class DeckGalleryViewModel(
             return
         }
 
-        if (current.learningStage == DeckGalleryLearningStage.Copy) {
-            val isIdealCopyAttempt = current.wrongPressCount == 0 &&
-                current.slipPressCount <= freeNeighborSlipPresses &&
-                !current.usedShowWord &&
-                !current.usedSimplifiedKeyboard
-            val nextCopySuccessStreak = if (isIdealCopyAttempt) {
-                current.copySuccessStreak + 1
-            } else {
-                0
-            }
-            _uiState.update { it.copy(copySuccessStreak = nextCopySuccessStreak) }
-            showAttemptFeedback(
-                feedback = DeckGalleryFeedbackUi(
-                    message = strings.correctFeedback,
-                    emoji = "✅",
-                ),
-                afterDelay = {
-                    if (nextCopySuccessStreak >= copyStageSuccessThreshold) {
-                        _uiState.update { state ->
-                            state.copy(
-                                learningStage = DeckGalleryLearningStage.Recall,
-                                answerInput = "",
-                                isHintVisible = false,
-                                isSimplifiedKeyboardEnabled = false,
-                                copySuccessStreak = 0,
-                                wrongPressCount = 0,
-                                slipPressCount = 0,
-                                usedShowWord = false,
-                                usedSimplifiedKeyboard = false,
-                                keyboardFeedbackKey = null,
-                                keyboardFeedbackType = null,
-                                inputFeedbackType = null,
-                                feedback = null,
-                            )
-                        }
-                    } else {
-                        resetAttemptForCurrentCard(
-                            keepLearningStage = DeckGalleryLearningStage.Copy,
-                            keepHintVisible = true,
-                            keepCopySuccessStreak = nextCopySuccessStreak,
-                        )
-                    }
-                },
-            )
-            return
-        }
-
         showAttemptFeedback(
             feedback = DeckGalleryFeedbackUi(
                 message = strings.correctFeedback,
@@ -419,8 +373,8 @@ class DeckGalleryViewModel(
             ),
             afterDelay = {
                 resetAttemptForCurrentCard(
-                    keepLearningStage = DeckGalleryLearningStage.Recall,
-                    keepHintVisible = false,
+                    keepLearningStage = DeckGalleryLearningStage.Copy,
+                    keepHintVisible = current.isHintVisible,
                     keepCopySuccessStreak = 0,
                 )
             },
@@ -429,7 +383,7 @@ class DeckGalleryViewModel(
 
     fun onShowWordToggle(isEnabled: Boolean) {
         val current = _uiState.value
-        if (current.feedback != null || current.learningStage != DeckGalleryLearningStage.Recall) return
+        if (current.feedback != null) return
         _uiState.update {
             it.copy(
                 usedShowWord = it.usedShowWord || isEnabled,
@@ -609,10 +563,6 @@ fun DeckGalleryRoute(
         state = state,
         strings = strings,
         onBackClick = onBackClick,
-        onEditCard = {
-            val currentCard = state.currentCard ?: return@DeckGalleryScreen
-            onEditCard(state.deckId, currentCard.id)
-        },
         onPreviousClick = viewModel::showPrevious,
         onNextClick = viewModel::showNext,
         onCardSelected = viewModel::showCard,
@@ -626,12 +576,10 @@ fun DeckGalleryRoute(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun DeckGalleryScreen(
     state: DeckGalleryUiState,
     strings: DeckGalleryStrings,
     onBackClick: () -> Unit,
-    onEditCard: () -> Unit,
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     onCardSelected: (Int) -> Unit,
@@ -654,246 +602,43 @@ private fun DeckGalleryScreen(
 
     val cards = state.cards
     val currentCard = state.currentCard
-    val deckTitle = state.deckName.ifBlank { strings.titleFallback }
     val density = LocalDensity.current
     val windowInfo = LocalWindowInfo.current
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
     val isLandscape = windowWidthDp > windowHeightDp
+    val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
+    val isPhoneLandscape = isLandscape && !isTablet
     var isKeyboardVisible by remember { mutableStateOf(true) }
-    val showShowWordToggle = state.learningStage == DeckGalleryLearningStage.Recall
+    val showShowWordToggle = true
     val showSimplifyToggle = true
+    val allowMultilineAnswer = currentCard?.name?.let { it.length > 10 || it.contains(' ') } == true
 
-    Scaffold(
-        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
-        topBar = {
-            TopAppBar(
-                windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
-                title = {
-                    Text(
-                        text = deckTitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    TextButton(onClick = onBackClick) {
-                        Text(strings.back)
-                    }
-                },
-                actions = {
-                    if (currentCard != null) {
-                        TextButton(onClick = onEditCard) {
-                            Text(strings.edit)
-                        }
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background),
-        ) {
-            if (isLandscape) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    if (currentCard == null) {
-                        Text(
-                            text = strings.empty,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            GalleryTrainingCard(
-                                card = currentCard,
-                                isHintVisible = state.isHintVisible,
-                                modifier = Modifier.fillMaxWidth(),
-                                onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
-                                onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
-                                previousLabel = strings.previous,
-                                nextLabel = strings.next,
-                            )
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            GallerySectionCard {
-                                GalleryFeedbackBanner(
-                                    feedback = state.feedback,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    StageBadge(
-                                        text = if (state.learningStage == DeckGalleryLearningStage.Copy) {
-                                            strings.copyStage
-                                        } else {
-                                            strings.recallStage
-                                        },
-                                    )
-                                    Text(
-                                        text = "${state.currentIndex + 1} / ${cards.size}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-
-                                GalleryAnswerInputSection(
-                                    answerInput = state.answerInput,
-                                    expectedAnswer = currentCard.name,
-                                    inputFeedbackType = state.inputFeedbackType,
-                                    showShowWordToggle = showShowWordToggle,
-                                    showSimplifyToggle = showSimplifyToggle,
-                                    isShowWordEnabled = state.isHintVisible,
-                                    isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
-                                    usedShowWord = state.usedShowWord,
-                                    usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
-                                    submitText = strings.submit,
-                                    showWordText = strings.showWord,
-                                    simplifyKeyboardText = strings.simplifyKeyboard,
-                                    onFieldClick = { isKeyboardVisible = true },
-                                    onSubmit = onSubmitPressed,
-                                    onShowWordToggle = onShowWordToggle,
-                                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
-                                )
-                            }
-
-                            GallerySectionCard {
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->
-                                        GalleryCardThumbnail(
-                                            card = card,
-                                            isSelected = index == state.currentIndex,
-                                            onClick = { onCardSelected(index) },
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    if (currentCard == null) {
-                        Text(
-                            text = strings.empty,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                        )
-                        return@Column
-                    }
-
-                    GalleryFeedbackBanner(
-                        feedback = state.feedback,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        StageBadge(
-                            text = if (state.learningStage == DeckGalleryLearningStage.Copy) {
-                                strings.copyStage
-                            } else {
-                                strings.recallStage
-                            },
-                        )
-
-                        Text(
-                            text = "${state.currentIndex + 1} / ${cards.size}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    GalleryTrainingCard(
-                        card = currentCard,
-                        isHintVisible = state.isHintVisible,
-                        modifier = Modifier.fillMaxWidth(),
-                        onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
-                        onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
-                        previousLabel = strings.previous,
-                        nextLabel = strings.next,
-                    )
-
-                    GallerySectionCard {
-                        GalleryAnswerInputSection(
-                            answerInput = state.answerInput,
-                            expectedAnswer = currentCard.name,
-                            inputFeedbackType = state.inputFeedbackType,
-                            showShowWordToggle = showShowWordToggle,
-                            showSimplifyToggle = showSimplifyToggle,
-                            isShowWordEnabled = state.isHintVisible,
-                            isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
-                            usedShowWord = state.usedShowWord,
-                            usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
-                            submitText = strings.submit,
-                            showWordText = strings.showWord,
-                            simplifyKeyboardText = strings.simplifyKeyboard,
-                            onFieldClick = { isKeyboardVisible = true },
-                            onSubmit = onSubmitPressed,
-                            onShowWordToggle = onShowWordToggle,
-                            onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
-                        )
-                    }
-
-                    GallerySectionCard {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->
-                                GalleryCardThumbnail(
-                                    card = card,
-                                    isSelected = index == state.currentIndex,
-                                    onClick = { onCardSelected(index) },
-                                )
-                            }
-                        }
-                    }
-                }
+    GameLikeScreenShell(
+        modifier = Modifier.background(MaterialTheme.colorScheme.background),
+        topLeft = {
+            TextButton(onClick = onBackClick) {
+                Text("✕")
             }
-
-            AnimatedVisibility(
-                visible = isKeyboardVisible && currentCard != null,
-                enter = fadeIn(animationSpec = tween(durationMillis = 180)),
-                exit = fadeOut(animationSpec = tween(durationMillis = 120)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 6.dp, top = 2.dp, end = 6.dp),
-            ) {
+        },
+        topRight = {
+            if (currentCard != null) {
+                GalleryTopRightHelpChips(
+                    showWordChip = showShowWordToggle,
+                    isShowWordEnabled = state.isHintVisible,
+                    isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                    usedShowWord = state.usedShowWord,
+                    usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
+                    onShowWordToggle = onShowWordToggle,
+                    onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
+                )
+            }
+        },
+    ) {
+        GameLikeActiveScreenShell(
+            showKeyboard = isKeyboardVisible && currentCard != null,
+            isLandscape = isLandscape,
+            keyboard = {
                 TrainingKeyboard(
                     referenceText = currentCard?.name.orEmpty(),
                     activeSymbols = state.activeSymbols,
@@ -910,8 +655,344 @@ private fun DeckGalleryScreen(
                         .fillMaxWidth()
                         .heightIn(min = 220.dp),
                 )
+            },
+        ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(
+                        top = when {
+                            isPhoneLandscape -> 8.dp
+                            isLandscape -> 20.dp
+                            else -> 24.dp
+                        },
+                        bottom = if (isLandscape) 0.dp else 12.dp,
+                    ),
+            ) {
+                val availableContentWidth = maxWidth
+                val availableContentHeight = maxHeight
+                val answerTextScale = if (isTablet) 2f else 1.5f
+                val inputSectionHeight = resolveGalleryAnswerSectionMinHeight(
+                    baseLineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
+                    textScale = answerTextScale,
+                    allowMultiline = allowMultilineAnswer,
+                    density = density,
+                )
+                val verticalSpacing = if (isLandscape) 12.dp else 16.dp
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (currentCard == null) {
+                        Text(
+                            text = strings.empty,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    } else if (isLandscape && isKeyboardVisible) {
+                        val landscapeCardSize = minOf(
+                            availableContentHeight - 8.dp,
+                            availableContentWidth,
+                        ).coerceAtLeast(120.dp)
+                        val landscapeHalfWidth = ((availableContentWidth - 8.dp) / 2f).coerceAtLeast(140.dp)
+                        val counterWidth = 28.dp
+
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            if (isPhoneLandscape) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.BottomEnd,
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.End,
+                                        verticalArrangement = Arrangement.Bottom,
+                                    ) {
+                                        StageBadge(
+                                            text = strings.copyStage,
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.End,
+                                        ) {
+                                            Text(
+                                                text = "${state.currentIndex + 1}/${cards.size}",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.widthIn(min = counterWidth),
+                                                textAlign = TextAlign.Center,
+                                            )
+                                            Spacer(modifier = Modifier.widthIn(min = 6.dp, max = 6.dp))
+                                            GalleryTrainingCard(
+                                                card = currentCard,
+                                                isHintVisible = state.isHintVisible,
+                                                modifier = Modifier.widthIn(max = landscapeCardSize),
+                                                onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
+                                                onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
+                                                previousLabel = strings.previous,
+                                                nextLabel = strings.next,
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.widthIn(min = 8.dp, max = 8.dp))
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.BottomStart,
+                                ) {
+                                    GalleryGameLikeAnswerSection(
+                                        answerInput = state.answerInput,
+                                        expectedAnswer = currentCard.name,
+                                        inputFeedbackType = state.inputFeedbackType,
+                                        availableWidth = minOf(landscapeHalfWidth, 280.dp),
+                                        fieldReferenceWidth = landscapeCardSize,
+                                        isStacked = false,
+                                        alignToStart = true,
+                                        onFieldClick = { isKeyboardVisible = true },
+                                        onSubmit = onSubmitPressed,
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.CenterEnd,
+                                ) {
+                                    Text(
+                                        text = "${state.currentIndex + 1}/${cards.size}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(end = 12.dp),
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.BottomCenter,
+                                ) {
+                                    BoxWithConstraints(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.BottomCenter,
+                                    ) {
+                                        val tabletContentWidth = minOf(
+                                            maxWidth,
+                                            maxHeight - inputSectionHeight - 10.dp,
+                                        ).coerceAtLeast(120.dp)
+
+                                        Column(
+                                            modifier = Modifier
+                                                .widthIn(max = tabletContentWidth)
+                                                .fillMaxHeight(),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Bottom,
+                                        ) {
+                                            StageBadge(
+                                                text = strings.copyStage,
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            GalleryTrainingCard(
+                                                card = currentCard,
+                                                isHintVisible = state.isHintVisible,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
+                                                onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
+                                                previousLabel = strings.previous,
+                                                nextLabel = strings.next,
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            GalleryGameLikeAnswerSection(
+                                                answerInput = state.answerInput,
+                                                expectedAnswer = currentCard.name,
+                                                inputFeedbackType = state.inputFeedbackType,
+                                                availableWidth = tabletContentWidth,
+                                                fieldReferenceWidth = tabletContentWidth,
+                                                isStacked = false,
+                                                onFieldClick = { isKeyboardVisible = true },
+                                                onSubmit = onSubmitPressed,
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = if (isTablet) 30.dp else 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+                        ) {
+                            StageBadge(
+                                text = strings.copyStage,
+                            )
+                            Text(
+                                text = "${state.currentIndex + 1} / ${cards.size}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            BoxWithConstraints(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .padding(
+                                        start = if (isTablet) 40.dp else 16.dp,
+                                        top = if (isTablet) 20.dp else 16.dp,
+                                        end = if (isTablet) 40.dp else 16.dp,
+                                        bottom = if (isTablet) 12.dp else 0.dp,
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                val portraitContentWidth = minOf(
+                                    maxWidth,
+                                    maxHeight - inputSectionHeight - verticalSpacing,
+                                ).coerceAtLeast(120.dp)
+
+                                Column(
+                                    modifier = Modifier.widthIn(max = portraitContentWidth),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+                                ) {
+                                    GalleryTrainingCard(
+                                        card = currentCard,
+                                        isHintVisible = state.isHintVisible,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        onSwipePrevious = if (state.currentIndex > 0) onPreviousClick else null,
+                                        onSwipeNext = if (state.currentIndex < cards.lastIndex) onNextClick else null,
+                                        previousLabel = strings.previous,
+                                        nextLabel = strings.next,
+                                    )
+
+                                    GalleryGameLikeAnswerSection(
+                                        answerInput = state.answerInput,
+                                        expectedAnswer = currentCard.name,
+                                        inputFeedbackType = state.inputFeedbackType,
+                                        availableWidth = portraitContentWidth,
+                                        fieldReferenceWidth = portraitContentWidth,
+                                        isStacked = true,
+                                        onFieldClick = { isKeyboardVisible = true },
+                                        onSubmit = onSubmitPressed,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    GalleryFeedbackBanner(
+                        feedback = state.feedback,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun GalleryGameLikeAnswerSection(
+    answerInput: String,
+    expectedAnswer: String,
+    inputFeedbackType: TrainingKeyboardFeedbackType?,
+    availableWidth: androidx.compose.ui.unit.Dp,
+    fieldReferenceWidth: androidx.compose.ui.unit.Dp,
+    isStacked: Boolean,
+    alignToStart: Boolean = false,
+    onFieldClick: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    val checkButtonWidth = 56.dp
+    val buttonSpacing = 12.dp
+    val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
+    val fieldWidth = if (isStacked) maxFieldWidth else minOf(fieldReferenceWidth, maxFieldWidth)
+    val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
+
+    Column(
+        modifier = if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
+        horizontalAlignment = if (alignToStart) Alignment.Start else Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        AnswerInputRow(
+            answerInput = answerInput,
+            expectedAnswer = expectedAnswer,
+            feedbackBorderColor = when (inputFeedbackType) {
+                TrainingKeyboardFeedbackType.Correct -> Color(0xFF9AD88F)
+                TrainingKeyboardFeedbackType.Slip -> Color(0xFFFFD35C)
+                TrainingKeyboardFeedbackType.Wrong -> Color(0xFFFF7A7A)
+                null -> Color.Unspecified
+            },
+            allowMultilineAnswer = allowMultilineAnswer,
+            fieldWidth = fieldWidth,
+            alignToStart = alignToStart,
+            onFieldClick = onFieldClick,
+            onSubmit = onSubmit,
+        )
+    }
+}
+
+private fun resolveGalleryAnswerSectionMinHeight(
+    baseLineHeight: TextUnit,
+    textScale: Float,
+    allowMultiline: Boolean,
+    density: Density,
+): androidx.compose.ui.unit.Dp {
+    val lineCount = if (allowMultiline) 2 else 1
+    val scaledLineHeight = with(density) { (baseLineHeight * textScale).toDp() }
+    val fieldHeight = scaledLineHeight * lineCount + (AnswerFieldVerticalPadding * 2)
+    val answerRowHeight = maxOf(fieldHeight, 56.dp)
+    return answerRowHeight
+}
+
+@Composable
+private fun GalleryTopRightHelpChips(
+    showWordChip: Boolean,
+    isShowWordEnabled: Boolean,
+    isSimplifiedKeyboardEnabled: Boolean,
+    usedShowWord: Boolean,
+    usedSimplifiedKeyboard: Boolean,
+    onShowWordToggle: (Boolean) -> Unit,
+    onSimplifyKeyboardToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.End,
+    ) {
+        if (showWordChip) {
+            OverlayHelpToggleChip(
+                label = "Word",
+                checked = isShowWordEnabled,
+                wasUsed = usedShowWord,
+                onClick = { onShowWordToggle(!isShowWordEnabled) },
+            )
+        }
+        OverlayHelpToggleChip(
+            label = "Aa",
+            checked = isSimplifiedKeyboardEnabled,
+            wasUsed = usedSimplifiedKeyboard,
+            onClick = { onSimplifyKeyboardToggle(!isSimplifiedKeyboardEnabled) },
+        )
     }
 }
 
