@@ -122,6 +122,7 @@ val featureStudentResourcesOutput = layout.buildDirectory.dir("generated/feature
 val featureSessionSettingsResourcesOutput = layout.buildDirectory.dir("generated/featureSessionSettingsComposeResources")
 val featureGameScreenResourcesOutput = layout.buildDirectory.dir("generated/featureGameScreenComposeResources")
 val featureCustomKeyboardResourcesOutput = layout.buildDirectory.dir("generated/featureCustomKeyboardComposeResources")
+val featureFairyTalesResourcesOutput = layout.buildDirectory.dir("generated/featureFairyTalesComposeResources")
 
 val copyFeatureStudentComposeResources by tasks.registering(Copy::class) {
     dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
@@ -175,16 +176,31 @@ val copyFeatureCustomKeyboardComposeResources by tasks.registering(Copy::class) 
     })
 }
 
+val copyFeatureFairyTalesComposeResources by tasks.registering(Copy::class) {
+    dependsOn(":feature:fairy_tales:prepareComposeResourcesTaskForCommonMain")
+    from(
+        project(":feature:fairy_tales")
+            .layout
+            .buildDirectory
+            .dir("generated/compose/resourceGenerator/preparedResources/commonMain/composeResources")
+    )
+    into(featureFairyTalesResourcesOutput.map {
+        it.dir("composeResources/readwriteapp.feature.fairy_tales.generated.resources")
+    })
+}
+
 android.sourceSets.getByName("main").assets.srcDir(featureStudentResourcesOutput)
 android.sourceSets.getByName("main").assets.srcDir(featureSessionSettingsResourcesOutput)
 android.sourceSets.getByName("main").assets.srcDir(featureGameScreenResourcesOutput)
 android.sourceSets.getByName("main").assets.srcDir(featureCustomKeyboardResourcesOutput)
+android.sourceSets.getByName("main").assets.srcDir(featureFairyTalesResourcesOutput)
 
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(copyFeatureStudentComposeResources)
     dependsOn(copyFeatureSessionSettingsComposeResources)
     dependsOn(copyFeatureGameScreenComposeResources)
     dependsOn(copyFeatureCustomKeyboardComposeResources)
+    dependsOn(copyFeatureFairyTalesComposeResources)
     dependsOn(":feature:student:convertXmlValueResourcesForCommonMain")
     dependsOn(":feature:student:copyNonXmlValueResourcesForCommonMain")
     dependsOn(":feature:student:prepareComposeResourcesTaskForCommonMain")
@@ -197,4 +213,7 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.con
     dependsOn(":feature:customkeyboard:convertXmlValueResourcesForCommonMain")
     dependsOn(":feature:customkeyboard:copyNonXmlValueResourcesForCommonMain")
     dependsOn(":feature:customkeyboard:prepareComposeResourcesTaskForCommonMain")
+    dependsOn(":feature:fairy_tales:convertXmlValueResourcesForCommonMain")
+    dependsOn(":feature:fairy_tales:copyNonXmlValueResourcesForCommonMain")
+    dependsOn(":feature:fairy_tales:prepareComposeResourcesTaskForCommonMain")
 }
