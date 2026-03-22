@@ -1,4 +1,4 @@
-package com.cerebus.create_screen.presentation
+package com.cerebus.create_screen.presentation.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,6 +36,12 @@ import com.cerebus.core.ui.components.FeedbackOverlay
 import com.cerebus.core.ui.components.GameLikeActiveScreenShell
 import com.cerebus.core.ui.components.GameLikeScreenShell
 import com.cerebus.core.ui.components.PracticeModeStatusIcon
+import com.cerebus.create_screen.presentation.DeckGalleryStrings
+import com.cerebus.create_screen.presentation.DeckGalleryUiState
+import com.cerebus.create_screen.presentation.GalleryGameLikeAnswerSection
+import com.cerebus.create_screen.presentation.GalleryTopRightHelpChips
+import com.cerebus.create_screen.presentation.GalleryTrainingCard
+import com.cerebus.create_screen.presentation.resolveGalleryAnswerSectionMinHeight
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.resolveShowDigitsRow
 import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight

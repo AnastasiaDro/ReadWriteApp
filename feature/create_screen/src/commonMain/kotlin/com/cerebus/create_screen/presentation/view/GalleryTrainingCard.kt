@@ -80,7 +80,7 @@ internal fun GalleryTrainingCard(
             else -> minOf(360.dp, (maxWidth * 0.78f).coerceAtLeast(120.dp))
         }
         val horizontalPeek = when {
-            isPhoneLandscape -> ((maxWidth - pageWidth) / 2f).coerceAtLeast(0.dp)
+            isPhoneLandscape -> (((maxWidth - pageWidth) / 2f) + 24.dp).coerceAtLeast(0.dp)
             else -> ((maxWidth - pageWidth) / 2f).coerceAtLeast(0.dp)
         }
         val pageSpacing = when {
