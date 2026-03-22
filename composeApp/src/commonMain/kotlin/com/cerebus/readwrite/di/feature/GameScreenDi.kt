@@ -25,6 +25,7 @@ val gameScreenModule = module {
             studentRepository = get(),
             studentPrefsRepository = get(),
             cardProgressRepository = get(),
+            reviewLogRepository = get(),
             submitAnswerAndRescheduleUseCase = get(),
         )
     }

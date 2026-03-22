@@ -41,7 +41,6 @@ import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
 import com.cerebus.customkeyboard.resolveShowDigitsRow
 import com.cerebus.game_screen.presentation.GameScreenAction
 import com.cerebus.game_screen.presentation.GameUiState
-import com.cerebus.game_screen.presentation.view.AnswerInputRow
 import org.jetbrains.compose.resources.stringResource
 import readwriteapp.feature.game_screen.generated.resources.Res
 import readwriteapp.feature.game_screen.generated.resources.game_typo_settings_suggestion_body
@@ -130,11 +129,11 @@ fun ActiveGameContent(
                 ),
         ) {
             val compactMode = isKeyboardVisible || isLandscape
-            val availableContentWidth = maxWidth
-            val availableContentHeight = maxHeight
+            val contentWidth = maxWidth
+            val contentHeight = maxHeight
             val allowMultilineAnswer = state.currentCard.answer.length > 10 || state.currentCard.answer.contains(' ')
             val answerTextScale = if (isTablet) 2f else 1.5f
-            val useStackedInput = isLandscape || maxWidth < 420.dp
+            val useStackedPortraitInput = maxWidth < 420.dp
             val inputSectionHeight = resolveAnswerFieldMinHeight(
                 baseLineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
                 textScale = answerTextScale,
@@ -142,18 +141,6 @@ fun ActiveGameContent(
                 density = density,
             )
             val verticalSpacing = if (compactMode) 12.dp else 18.dp
-            val landscapeCardSize = minOf(
-                availableContentHeight - 8.dp,
-                availableContentWidth,
-            ).coerceAtLeast(120.dp)
-            val landscapeHalfWidth = if (isLandscape) {
-                ((availableContentWidth - 8.dp) / 2f).coerceAtLeast(140.dp)
-            } else {
-                0.dp
-            }
-            val landscapeCounterWidth = 28.dp
-            val effectiveLandscapeCardSize = landscapeCardSize
-            val effectiveLandscapeInputWidth = landscapeHalfWidth
 
             Box(modifier = Modifier.fillMaxSize()) {
                 if (isLandscape && isKeyboardVisible) {
@@ -164,6 +151,13 @@ fun ActiveGameContent(
                         verticalAlignment = Alignment.Top,
                     ) {
                         if (isPhoneLandscape) {
+                            val phoneLandscapeCardSize = minOf(
+                                contentHeight - 8.dp,
+                                contentWidth,
+                            ).coerceAtLeast(120.dp)
+                            val phoneLandscapeInputWidth = ((contentWidth - 8.dp) / 2f).coerceAtLeast(140.dp)
+                            val phoneLandscapeCounterWidth = 28.dp
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -182,12 +176,12 @@ fun ActiveGameContent(
                                             text = "${state.cardIndex}/${state.totalCards}",
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.width(landscapeCounterWidth),
+                                            modifier = Modifier.width(phoneLandscapeCounterWidth),
                                             textAlign = TextAlign.Center,
                                         )
                                         Box(modifier = Modifier.width(6.dp))
                                         GameCard(
-                                            cardSize = effectiveLandscapeCardSize,
+                                            cardSize = phoneLandscapeCardSize,
                                             imagePath = state.currentCard.imagePath.orEmpty(),
                                             answer = state.currentCard.answer,
                                             isHintVisible = state.isHintVisible,
@@ -215,8 +209,8 @@ fun ActiveGameContent(
                                         inputFeedbackType = state.inputFeedbackType,
                                         isInputHintEnabled = state.isInputHintEnabled,
                                         isStacked = false,
-                                        availableWidth = minOf(effectiveLandscapeInputWidth, 280.dp),
-                                        fieldReferenceWidth = effectiveLandscapeCardSize,
+                                        availableWidth = minOf(phoneLandscapeInputWidth, 280.dp),
+                                        fieldReferenceWidth = phoneLandscapeCardSize,
                                         alignToStart = true,
                                         onFieldClick = { isKeyboardVisible = true },
                                         onSubmit = { onAction(GameScreenAction.OnCheckClick) },
@@ -278,21 +272,15 @@ fun ActiveGameContent(
                                                 isHintVisible = state.isHintVisible,
                                                 imageLoader = imageLoader,
                                             )
-                                            AnswerInputRow(
+                                            AnswerInputSection(
                                                 answerInput = state.answerInput,
                                                 expectedAnswer = state.currentCard.answer,
                                                 inputFeedbackType = state.inputFeedbackType,
-                                                allowMultilineAnswer = allowMultilineAnswer,
-                                                fieldWidth = (tabletContentWidth - 68.dp)
-                                                    .coerceAtLeast(112.dp),
-                                                alignToStart = false,
-                                                minFieldWidth = (tabletContentWidth - 68.dp)
-                                                    .coerceAtLeast(112.dp),
-                                                adaptiveFieldWidth = state.currentCard.answer.trim()
-                                                    .split(Regex("\\s+"))
-                                                    .count { it.isNotBlank() } == 1,
-                                                multilineMaxLines = 3,
-                                                revealExpectedAnswer = state.isInputHintEnabled,
+                                                isInputHintEnabled = state.isInputHintEnabled,
+                                                isStacked = false,
+                                                availableWidth = tabletContentWidth,
+                                                fieldReferenceWidth = (tabletContentWidth - 68.dp)
+                                                    .coerceAtLeast(140.dp),
                                                 onFieldClick = { isKeyboardVisible = true },
                                                 onSubmit = { onAction(GameScreenAction.OnCheckClick) },
                                             )
@@ -362,7 +350,7 @@ fun ActiveGameContent(
                                     expectedAnswer = state.currentCard.answer,
                                     inputFeedbackType = state.inputFeedbackType,
                                     isInputHintEnabled = state.isInputHintEnabled,
-                                    isStacked = useStackedInput,
+                                    isStacked = useStackedPortraitInput,
                                     availableWidth = portraitContentWidth,
                                     fieldReferenceWidth = portraitContentWidth,
                                     onFieldClick = { isKeyboardVisible = true },

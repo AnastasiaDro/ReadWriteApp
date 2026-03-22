@@ -40,6 +40,26 @@ interface StudyProgressDao {
 
     @Query(
         """
+        SELECT DISTINCT rl.card_id
+        FROM review_log AS rl
+        WHERE rl.student_id = :studentId
+          AND rl.submitted_at_epoch_millis >= :sinceEpochMillis
+          AND NOT EXISTS (
+              SELECT 1
+              FROM review_log AS prev
+              WHERE prev.student_id = rl.student_id
+                AND prev.card_id = rl.card_id
+                AND prev.submitted_at_epoch_millis < :sinceEpochMillis
+          )
+        """
+    )
+    suspend fun getCardIdsFirstReviewedSince(
+        studentId: String,
+        sinceEpochMillis: Long,
+    ): List<String>
+
+    @Query(
+        """
         SELECT * FROM student_srs_prefs
         WHERE student_id = :studentId
         LIMIT 1

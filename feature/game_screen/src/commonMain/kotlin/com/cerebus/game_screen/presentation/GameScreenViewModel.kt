@@ -9,6 +9,7 @@ import com.cerebus.core.game_engine.domain.logic.selectBalancedNewCardsByDeck
 import com.cerebus.core.game_engine.domain.logic.takeRoundRobinByDeck
 import com.cerebus.core.game_engine.domain.model.CardProgress
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
+import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerAndRescheduleUseCase
 import com.cerebus.core.game_engine.domain.usecase.SubmitAnswerCommand
@@ -40,6 +41,7 @@ private const val RANDOM_REVIEW_LIMIT = 10
 private const val KEY_FEEDBACK_DURATION_MS = 180L
 private const val FAST_TYPING_INTERVAL_MS = 450L
 private const val FAST_NEIGHBOR_TYPO_SUGGESTION_THRESHOLD = 3
+private const val SRS_LEARNED_LEVEL_THRESHOLD = 4
 
 class GameScreenViewModel(
     deckIds: List<String>,
@@ -50,6 +52,7 @@ class GameScreenViewModel(
     private val studentRepository: StudentRepository,
     private val studentPrefsRepository: StudentPrefsRepository,
     private val cardProgressRepository: CardProgressRepository,
+    private val reviewLogRepository: ReviewLogRepository,
     private val submitAnswerAndRescheduleUseCase: SubmitAnswerAndRescheduleUseCase,
 ) : ViewModel() {
     private val selectedDeckIds = deckIds.filter { it.isNotBlank() }.distinct()
@@ -155,6 +158,7 @@ class GameScreenViewModel(
                     studentId = activeStudentId,
                     flashcardRepository = flashcardRepository,
                     cardProgressRepository = cardProgressRepository,
+                    reviewLogRepository = reviewLogRepository,
                     studentPrefsRepository = studentPrefsRepository,
                     dailyLimitIncrease = dailyLimitIncrease,
                 )
@@ -729,6 +733,7 @@ class GameScreenViewModel(
                 studentId = current.studentId,
                 flashcardRepository = flashcardRepository,
                 cardProgressRepository = cardProgressRepository,
+                reviewLogRepository = reviewLogRepository,
                 studentPrefsRepository = studentPrefsRepository,
                 dailyLimitIncrease = dailyLimitIncrease,
             )
@@ -1006,6 +1011,7 @@ private suspend fun buildSessionCards(
     studentId: String,
     flashcardRepository: FlashcardRepository,
     cardProgressRepository: CardProgressRepository,
+    reviewLogRepository: ReviewLogRepository,
     studentPrefsRepository: StudentPrefsRepository,
     dailyLimitIncrease: Int = 0,
 ): List<GameCardData> {
@@ -1039,15 +1045,28 @@ private suspend fun buildSessionCards(
         )
     val normalizedDailyIncrease = dailyLimitIncrease.coerceAtLeast(0)
     val reviewLimit = prefs.reviewsPerSession.coerceAtLeast(0) + normalizedDailyIncrease
-    val newLimit = prefs.newCardsPerSession.coerceAtLeast(0) + normalizedDailyIncrease
+    val newSessionLimit = prefs.newCardsPerSession.coerceAtLeast(0) + normalizedDailyIncrease
+    val newDailyLimit = prefs.maxNewCardsPerDay.coerceAtLeast(0) + normalizedDailyIncrease
     val guidedHintThreshold = prefs.guidedHintSuccessThreshold
         .coerceIn(MIN_GUIDED_HINT_THRESHOLD, MAX_GUIDED_HINT_THRESHOLD)
     val progressByCardId = cardProgressRepository.observeProgress(studentId)
         .first()
         .associateBy { it.cardId }
     val now = nowMillis()
+    val dayStartMillis = localStartOfDayMillis()
+    val introducedTodayCardIds = reviewLogRepository.getCardIdsFirstReviewedSince(
+        studentId = studentId,
+        sinceEpochMillis = dayStartMillis,
+    )
+    val deckCardIds = cardsByDeck.values
+        .flatten()
+        .mapTo(mutableSetOf()) { it.id }
+    val introducedTodayCount = introducedTodayCardIds.count { it in deckCardIds }
+    val remainingDailyNewSlots = (newDailyLimit - introducedTodayCount).coerceAtLeast(0)
 
-    val newByDeck = mutableMapOf<String, MutableList<GameCardData>>()
+    val unseenByDeck = mutableMapOf<String, MutableList<GameCardData>>()
+    val learningByDeck = mutableMapOf<String, MutableList<GameCardData>>()
+    val carryoverByDeck = mutableMapOf<String, MutableList<GameCardData>>()
     val reviewByDeck = mutableMapOf<String, MutableList<GameCardData>>()
     cardsByDeck.forEach { (deckId, cards) ->
         cards.forEach { card ->
@@ -1060,27 +1079,79 @@ private suspend fun buildSessionCards(
                 copyStageSuccessThreshold = guidedHintThreshold.coerceAtLeast(1),
                 storedCopySuccessStreak = progress?.copySuccessStreak ?: 0,
             )
-            if (progress == null || cardWithHintMode.showHintInitially) {
-                newByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
-            } else if (progress.dueAtEpochMillis <= now) {
-                reviewByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
+            when {
+                progress == null -> {
+                    unseenByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
+                }
+
+                cardWithHintMode.showHintInitially -> {
+                    learningByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
+                }
+
+                progress.dueAtEpochMillis <= now -> {
+                    reviewByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
+                }
+
+                card.id in introducedTodayCardIds &&
+                    progress.dueAtEpochMillis > now &&
+                    progress.level < SRS_LEARNED_LEVEL_THRESHOLD -> {
+                    carryoverByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
+                }
             }
         }
     }
 
+    return composeSrsSessionCards(
+        reviewByDeck = reviewByDeck,
+        learningByDeck = learningByDeck,
+        carryoverByDeck = carryoverByDeck,
+        unseenByDeck = unseenByDeck,
+        reviewLimit = reviewLimit,
+        newSessionLimit = newSessionLimit,
+        remainingDailyNewLimit = remainingDailyNewSlots,
+        reviewToNewRatio = REVIEW_TO_NEW_RATIO,
+    )
+}
+
+internal fun <T> composeSrsSessionCards(
+    reviewByDeck: Map<String, List<T>>,
+    learningByDeck: Map<String, List<T>>,
+    carryoverByDeck: Map<String, List<T>>,
+    unseenByDeck: Map<String, List<T>>,
+    reviewLimit: Int,
+    newSessionLimit: Int,
+    remainingDailyNewLimit: Int,
+    reviewToNewRatio: Int = REVIEW_TO_NEW_RATIO,
+): List<T> {
+    val safeReviewLimit = reviewLimit.coerceAtLeast(0)
+    val safeNewSessionLimit = newSessionLimit.coerceAtLeast(0)
+    val safeRemainingDailyNewLimit = remainingDailyNewLimit.coerceAtLeast(0)
+
     val selectedReview = takeRoundRobinByDeck(
         cardsByDeck = reviewByDeck,
-        limit = reviewLimit,
+        limit = safeReviewLimit,
     )
-    val selectedNew = selectBalancedNewCardsByDeck(
-        newCardsByDeck = newByDeck,
-        newLimit = newLimit,
+    val selectedLearning = takeRoundRobinByDeck(
+        cardsByDeck = learningByDeck,
+        limit = safeNewSessionLimit,
+    )
+    val remainingNewSessionSlotsAfterLearning = (safeNewSessionLimit - selectedLearning.size).coerceAtLeast(0)
+    val selectedCarryover = takeRoundRobinByDeck(
+        cardsByDeck = carryoverByDeck,
+        limit = remainingNewSessionSlotsAfterLearning,
+    )
+    val remainingNewSessionSlots = (
+        remainingNewSessionSlotsAfterLearning - selectedCarryover.size
+        ).coerceAtLeast(0)
+    val selectedUnseen = selectBalancedNewCardsByDeck(
+        newCardsByDeck = unseenByDeck,
+        newLimit = minOf(remainingNewSessionSlots, safeRemainingDailyNewLimit),
     )
 
     return interleaveReviewAndNewCards(
         reviewCards = selectedReview,
-        newCards = selectedNew,
-        reviewToNewRatio = REVIEW_TO_NEW_RATIO,
+        newCards = selectedLearning + selectedCarryover + selectedUnseen,
+        reviewToNewRatio = reviewToNewRatio,
     )
 }
 
@@ -1254,6 +1325,7 @@ private suspend fun buildSessionCardsWithPracticeFallback(
     studentId: String,
     flashcardRepository: FlashcardRepository,
     cardProgressRepository: CardProgressRepository,
+    reviewLogRepository: ReviewLogRepository,
     studentPrefsRepository: StudentPrefsRepository,
     dailyLimitIncrease: Int = 0,
 ): PreparedSessionCards {
@@ -1262,6 +1334,7 @@ private suspend fun buildSessionCardsWithPracticeFallback(
         studentId = studentId,
         flashcardRepository = flashcardRepository,
         cardProgressRepository = cardProgressRepository,
+        reviewLogRepository = reviewLogRepository,
         studentPrefsRepository = studentPrefsRepository,
         dailyLimitIncrease = dailyLimitIncrease,
     )

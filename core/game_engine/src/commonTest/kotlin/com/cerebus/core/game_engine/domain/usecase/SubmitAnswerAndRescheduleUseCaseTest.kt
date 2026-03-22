@@ -301,6 +301,11 @@ private class FakeReviewLogRepository : ReviewLogRepository {
         insertCalls++
         lastInsertedLog = log
     }
+
+    override suspend fun getCardIdsFirstReviewedSince(
+        studentId: String,
+        sinceEpochMillis: Long,
+    ): Set<String> = emptySet()
 }
 
 private class FakeStudentPrefsRepository(
