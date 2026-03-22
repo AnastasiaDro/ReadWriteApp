@@ -1,4 +1,4 @@
-package com.cerebus.create_screen.presentation
+package com.cerebus.create_screen.presentation.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -79,12 +79,9 @@ internal fun GalleryTrainingCard(
             isLandscape -> minOf(360.dp, (maxWidth - 8.dp).coerceAtLeast(120.dp))
             else -> minOf(360.dp, (maxWidth * 0.78f).coerceAtLeast(120.dp))
         }
-        val horizontalPeek = when {
-            isPhoneLandscape -> (((maxWidth - pageWidth) / 2f) + 24.dp).coerceAtLeast(0.dp)
-            else -> ((maxWidth - pageWidth) / 2f).coerceAtLeast(0.dp)
-        }
+        val horizontalPeek = ((maxWidth - pageWidth) / 2f).coerceAtLeast(0.dp)
         val pageSpacing = when {
-            isPhoneLandscape -> 3.dp
+            isPhoneLandscape -> 6.dp
             isLandscape -> 10.dp
             else -> 12.dp
         }

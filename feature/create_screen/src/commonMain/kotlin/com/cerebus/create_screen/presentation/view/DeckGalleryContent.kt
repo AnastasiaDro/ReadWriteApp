@@ -28,8 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebus.core.ui.components.FeedbackOverlay
@@ -40,7 +42,6 @@ import com.cerebus.create_screen.presentation.DeckGalleryStrings
 import com.cerebus.create_screen.presentation.DeckGalleryUiState
 import com.cerebus.create_screen.presentation.GalleryGameLikeAnswerSection
 import com.cerebus.create_screen.presentation.GalleryTopRightHelpChips
-import com.cerebus.create_screen.presentation.GalleryTrainingCard
 import com.cerebus.create_screen.presentation.resolveGalleryAnswerSectionMinHeight
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.resolveShowDigitsRow
@@ -213,10 +214,25 @@ internal fun DeckGalleryScreen(
                                 availableContentWidth,
                             ).coerceAtLeast(120.dp)
                             val landscapeHalfWidth = (availableContentWidth / 2f).coerceAtLeast(140.dp)
-                            val phoneLandscapeAnswerGap = 4.dp
+                            val phoneLandscapeAnswerGap = 8.dp
+                            val phoneLandscapeMinAnswerWidth = 208.dp
+                            val phoneLandscapeDesiredAnswerWidth = minOf(220.dp, landscapeHalfWidth)
+                            val phoneLandscapeRightPeekCorridor = 32.dp
                             val phoneLandscapeAnswerStart = (availableContentWidth / 2f) +
                                 (landscapeCardSize / 2f) +
                                 phoneLandscapeAnswerGap
+                            val phoneLandscapeRemainingRightWidth = (
+                                availableContentWidth - phoneLandscapeAnswerStart
+                            ).coerceAtLeast(phoneLandscapeMinAnswerWidth)
+                            val phoneLandscapeAnswerWidth = when {
+                                phoneLandscapeRemainingRightWidth >=
+                                    phoneLandscapeDesiredAnswerWidth + phoneLandscapeRightPeekCorridor ->
+                                    phoneLandscapeDesiredAnswerWidth
+                                phoneLandscapeRemainingRightWidth >=
+                                    phoneLandscapeMinAnswerWidth + phoneLandscapeRightPeekCorridor ->
+                                    phoneLandscapeRemainingRightWidth - phoneLandscapeRightPeekCorridor
+                                else -> phoneLandscapeRemainingRightWidth
+                            }
                             Row(
                                 modifier = Modifier.fillMaxSize(),
                                 horizontalArrangement = Arrangement.Center,
@@ -244,11 +260,21 @@ internal fun DeckGalleryScreen(
                                             },
                                         )
 
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .offset(x = phoneLandscapeAnswerStart)
+                                                .width(phoneLandscapeAnswerWidth)
+                                                .height(inputSectionHeight + 16.dp)
+                                                .clip(RoundedCornerShape(20.dp))
+                                                .background(MaterialTheme.colorScheme.background),
+                                        )
+
                                         GalleryGameLikeAnswerSection(
                                             answerInput = state.answerInput,
                                             expectedAnswer = currentCard.name,
                                             inputFeedbackType = state.inputFeedbackType,
-                                            availableWidth = minOf(landscapeHalfWidth, 280.dp),
+                                            availableWidth = phoneLandscapeAnswerWidth,
                                             fieldReferenceWidth = landscapeCardSize,
                                             isStacked = false,
                                             alignToStart = true,

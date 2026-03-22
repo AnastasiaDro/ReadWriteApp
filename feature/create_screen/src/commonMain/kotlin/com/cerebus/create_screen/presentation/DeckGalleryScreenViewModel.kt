@@ -1,3 +1,5 @@
+package com.cerebus.create_screen.presentation
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
