@@ -119,7 +119,7 @@ internal fun DeckGalleryScreen(
             }
         },
         topCenter = {
-            if (currentCard != null && !isPhoneLandscape) {
+            if (currentCard != null && !isLandscape) {
                 TextButton(
                     onClick = {},
                     enabled = false,
@@ -278,27 +278,22 @@ internal fun DeckGalleryScreen(
                                 } else {
                                     Box(
                                         modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight(),
-                                    )
-
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight(),
+                                            .fillMaxSize(),
                                         contentAlignment = Alignment.BottomCenter,
                                     ) {
                                         BoxWithConstraints(
                                             modifier = Modifier.fillMaxSize(),
                                             contentAlignment = Alignment.BottomCenter,
                                         ) {
+                                            val tabletLandscapeGap = 10.dp
                                             val tabletContentWidth = minOf(
-                                                maxWidth,
-                                                maxHeight - inputSectionHeight - 10.dp,
+                                                maxHeight - inputSectionHeight - tabletLandscapeGap,
+                                                360.dp,
                                             ).coerceAtLeast(120.dp)
+                                            val tabletLandscapeAnswerMaxWidth = maxWidth - 24.dp
 
                                             Column(
-                                                modifier = Modifier.width(tabletContentWidth),
+                                                modifier = Modifier.fillMaxWidth(),
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                                 verticalArrangement = Arrangement.Bottom,
                                             ) {
@@ -308,6 +303,7 @@ internal fun DeckGalleryScreen(
                                                     isHintVisible = state.isHintVisible,
                                                     isLandscape = true,
                                                     isPhoneLandscape = false,
+                                                    preferredCardSize = tabletContentWidth,
                                                     modifier = Modifier.fillMaxWidth(),
                                                     onCardSelected = view@{ index ->
                                                         when {
@@ -316,28 +312,25 @@ internal fun DeckGalleryScreen(
                                                         }
                                                     },
                                                 )
-                                                Spacer(modifier = Modifier.height(10.dp))
+                                                Spacer(modifier = Modifier.height(tabletLandscapeGap))
                                                 GalleryGameLikeAnswerSection(
                                                     answerInput = state.answerInput,
                                                     expectedAnswer = currentCard.name,
                                                     inputFeedbackType = state.inputFeedbackType,
                                                     isHintEnabled = state.isInputHintEnabled,
                                                     isShiftEnabled = state.isShiftEnabled,
-                                                    availableWidth = tabletContentWidth,
-                                                    fieldReferenceWidth = tabletContentWidth,
+                                                    availableWidth = tabletLandscapeAnswerMaxWidth,
+                                                    fieldReferenceWidth = tabletLandscapeAnswerMaxWidth,
                                                     isStacked = false,
+                                                    isAdaptiveWidth = true,
+                                                    minimumFieldWidth = 220.dp,
+                                                    modifier = Modifier.widthIn(max = tabletLandscapeAnswerMaxWidth),
                                                     onFieldClick = { isKeyboardVisible = true },
                                                     onSubmit = onSubmitPressed,
                                                 )
                                             }
                                         }
                                     }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight(),
-                                    )
                                 }
                             }
                         } else {

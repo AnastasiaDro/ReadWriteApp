@@ -97,12 +97,12 @@ internal fun GalleryTrainingCard(
         ) { page ->
             val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue
             val coercedOffset = pageOffset.coerceIn(0f, 1f)
-            val scale = if (isPhoneLandscape) {
+            val scale = if (isLandscape) {
                 1f - (0.5f * coercedOffset)
             } else {
                 1f
             }
-            val alpha = if (isPhoneLandscape) {
+            val alpha = if (isLandscape) {
                 1f - (0.28f * coercedOffset)
             } else if (page == pagerState.currentPage) {
                 1f
