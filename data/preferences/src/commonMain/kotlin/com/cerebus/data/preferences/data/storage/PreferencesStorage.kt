@@ -23,6 +23,8 @@ interface PreferencesStorage {
     fun setKeyboardPressDelay(studentId: String, delay: KeyboardPressDelay)
     fun getHideDigitsOnTightScreenEnabled(studentId: String): Boolean?
     fun setHideDigitsOnTightScreenEnabled(studentId: String, isEnabled: Boolean)
+    fun getGalleryInputHintEnabled(studentId: String): Boolean?
+    fun setGalleryInputHintEnabled(studentId: String, isEnabled: Boolean)
     fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

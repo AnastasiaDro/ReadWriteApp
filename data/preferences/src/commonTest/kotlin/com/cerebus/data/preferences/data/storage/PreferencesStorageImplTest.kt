@@ -288,4 +288,32 @@ class PreferencesStorageImplTest {
 
         assertNull(restored)
     }
+
+    @Test
+    fun saveAndRestoreGalleryInputHintEnabled_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setGalleryInputHintEnabled(
+            studentId = "student_1",
+            isEnabled = true,
+        )
+
+        val restored = storage.getGalleryInputHintEnabled("student_1")
+
+        assertEquals(true, restored)
+    }
+
+    @Test
+    fun galleryInputHintEnabled_otherStudent_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setGalleryInputHintEnabled(
+            studentId = "student_1",
+            isEnabled = true,
+        )
+
+        val restored = storage.getGalleryInputHintEnabled("student_2")
+
+        assertNull(restored)
+    }
 }

@@ -35,8 +35,10 @@ data class DeckGalleryUiState(
     val inputFeedbackType: TrainingKeyboardFeedbackType? = null,
     val answerInput: String = "",
     val isHintVisible: Boolean = true,
+    val isInputHintEnabled: Boolean = false,
     val isSimplifiedKeyboardEnabled: Boolean = false,
     val hideDigitsOnTightScreen: Boolean = true,
+    val usedHint: Boolean = false,
     val usedShowWord: Boolean = false,
     val usedSimplifiedKeyboard: Boolean = false,
     val feedback: DeckGalleryFeedbackUi? = null,
@@ -77,8 +79,8 @@ fun DeckGalleryRoute(
         onSymbolPressed = viewModel::onSymbolPressed,
         onBackspacePressed = viewModel::onBackspacePressed,
         onSubmitPressed = { viewModel.onSubmitPressed(strings) },
+        onHintToggle = viewModel::onHintToggle,
         onShowWordToggle = viewModel::onShowWordToggle,
         onSimplifyKeyboardToggle = viewModel::onSimplifyKeyboardToggle,
     )
 }
-

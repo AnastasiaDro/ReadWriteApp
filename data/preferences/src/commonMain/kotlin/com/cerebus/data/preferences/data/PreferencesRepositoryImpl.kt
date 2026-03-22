@@ -99,6 +99,17 @@ class PreferencesRepositoryImpl(
         )
     }
 
+    override fun getGalleryInputHintEnabled(studentId: String): Boolean? {
+        return storage.getGalleryInputHintEnabled(studentId)
+    }
+
+    override fun setGalleryInputHintEnabled(studentId: String, isEnabled: Boolean) {
+        storage.setGalleryInputHintEnabled(
+            studentId = studentId,
+            isEnabled = isEnabled,
+        )
+    }
+
     override fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

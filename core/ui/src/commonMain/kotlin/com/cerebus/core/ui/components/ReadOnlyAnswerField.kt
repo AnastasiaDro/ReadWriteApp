@@ -37,6 +37,8 @@ fun ReadOnlyAnswerField(
     modifier: Modifier = Modifier,
     textScaleOverride: Float? = null,
     adaptiveWidth: Boolean = false,
+    revealExpectedAnswer: Boolean = false,
+    isShiftEnabled: Boolean = false,
     onClick: () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -51,17 +53,23 @@ fun ReadOnlyAnswerField(
     )
     val currentSlotBackgroundColor = MaterialTheme.colorScheme.secondaryContainer
     val currentSlotTextColor = MaterialTheme.colorScheme.onSecondaryContainer
+    val hintTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     val displayedValue = remember(
         value,
         expectedAnswer,
         currentSlotBackgroundColor,
         currentSlotTextColor,
+        hintTextColor,
+        revealExpectedAnswer,
+        isShiftEnabled,
     ) {
         buildAnswerProgressMask(
             answerInput = value,
             expectedAnswer = expectedAnswer,
             currentSlotBackgroundColor = currentSlotBackgroundColor,
             currentSlotTextColor = currentSlotTextColor,
+            hintTextColor = hintTextColor,
+            revealExpectedAnswer = revealExpectedAnswer,
         )
     }
     val resolvedFeedbackBorderColor = if (feedbackBorderColor == Color.Unspecified) {
@@ -109,6 +117,8 @@ private fun buildAnswerProgressMask(
     expectedAnswer: String,
     currentSlotBackgroundColor: Color,
     currentSlotTextColor: Color,
+    hintTextColor: Color,
+    revealExpectedAnswer: Boolean,
 ): AnnotatedString {
     if (expectedAnswer.isEmpty()) return AnnotatedString(answerInput)
     return buildAnnotatedString {
@@ -119,25 +129,45 @@ private fun buildAnswerProgressMask(
         var inputIndex = 0
         expectedAnswer.forEachIndexed { index, expectedChar ->
             if (index > 0) append(' ')
+            val isCurrentSlot = index == currentSlotIndex
+            val inputChar = answerInput.getOrNull(inputIndex)
+            val hasTypedChar = !expectedChar.isWhitespace() && inputChar != null
             val displayedChar = when {
-                expectedChar.isWhitespace() && answerInput.getOrNull(inputIndex)?.isWhitespace() == true -> {
+                expectedChar.isWhitespace() && inputChar?.isWhitespace() == true -> {
                     inputIndex++
                     ' '
                 }
                 expectedChar.isWhitespace() -> ' '
-                inputIndex < answerInput.length -> answerInput[inputIndex++]
+                hasTypedChar -> answerInput[inputIndex++]
+                revealExpectedAnswer -> expectedChar.uppercaseChar()
                 else -> '_'
             }
-            val isCurrentSlot = index == currentSlotIndex
+            val isHintSymbol = !hasTypedChar && !expectedChar.isWhitespace()
 
             if (isCurrentSlot) {
                 pushStyle(
                     SpanStyle(
                         background = currentSlotBackgroundColor,
-                        color = currentSlotTextColor,
-                        fontWeight = FontWeight.SemiBold,
+                        color = if (isHintSymbol && revealExpectedAnswer) {
+                            hintTextColor
+                        } else {
+                            currentSlotTextColor
+                        },
+                        fontWeight = if (isHintSymbol && revealExpectedAnswer) {
+                            FontWeight.Normal
+                        } else {
+                            FontWeight.SemiBold
+                        },
                     )
                 )
+                append(displayedChar)
+                pop()
+            } else if (hasTypedChar) {
+                pushStyle(SpanStyle(fontWeight = FontWeight.SemiBold))
+                append(displayedChar)
+                pop()
+            } else if (isHintSymbol && revealExpectedAnswer) {
+                pushStyle(SpanStyle(color = hintTextColor))
                 append(displayedChar)
                 pop()
             } else {

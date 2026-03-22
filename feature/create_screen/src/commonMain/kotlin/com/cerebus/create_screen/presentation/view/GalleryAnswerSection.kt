@@ -21,6 +21,8 @@ internal fun GalleryGameLikeAnswerSection(
     answerInput: String,
     expectedAnswer: String,
     inputFeedbackType: TrainingKeyboardFeedbackType?,
+    isHintEnabled: Boolean,
+    isShiftEnabled: Boolean,
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
     isStacked: Boolean,
@@ -70,6 +72,8 @@ internal fun GalleryGameLikeAnswerSection(
             buttonSpacing = buttonSpacing,
             matchFieldHeight = isCompact,
             textScaleOverride = if (isCompact) 1f else null,
+            revealExpectedAnswer = isHintEnabled,
+            isShiftEnabled = isShiftEnabled,
             onFieldClick = onFieldClick,
             onSubmit = onSubmit,
         )

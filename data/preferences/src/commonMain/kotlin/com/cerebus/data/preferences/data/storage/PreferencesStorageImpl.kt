@@ -13,6 +13,7 @@ private const val NEIGHBOR_TYPO_SENSITIVITY_PREFIX = "neighbor_typo_sensitivity_
 private const val FREE_NEIGHBOR_SLIP_PRESSES_PREFIX = "free_neighbor_slip_presses_v1_"
 private const val KEYBOARD_PRESS_DELAY_PREFIX = "keyboard_press_delay_v1_"
 private const val HIDE_DIGITS_ON_TIGHT_SCREEN_PREFIX = "hide_digits_on_tight_screen_v1_"
+private const val GALLERY_INPUT_HINT_PREFIX = "gallery_input_hint_v1_"
 private const val LAST_SESSION_PREFIX = "last_session_v1_"
 private const val SESSION_IDS_SEPARATOR = ","
 private const val ANONYMOUS_STUDENT_ID = "_anonymous_"
@@ -153,6 +154,20 @@ class PreferencesStorageImpl(
         )
     }
 
+    override fun getGalleryInputHintEnabled(studentId: String): Boolean? {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return null
+        val key = buildGalleryInputHintKey(normalizedStudentId)
+        return if (settings.hasKey(key)) settings.getBoolean(key, false) else null
+    }
+
+    override fun setGalleryInputHintEnabled(studentId: String, isEnabled: Boolean) {
+        val normalizedStudentId = studentId.takeIf { it.isNotBlank() } ?: return
+        settings.putBoolean(
+            key = buildGalleryInputHintKey(normalizedStudentId),
+            value = isEnabled,
+        )
+    }
+
     override fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,
@@ -246,5 +261,9 @@ class PreferencesStorageImpl(
 
     private fun buildHideDigitsOnTightScreenKey(studentId: String): String {
         return "$HIDE_DIGITS_ON_TIGHT_SCREEN_PREFIX$studentId"
+    }
+
+    private fun buildGalleryInputHintKey(studentId: String): String {
+        return "$GALLERY_INPUT_HINT_PREFIX$studentId"
     }
 }

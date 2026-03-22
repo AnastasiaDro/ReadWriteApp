@@ -74,6 +74,7 @@ class DeckGalleryViewModel(
                     isLoading = true,
                     deckId = deckId,
                     isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
+                    isInputHintEnabled = preferencesRepository.getGalleryInputHintEnabled(studentId) == true,
                     hideDigitsOnTightScreen = preferencesRepository
                         .getHideDigitsOnTightScreenEnabled(studentId) ?: true,
                 )
@@ -248,6 +249,22 @@ class DeckGalleryViewModel(
         }
     }
 
+    fun onHintToggle(isEnabled: Boolean) {
+        val current = _uiState.value
+        if (current.feedback != null) return
+        _uiState.update {
+            it.copy(
+                usedHint = it.usedHint || isEnabled,
+                isInputHintEnabled = isEnabled,
+            )
+        }
+        if (studentId.isNotBlank()) {
+            runCatching {
+                preferencesRepository.setGalleryInputHintEnabled(studentId, isEnabled)
+            }
+        }
+    }
+
     fun onSimplifyKeyboardToggle(isEnabled: Boolean) {
         val current = _uiState.value
         if (current.feedback != null) return
@@ -283,7 +300,9 @@ class DeckGalleryViewModel(
                 inputFeedbackType = null,
                 answerInput = "",
                 isHintVisible = keepHintVisible,
+                isInputHintEnabled = state.isInputHintEnabled,
                 isSimplifiedKeyboardEnabled = false,
+                usedHint = false,
                 usedShowWord = false,
                 usedSimplifiedKeyboard = false,
                 feedback = null,
@@ -301,10 +320,12 @@ class DeckGalleryViewModel(
             state.copy(
                 answerInput = "",
                 isHintVisible = keepHintVisible,
+                isInputHintEnabled = state.isInputHintEnabled,
                 isSimplifiedKeyboardEnabled = false,
                 keyboardFeedbackKey = null,
                 keyboardFeedbackType = null,
                 inputFeedbackType = null,
+                usedHint = false,
                 usedShowWord = false,
                 usedSimplifiedKeyboard = false,
                 feedback = null,

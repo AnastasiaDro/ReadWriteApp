@@ -57,6 +57,7 @@ internal fun DeckGalleryScreen(
     onSymbolPressed: (String) -> Unit,
     onBackspacePressed: () -> Unit,
     onSubmitPressed: () -> Unit,
+    onHintToggle: (Boolean) -> Unit,
     onShowWordToggle: (Boolean) -> Unit,
     onSimplifyKeyboardToggle: (Boolean) -> Unit,
 ) {
@@ -141,10 +142,13 @@ internal fun DeckGalleryScreen(
         topRight = {
             if (currentCard != null) {
                 GalleryTopRightHelpChips(
+                    isHintEnabled = state.isInputHintEnabled,
                     isShowWordEnabled = state.isHintVisible,
                     isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                    usedHint = state.usedHint,
                     usedShowWord = state.usedShowWord,
                     usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
+                    onHintToggle = onHintToggle,
                     onShowWordToggle = onShowWordToggle,
                     onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
                 )
@@ -257,6 +261,8 @@ internal fun DeckGalleryScreen(
                                                 answerInput = state.answerInput,
                                                 expectedAnswer = currentCard.name,
                                                 inputFeedbackType = state.inputFeedbackType,
+                                                isHintEnabled = state.isInputHintEnabled,
+                                                isShiftEnabled = state.isShiftEnabled,
                                                 availableWidth = phoneLandscapeAnswerMaxWidth,
                                                 fieldReferenceWidth = phoneLandscapeAnswerMaxWidth,
                                                 isStacked = false,
@@ -315,6 +321,8 @@ internal fun DeckGalleryScreen(
                                                     answerInput = state.answerInput,
                                                     expectedAnswer = currentCard.name,
                                                     inputFeedbackType = state.inputFeedbackType,
+                                                    isHintEnabled = state.isInputHintEnabled,
+                                                    isShiftEnabled = state.isShiftEnabled,
                                                     availableWidth = tabletContentWidth,
                                                     fieldReferenceWidth = tabletContentWidth,
                                                     isStacked = false,
@@ -381,6 +389,8 @@ internal fun DeckGalleryScreen(
                                             answerInput = state.answerInput,
                                             expectedAnswer = currentCard.name,
                                             inputFeedbackType = state.inputFeedbackType,
+                                            isHintEnabled = state.isInputHintEnabled,
+                                            isShiftEnabled = state.isShiftEnabled,
                                             availableWidth = portraitContentWidth,
                                             fieldReferenceWidth = portraitContentWidth,
                                             isStacked = true,

@@ -36,6 +36,8 @@ fun AnswerInputRow(
     buttonSpacing: Dp = 12.dp,
     matchFieldHeight: Boolean = false,
     textScaleOverride: Float? = null,
+    revealExpectedAnswer: Boolean = false,
+    isShiftEnabled: Boolean = false,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -56,6 +58,8 @@ fun AnswerInputRow(
             },
             textScaleOverride = textScaleOverride,
             adaptiveWidth = adaptiveFieldWidth,
+            revealExpectedAnswer = revealExpectedAnswer,
+            isShiftEnabled = isShiftEnabled,
             onClick = onFieldClick,
         )
         Button(
