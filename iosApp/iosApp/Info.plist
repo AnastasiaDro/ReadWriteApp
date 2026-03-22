@@ -4,11 +4,60 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>rwdeck</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/x-rwdeck</string>
+				<string>application/vnd.readwrite.deck+zip</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>ReadWrite Deck Archive</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.cerebus.readwrite.rwdeck</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Нужен доступ к камере, чтобы сделать обложку колоды.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Нужен доступ к микрофону для корректной работы камеры.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Нужен доступ к фото, чтобы выбрать обложку колоды.</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>ReadWrite Deck Archive</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.cerebus.readwrite.rwdeck</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>rwdeck</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/x-rwdeck</string>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>
