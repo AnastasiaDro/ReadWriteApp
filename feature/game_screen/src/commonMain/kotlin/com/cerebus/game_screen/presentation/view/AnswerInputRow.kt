@@ -14,6 +14,7 @@ fun AnswerInputRow(
     allowMultilineAnswer: Boolean,
     fieldWidth: Dp,
     alignToStart: Boolean,
+    revealExpectedAnswer: Boolean = false,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -24,6 +25,7 @@ fun AnswerInputRow(
         allowMultilineAnswer = allowMultilineAnswer,
         fieldWidth = fieldWidth,
         alignToStart = alignToStart,
+        revealExpectedAnswer = revealExpectedAnswer,
         onFieldClick = onFieldClick,
         onSubmit = onSubmit,
     )

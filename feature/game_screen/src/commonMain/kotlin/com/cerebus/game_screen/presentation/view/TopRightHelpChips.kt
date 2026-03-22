@@ -2,10 +2,12 @@ package com.cerebus.game_screen.presentation.view
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.cerebus.core.ui.components.OverlayHelpToggleChip
 import com.cerebus.game_screen.presentation.GameScreenAction
 import com.cerebus.game_screen.presentation.GameUiState
 import com.cerebus.game_screen.presentation.TypingLearningStage
@@ -23,15 +25,30 @@ fun TopRightHelpChips(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.End,
     ) {
-        if (showWordChip) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             OverlayHelpToggleChip(
-                label = "Word",
-                checked = state.isHintVisible,
-                wasUsed = state.usedShowWord,
+                label = "Hint",
+                checked = state.isInputHintEnabled,
+                wasUsed = state.usedInputHint,
                 onClick = {
-                    onAction(GameScreenAction.OnShowWordHelpToggled(!state.isHintVisible))
+                    onAction(
+                        GameScreenAction.OnInputHintHelpToggled(!state.isInputHintEnabled)
+                    )
                 },
             )
+            if (showWordChip) {
+                OverlayHelpToggleChip(
+                    label = "Word",
+                    checked = state.isHintVisible,
+                    wasUsed = state.usedShowWord,
+                    onClick = {
+                        onAction(GameScreenAction.OnShowWordHelpToggled(!state.isHintVisible))
+                    },
+                )
+            }
         }
         OverlayHelpToggleChip(
             label = "Aa",

@@ -5,6 +5,7 @@ sealed interface GameScreenAction {
     data class OnKeyboardSymbolPressed(val symbol: String) : GameScreenAction
     data object OnBackspacePressed : GameScreenAction
     data class OnShiftChanged(val isEnabled: Boolean) : GameScreenAction
+    data class OnInputHintHelpToggled(val isEnabled: Boolean) : GameScreenAction
     data class OnShowWordHelpToggled(val isEnabled: Boolean) : GameScreenAction
     data class OnSimplifyKeyboardHelpToggled(val isEnabled: Boolean) : GameScreenAction
     data object OnTypoSuggestionDismissed : GameScreenAction

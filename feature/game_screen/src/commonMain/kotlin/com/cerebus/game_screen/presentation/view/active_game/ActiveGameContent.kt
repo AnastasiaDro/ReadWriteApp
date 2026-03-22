@@ -213,6 +213,7 @@ fun ActiveGameContent(
                                         answerInput = state.answerInput,
                                         expectedAnswer = state.currentCard.answer,
                                         inputFeedbackType = state.inputFeedbackType,
+                                        isInputHintEnabled = state.isInputHintEnabled,
                                         isStacked = false,
                                         availableWidth = minOf(effectiveLandscapeInputWidth, 280.dp),
                                         fieldReferenceWidth = effectiveLandscapeCardSize,
@@ -285,6 +286,7 @@ fun ActiveGameContent(
                                                 fieldWidth = (tabletContentWidth - 68.dp)
                                                     .coerceAtLeast(112.dp),
                                                 alignToStart = false,
+                                                revealExpectedAnswer = state.isInputHintEnabled,
                                                 onFieldClick = { isKeyboardVisible = true },
                                                 onSubmit = { onAction(GameScreenAction.OnCheckClick) },
                                             )
@@ -353,6 +355,7 @@ fun ActiveGameContent(
                                     answerInput = state.answerInput,
                                     expectedAnswer = state.currentCard.answer,
                                     inputFeedbackType = state.inputFeedbackType,
+                                    isInputHintEnabled = state.isInputHintEnabled,
                                     isStacked = useStackedInput,
                                     availableWidth = portraitContentWidth,
                                     fieldReferenceWidth = portraitContentWidth,

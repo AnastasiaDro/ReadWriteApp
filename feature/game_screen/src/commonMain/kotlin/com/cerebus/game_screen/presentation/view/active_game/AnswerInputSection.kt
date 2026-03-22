@@ -18,6 +18,7 @@ fun AnswerInputSection(
     answerInput: String,
     expectedAnswer: String,
     inputFeedbackType: TrainingKeyboardFeedbackType?,
+    isInputHintEnabled: Boolean,
     isStacked: Boolean,
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
@@ -43,6 +44,7 @@ fun AnswerInputSection(
             allowMultilineAnswer = allowMultilineAnswer,
             fieldWidth = fieldWidth,
             alignToStart = alignToStart,
+            revealExpectedAnswer = isInputHintEnabled,
             onFieldClick = onFieldClick,
             onSubmit = onSubmit,
         )

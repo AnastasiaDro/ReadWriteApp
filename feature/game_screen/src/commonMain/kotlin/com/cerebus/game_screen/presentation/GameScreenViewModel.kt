@@ -75,6 +75,7 @@ class GameScreenViewModel(
             is GameScreenAction.OnKeyboardSymbolPressed -> handleKeyboardSymbolPress(action.symbol)
             GameScreenAction.OnBackspacePressed -> handleBackspacePressed()
             is GameScreenAction.OnShiftChanged -> updateKeyboardShift(action.isEnabled)
+            is GameScreenAction.OnInputHintHelpToggled -> toggleInputHintHelp(action.isEnabled)
             is GameScreenAction.OnShowWordHelpToggled -> toggleShowWordHelp(action.isEnabled)
             is GameScreenAction.OnSimplifyKeyboardHelpToggled -> toggleSimplifyKeyboardHelp(action.isEnabled)
             GameScreenAction.OnTypoSuggestionDismissed -> dismissTypoSuggestion()
@@ -378,6 +379,18 @@ class GameScreenViewModel(
         _uiState.value = updated.toActiveUiState()
     }
 
+    private fun toggleInputHintHelp(isEnabled: Boolean) {
+        val current = session ?: return
+        if (current.isFinished || current.feedback != null) return
+
+        val updated = current.copy(
+            usedInputHint = current.usedInputHint || isEnabled,
+            isInputHintEnabled = isEnabled,
+        )
+        session = updated
+        _uiState.value = updated.toActiveUiState()
+    }
+
     private fun toggleSimplifyKeyboardHelp(isEnabled: Boolean) {
         val current = session ?: return
         if (current.isFinished || current.feedback != null) return
@@ -593,10 +606,12 @@ class GameScreenViewModel(
                 learningStage = nextStage,
                 answerInput = "",
                 isHintVisible = nextStage == TypingLearningStage.Copy,
+                isInputHintEnabled = false,
                 copySuccessStreak = nextCard?.storedCopySuccessStreak ?: 0,
                 wrongPressCount = 0,
                 slipPressCount = 0,
                 fastNeighborTypoCount = 0,
+                usedInputHint = false,
                 usedShowWord = false,
                 usedSimplifiedKeyboard = false,
                 isSimplifiedKeyboardEnabled = false,
@@ -852,6 +867,7 @@ private data class GameSessionData(
     val correctAnswers: Int = 0,
     val answerInput: String = "",
     val isHintVisible: Boolean = false,
+    val isInputHintEnabled: Boolean = false,
     val isSimplifiedKeyboardEnabled: Boolean = false,
     val cardShownAtEpochMillis: Long,
     val attemptStartedAtEpochMillis: Long,
@@ -860,6 +876,7 @@ private data class GameSessionData(
     val wrongPressCount: Int = 0,
     val slipPressCount: Int = 0,
     val fastNeighborTypoCount: Int = 0,
+    val usedInputHint: Boolean = false,
     val usedShowWord: Boolean = false,
     val usedSimplifiedKeyboard: Boolean = false,
     val showTypoSettingsSuggestion: Boolean = false,
@@ -919,6 +936,7 @@ private fun GameSessionData.computeCurrentHintLevel(): HintLevel {
             wrongPressCount = wrongPressCount,
             slipPressCount = slipPressCount,
             freeSlipPresses = freeNeighborSlipPresses,
+            usedInputHint = usedInputHint,
             usedShowWord = usedShowWord,
             usedSimplifiedKeyboard = usedSimplifiedKeyboard,
         )
@@ -949,12 +967,14 @@ private fun GameSessionData.resetAttempt(
         learningStage = learningStage,
         answerInput = "",
         isHintVisible = isHintVisible,
+        isInputHintEnabled = false,
         keyboardFeedbackKey = null,
         keyboardFeedbackType = null,
         inputFeedbackType = null,
         wrongPressCount = 0,
         slipPressCount = 0,
         fastNeighborTypoCount = 0,
+        usedInputHint = false,
         usedShowWord = false,
         usedSimplifiedKeyboard = false,
         isSimplifiedKeyboardEnabled = false,
@@ -1312,10 +1332,12 @@ private fun GameSessionData.toActiveUiState(): GameUiState.Active {
         inputFeedbackType = inputFeedbackType,
         answerInput = answerInput,
         isHintVisible = isHintVisible,
+        isInputHintEnabled = isInputHintEnabled,
         isSimplifiedKeyboardEnabled = isSimplifiedKeyboardEnabled,
         copySuccessStreak = copySuccessStreak,
         wrongPressCount = wrongPressCount,
         slipPressCount = slipPressCount,
+        usedInputHint = usedInputHint,
         usedShowWord = usedShowWord,
         usedSimplifiedKeyboard = usedSimplifiedKeyboard,
         showTypoSettingsSuggestion = showTypoSettingsSuggestion,
