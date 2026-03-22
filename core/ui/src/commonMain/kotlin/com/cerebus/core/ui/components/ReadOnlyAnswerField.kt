@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +35,8 @@ fun ReadOnlyAnswerField(
     feedbackBorderColor: Color,
     allowMultiline: Boolean,
     modifier: Modifier = Modifier,
+    textScaleOverride: Float? = null,
+    adaptiveWidth: Boolean = false,
     onClick: () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -41,7 +44,7 @@ fun ReadOnlyAnswerField(
     val windowHeightDp = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
     val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
     val baseTextStyle = MaterialTheme.typography.bodyLarge
-    val answerTextScale = if (isTablet) 2f else 1.5f
+    val answerTextScale = textScaleOverride ?: if (isTablet) 2f else 1.5f
     val answerTextStyle = baseTextStyle.copy(
         fontSize = baseTextStyle.fontSize * answerTextScale,
         lineHeight = baseTextStyle.lineHeight * answerTextScale,
@@ -83,7 +86,13 @@ fun ReadOnlyAnswerField(
             style = answerTextStyle,
             maxLines = if (allowMultiline) 2 else 1,
             modifier = Modifier
-                .fillMaxWidth()
+                .then(
+                    if (adaptiveWidth) {
+                        Modifier.wrapContentWidth(align = Alignment.Start)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
+                )
                 .padding(
                     horizontal = AnswerFieldHorizontalPadding,
                     vertical = AnswerFieldVerticalPadding,

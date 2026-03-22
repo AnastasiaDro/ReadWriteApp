@@ -24,20 +24,30 @@ internal fun GalleryGameLikeAnswerSection(
     availableWidth: Dp,
     fieldReferenceWidth: Dp,
     isStacked: Boolean,
+    isCompact: Boolean = false,
+    isAdaptiveWidth: Boolean = false,
+    minimumFieldWidth: Dp = 140.dp,
     modifier: Modifier = Modifier,
     alignToStart: Boolean = false,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
-    val checkButtonWidth = 56.dp
-    val buttonSpacing = 12.dp
-    val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
-    val fieldWidth = if (isStacked) maxFieldWidth else minOf(fieldReferenceWidth, maxFieldWidth)
-    val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
+    val checkButtonWidth = if (isCompact) 48.dp else 56.dp
+    val buttonSpacing = if (isCompact) 8.dp else 12.dp
+    val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(minimumFieldWidth)
+    val fieldWidth = when {
+        isStacked || isAdaptiveWidth -> maxFieldWidth
+        else -> minOf(fieldReferenceWidth, maxFieldWidth)
+    }
+    val allowMultilineAnswer = if (isCompact) {
+        false
+    } else {
+        expectedAnswer.length > 10 || expectedAnswer.contains(' ')
+    }
 
     Column(
         modifier = modifier.then(
-            if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
+            if (alignToStart || isAdaptiveWidth) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
         ),
         horizontalAlignment = if (alignToStart) Alignment.Start else Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -54,6 +64,11 @@ internal fun GalleryGameLikeAnswerSection(
             allowMultilineAnswer = allowMultilineAnswer,
             fieldWidth = fieldWidth,
             alignToStart = alignToStart,
+            minFieldWidth = minimumFieldWidth,
+            adaptiveFieldWidth = isAdaptiveWidth,
+            buttonSize = checkButtonWidth,
+            buttonSpacing = buttonSpacing,
+            textScaleOverride = if (isCompact) 1f else null,
             onFieldClick = onFieldClick,
             onSubmit = onSubmit,
         )
@@ -65,11 +80,12 @@ internal fun resolveGalleryAnswerSectionMinHeight(
     textScale: Float,
     allowMultiline: Boolean,
     density: Density,
+    minimumHeight: Dp = 56.dp,
 ): Dp {
     val lineCount = if (allowMultiline) 2 else 1
     val scaledLineHeight = with(density) { (baseLineHeight * textScale).toDp() }
     val fieldHeight = scaledLineHeight * lineCount + (AnswerFieldVerticalPadding * 2)
-    return maxOf(fieldHeight, 56.dp)
+    return maxOf(fieldHeight, minimumHeight)
 }
 
 internal data class GalleryAnswerInputAlignment(

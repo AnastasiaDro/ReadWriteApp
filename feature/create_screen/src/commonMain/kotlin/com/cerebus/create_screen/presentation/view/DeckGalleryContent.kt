@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,10 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebus.core.ui.components.FeedbackOverlay
@@ -88,7 +87,8 @@ internal fun DeckGalleryScreen(
         referenceText = currentCard?.name.orEmpty(),
     )
     var isKeyboardVisible by remember { mutableStateOf(true) }
-    val allowMultilineAnswer = currentCard?.name?.let { it.length > 10 || it.contains(' ') } == true
+    val allowMultilineAnswer = !isPhoneLandscape &&
+        (currentCard?.name?.let { it.length > 10 || it.contains(' ') } == true)
     val keyboardHeight = remember(windowWidthDp, windowHeightDp, showDigitsRow) {
         val baseHeight = if (isLandscape) {
             (windowHeightDp * 0.5f).coerceIn(220.dp, 340.dp)
@@ -191,12 +191,17 @@ internal fun DeckGalleryScreen(
                 ) {
                     val availableContentWidth = maxWidth
                     val availableContentHeight = maxHeight
-                    val answerTextScale = if (isTablet) 2f else 1.5f
+                    val answerTextScale = when {
+                        isPhoneLandscape -> 1f
+                        isTablet -> 2f
+                        else -> 1.5f
+                    }
                     val inputSectionHeight = resolveGalleryAnswerSectionMinHeight(
                         baseLineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
                         textScale = answerTextScale,
                         allowMultiline = allowMultilineAnswer,
                         density = density,
+                        minimumHeight = if (isPhoneLandscape) 48.dp else 56.dp,
                     )
                     val verticalSpacing = if (isLandscape) 12.dp else 16.dp
 
@@ -209,81 +214,59 @@ internal fun DeckGalleryScreen(
                                 modifier = Modifier.align(Alignment.Center),
                             )
                         } else if (isLandscape && isKeyboardVisible) {
-                            val landscapeCardSize = minOf(
-                                availableContentHeight - 8.dp,
-                                availableContentWidth,
-                            ).coerceAtLeast(120.dp)
-                            val landscapeHalfWidth = (availableContentWidth / 2f).coerceAtLeast(140.dp)
-                            val phoneLandscapeAnswerGap = 8.dp
-                            val phoneLandscapeMinAnswerWidth = 208.dp
-                            val phoneLandscapeDesiredAnswerWidth = minOf(220.dp, landscapeHalfWidth)
-                            val phoneLandscapeRightPeekCorridor = 32.dp
-                            val phoneLandscapeAnswerStart = (availableContentWidth / 2f) +
-                                (landscapeCardSize / 2f) +
-                                phoneLandscapeAnswerGap
-                            val phoneLandscapeRemainingRightWidth = (
-                                availableContentWidth - phoneLandscapeAnswerStart
-                            ).coerceAtLeast(phoneLandscapeMinAnswerWidth)
-                            val phoneLandscapeAnswerWidth = when {
-                                phoneLandscapeRemainingRightWidth >=
-                                    phoneLandscapeDesiredAnswerWidth + phoneLandscapeRightPeekCorridor ->
-                                    phoneLandscapeDesiredAnswerWidth
-                                phoneLandscapeRemainingRightWidth >=
-                                    phoneLandscapeMinAnswerWidth + phoneLandscapeRightPeekCorridor ->
-                                    phoneLandscapeRemainingRightWidth - phoneLandscapeRightPeekCorridor
-                                else -> phoneLandscapeRemainingRightWidth
-                            }
                             Row(
                                 modifier = Modifier.fillMaxSize(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.Top,
                             ) {
                                 if (isPhoneLandscape) {
-                                    Box(
+                                    BoxWithConstraints(
                                         modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.BottomCenter,
                                     ) {
-                                        GalleryTrainingCard(
-                                            cards = cards,
-                                            currentIndex = state.currentIndex,
-                                            isHintVisible = state.isHintVisible,
-                                            isLandscape = true,
-                                            isPhoneLandscape = true,
-                                            preferredCardSize = landscapeCardSize,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .align(Alignment.BottomCenter),
-                                            onCardSelected = view@{ index ->
-                                                when {
-                                                    index < state.currentIndex -> onPreviousClick()
-                                                    index > state.currentIndex -> onNextClick()
-                                                }
-                                            },
-                                        )
+                                        val phoneLandscapeGap = 6.dp
+                                        val phoneLandscapeCardSize = minOf(
+                                            maxHeight - inputSectionHeight - phoneLandscapeGap,
+                                            maxWidth - 16.dp,
+                                        ).coerceAtLeast(120.dp)
+                                        val phoneLandscapeAnswerMaxWidth = maxWidth - 24.dp
 
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.BottomStart)
-                                                .offset(x = phoneLandscapeAnswerStart)
-                                                .width(phoneLandscapeAnswerWidth)
-                                                .height(inputSectionHeight + 16.dp)
-                                                .clip(RoundedCornerShape(20.dp))
-                                                .background(MaterialTheme.colorScheme.background),
-                                        )
-
-                                        GalleryGameLikeAnswerSection(
-                                            answerInput = state.answerInput,
-                                            expectedAnswer = currentCard.name,
-                                            inputFeedbackType = state.inputFeedbackType,
-                                            availableWidth = phoneLandscapeAnswerWidth,
-                                            fieldReferenceWidth = landscapeCardSize,
-                                            isStacked = false,
-                                            alignToStart = true,
-                                            modifier = Modifier
-                                                .align(Alignment.BottomStart)
-                                                .offset(x = phoneLandscapeAnswerStart),
-                                            onFieldClick = { isKeyboardVisible = true },
-                                            onSubmit = onSubmitPressed,
-                                        )
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Bottom,
+                                        ) {
+                                            GalleryTrainingCard(
+                                                cards = cards,
+                                                currentIndex = state.currentIndex,
+                                                isHintVisible = state.isHintVisible,
+                                                isLandscape = true,
+                                                isPhoneLandscape = true,
+                                                preferredCardSize = phoneLandscapeCardSize,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                onCardSelected = view@{ index ->
+                                                    when {
+                                                        index < state.currentIndex -> onPreviousClick()
+                                                        index > state.currentIndex -> onNextClick()
+                                                    }
+                                                },
+                                            )
+                                            Spacer(modifier = Modifier.height(phoneLandscapeGap))
+                                            GalleryGameLikeAnswerSection(
+                                                answerInput = state.answerInput,
+                                                expectedAnswer = currentCard.name,
+                                                inputFeedbackType = state.inputFeedbackType,
+                                                availableWidth = phoneLandscapeAnswerMaxWidth,
+                                                fieldReferenceWidth = phoneLandscapeAnswerMaxWidth,
+                                                isStacked = false,
+                                                isCompact = true,
+                                                isAdaptiveWidth = true,
+                                                minimumFieldWidth = 96.dp,
+                                                modifier = Modifier.widthIn(max = phoneLandscapeAnswerMaxWidth),
+                                                onFieldClick = { isKeyboardVisible = true },
+                                                onSubmit = onSubmitPressed,
+                                            )
+                                        }
                                     }
                                 } else {
                                     Box(

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
@@ -27,6 +28,11 @@ fun AnswerInputRow(
     allowMultilineAnswer: Boolean,
     fieldWidth: Dp,
     alignToStart: Boolean,
+    minFieldWidth: Dp = fieldWidth,
+    adaptiveFieldWidth: Boolean = false,
+    buttonSize: Dp = 56.dp,
+    buttonSpacing: Dp = 12.dp,
+    textScaleOverride: Float? = null,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -39,16 +45,22 @@ fun AnswerInputRow(
             expectedAnswer = expectedAnswer,
             feedbackBorderColor = feedbackBorderColor,
             allowMultiline = allowMultilineAnswer,
-            modifier = Modifier.width(fieldWidth),
+            modifier = if (adaptiveFieldWidth) {
+                Modifier.widthIn(min = minFieldWidth, max = fieldWidth)
+            } else {
+                Modifier.width(fieldWidth)
+            },
+            textScaleOverride = textScaleOverride,
+            adaptiveWidth = adaptiveFieldWidth,
             onClick = onFieldClick,
         )
         Button(
             onClick = onSubmit,
             enabled = answerInput.isNotBlank(),
             modifier = Modifier
-                .padding(start = 12.dp)
-                .width(56.dp)
-                .height(56.dp),
+                .padding(start = buttonSpacing)
+                .width(buttonSize)
+                .height(buttonSize),
             shape = CircleShape,
             contentPadding = PaddingValues(
                 horizontal = 8.dp,
