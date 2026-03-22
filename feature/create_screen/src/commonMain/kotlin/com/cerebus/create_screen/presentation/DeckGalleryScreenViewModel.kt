@@ -4,11 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.core.utils.nowMillis
-import com.cerebus.create_screen.presentation.DeckGalleryFeedbackUi
-import com.cerebus.create_screen.presentation.DeckGalleryStrings
-import com.cerebus.create_screen.presentation.DeckGalleryUiState
-import com.cerebus.create_screen.presentation.answerInputAlignment
-import com.cerebus.create_screen.presentation.matchesExpectedSymbol
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
 import com.cerebus.customkeyboard.isNeighborKeyboardSlip
 import com.cerebus.data.decks.domain.repositories.DeckRepository
@@ -458,8 +453,6 @@ private fun Flashcard.extractKeyboardSymbols(): Set<String> {
         .map { it.toString() }
         .toSet()
 }
-
-
 
 private fun String.canonicalizeOptionalSpacesForExpected(expectedAnswer: String): String {
     val normalizedUser = filterNot(Char::isWhitespace)

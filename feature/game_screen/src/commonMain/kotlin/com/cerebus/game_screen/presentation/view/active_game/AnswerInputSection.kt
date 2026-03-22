@@ -29,8 +29,13 @@ fun AnswerInputSection(
     val checkButtonWidth = 56.dp
     val buttonSpacing = 12.dp
     val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(140.dp)
-    val fieldWidth = if (isStacked) maxFieldWidth else minOf(fieldReferenceWidth, maxFieldWidth)
+    val baseFieldWidth = if (isStacked) maxFieldWidth else minOf(fieldReferenceWidth, maxFieldWidth)
     val allowMultilineAnswer = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
+    val wordCount = expectedAnswer.trim()
+        .split(Regex("\\s+"))
+        .count { it.isNotBlank() }
+    val shouldExpandForSingleWord = wordCount == 1
+    val fieldWidth = if (shouldExpandForSingleWord) maxFieldWidth else baseFieldWidth
 
     Column(
         modifier = if (alignToStart) Modifier.wrapContentWidth() else Modifier.fillMaxWidth(),
@@ -44,6 +49,9 @@ fun AnswerInputSection(
             allowMultilineAnswer = allowMultilineAnswer,
             fieldWidth = fieldWidth,
             alignToStart = alignToStart,
+            minFieldWidth = baseFieldWidth,
+            adaptiveFieldWidth = shouldExpandForSingleWord,
+            multilineMaxLines = 3,
             revealExpectedAnswer = isInputHintEnabled,
             onFieldClick = onFieldClick,
             onSubmit = onSubmit,

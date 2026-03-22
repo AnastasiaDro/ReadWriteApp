@@ -10,8 +10,6 @@ import com.cerebus.data.flashcards.domain.models.Flashcard
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-
-
 data class DeckGalleryStrings(
     val previous: String,
     val next: String,

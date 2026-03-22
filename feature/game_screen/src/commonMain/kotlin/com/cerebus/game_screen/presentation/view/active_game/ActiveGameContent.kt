@@ -286,6 +286,12 @@ fun ActiveGameContent(
                                                 fieldWidth = (tabletContentWidth - 68.dp)
                                                     .coerceAtLeast(112.dp),
                                                 alignToStart = false,
+                                                minFieldWidth = (tabletContentWidth - 68.dp)
+                                                    .coerceAtLeast(112.dp),
+                                                adaptiveFieldWidth = state.currentCard.answer.trim()
+                                                    .split(Regex("\\s+"))
+                                                    .count { it.isNotBlank() } == 1,
+                                                multilineMaxLines = 3,
                                                 revealExpectedAnswer = state.isInputHintEnabled,
                                                 onFieldClick = { isKeyboardVisible = true },
                                                 onSubmit = { onAction(GameScreenAction.OnCheckClick) },
@@ -412,7 +418,7 @@ private fun resolveAnswerFieldMinHeight(
     allowMultiline: Boolean,
     density: Density,
 ): Dp {
-    val lineCount = if (allowMultiline) 2 else 1
+    val lineCount = if (allowMultiline) 3 else 1
     val scaledLineHeight = with(density) { (baseLineHeight * textScale).toDp() }
     return scaledLineHeight * lineCount + (AnswerFieldVerticalPadding * 2)
 }

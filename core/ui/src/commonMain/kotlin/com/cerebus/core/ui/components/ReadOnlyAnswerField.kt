@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 
 private val AnswerFieldHorizontalPadding = 16.dp
 val AnswerFieldVerticalPadding = 8.dp
+private const val NonBreakingSpace = '\u00A0'
+private const val WordSeparator = "  "
 
 @Composable
 fun ReadOnlyAnswerField(
@@ -37,6 +39,7 @@ fun ReadOnlyAnswerField(
     modifier: Modifier = Modifier,
     textScaleOverride: Float? = null,
     adaptiveWidth: Boolean = false,
+    multilineMaxLines: Int = 2,
     revealExpectedAnswer: Boolean = false,
     isShiftEnabled: Boolean = false,
     onClick: () -> Unit,
@@ -92,7 +95,7 @@ fun ReadOnlyAnswerField(
         Text(
             text = displayedValue,
             style = answerTextStyle,
-            maxLines = if (allowMultiline) 2 else 1,
+            maxLines = if (allowMultiline) multilineMaxLines else 1,
             modifier = Modifier
                 .then(
                     if (adaptiveWidth) {
@@ -128,16 +131,23 @@ private fun buildAnswerProgressMask(
         )
         var inputIndex = 0
         expectedAnswer.forEachIndexed { index, expectedChar ->
-            if (index > 0) append(' ')
+            val previousExpectedChar = expectedAnswer.getOrNull(index - 1)
+            if (expectedChar.isWhitespace()) {
+                if (previousExpectedChar?.isWhitespace() != true) {
+                    append(WordSeparator)
+                }
+                if (answerInput.getOrNull(inputIndex)?.isWhitespace() == true) {
+                    inputIndex++
+                }
+                return@forEachIndexed
+            }
+            if (index > 0 && previousExpectedChar?.isWhitespace() != true) {
+                append(NonBreakingSpace)
+            }
             val isCurrentSlot = index == currentSlotIndex
             val inputChar = answerInput.getOrNull(inputIndex)
             val hasTypedChar = !expectedChar.isWhitespace() && inputChar != null
             val displayedChar = when {
-                expectedChar.isWhitespace() && inputChar?.isWhitespace() == true -> {
-                    inputIndex++
-                    ' '
-                }
-                expectedChar.isWhitespace() -> ' '
                 hasTypedChar -> answerInput[inputIndex++]
                 revealExpectedAnswer -> expectedChar.uppercaseChar()
                 else -> '_'
