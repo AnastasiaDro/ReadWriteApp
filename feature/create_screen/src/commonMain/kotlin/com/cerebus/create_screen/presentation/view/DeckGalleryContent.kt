@@ -129,11 +129,7 @@ internal fun DeckGalleryScreen(
                 ) {
                     Text(
                         text = "${state.currentIndex + 1} / ${cards.size}",
-                        style = if (isLandscape) {
-                            MaterialTheme.typography.labelMedium
-                        } else {
-                            MaterialTheme.typography.labelLarge
-                        },
+                        style = MaterialTheme.typography.labelLarge,
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -224,112 +220,54 @@ internal fun DeckGalleryScreen(
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.Top,
                             ) {
-                                if (isPhoneLandscape) {
-                                    BoxWithConstraints(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.BottomCenter,
-                                    ) {
-                                        val phoneLandscapeGap = 6.dp
-                                        val phoneLandscapeCardSize = minOf(
-                                            maxHeight - inputSectionHeight - phoneLandscapeGap,
-                                            maxWidth - 16.dp,
-                                        ).coerceAtLeast(120.dp)
-                                        val phoneLandscapeAnswerMaxWidth = maxWidth - 24.dp
+                                BoxWithConstraints(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.BottomCenter,
+                                ) {
+                                    val landscapeGap = if (isPhoneLandscape) 6.dp else 10.dp
+                                    val landscapeCardSize = minOf(
+                                        maxHeight - inputSectionHeight - landscapeGap,
+                                        if (isPhoneLandscape) maxWidth - 16.dp else 360.dp,
+                                    ).coerceAtLeast(120.dp)
+                                    val landscapeAnswerMaxWidth = maxWidth - 24.dp
 
-                                        Column(
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Bottom,
+                                    ) {
+                                        GalleryTrainingCard(
+                                            cards = cards,
+                                            currentIndex = state.currentIndex,
+                                            isHintVisible = state.isHintVisible,
+                                            isLandscape = true,
+                                            isPhoneLandscape = isPhoneLandscape,
+                                            preferredCardSize = landscapeCardSize,
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Bottom,
-                                        ) {
-                                            GalleryTrainingCard(
-                                                cards = cards,
-                                                currentIndex = state.currentIndex,
-                                                isHintVisible = state.isHintVisible,
-                                                isLandscape = true,
-                                                isPhoneLandscape = true,
-                                                preferredCardSize = phoneLandscapeCardSize,
-                                                modifier = Modifier.fillMaxWidth(),
-                                                onCardSelected = view@{ index ->
-                                                    when {
-                                                        index < state.currentIndex -> onPreviousClick()
-                                                        index > state.currentIndex -> onNextClick()
-                                                    }
-                                                },
-                                            )
-                                            Spacer(modifier = Modifier.height(phoneLandscapeGap))
-                                            GalleryGameLikeAnswerSection(
-                                                answerInput = state.answerInput,
-                                                expectedAnswer = currentCard.name,
-                                                inputFeedbackType = state.inputFeedbackType,
-                                                isHintEnabled = state.isInputHintEnabled,
-                                                isShiftEnabled = state.isShiftEnabled,
-                                                availableWidth = phoneLandscapeAnswerMaxWidth,
-                                                fieldReferenceWidth = phoneLandscapeAnswerMaxWidth,
-                                                isStacked = false,
-                                                isCompact = true,
-                                                isAdaptiveWidth = true,
-                                                minimumFieldWidth = 96.dp,
-                                                modifier = Modifier.widthIn(max = phoneLandscapeAnswerMaxWidth),
-                                                onFieldClick = { isKeyboardVisible = true },
-                                                onSubmit = onSubmitPressed,
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize(),
-                                        contentAlignment = Alignment.BottomCenter,
-                                    ) {
-                                        BoxWithConstraints(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.BottomCenter,
-                                        ) {
-                                            val tabletLandscapeGap = 10.dp
-                                            val tabletContentWidth = minOf(
-                                                maxHeight - inputSectionHeight - tabletLandscapeGap,
-                                                360.dp,
-                                            ).coerceAtLeast(120.dp)
-                                            val tabletLandscapeAnswerMaxWidth = maxWidth - 24.dp
-
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.Bottom,
-                                            ) {
-                                                GalleryTrainingCard(
-                                                    cards = cards,
-                                                    currentIndex = state.currentIndex,
-                                                    isHintVisible = state.isHintVisible,
-                                                    isLandscape = true,
-                                                    isPhoneLandscape = false,
-                                                    preferredCardSize = tabletContentWidth,
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    onCardSelected = view@{ index ->
-                                                        when {
-                                                            index < state.currentIndex -> onPreviousClick()
-                                                            index > state.currentIndex -> onNextClick()
-                                                        }
-                                                    },
-                                                )
-                                                Spacer(modifier = Modifier.height(tabletLandscapeGap))
-                                                GalleryGameLikeAnswerSection(
-                                                    answerInput = state.answerInput,
-                                                    expectedAnswer = currentCard.name,
-                                                    inputFeedbackType = state.inputFeedbackType,
-                                                    isHintEnabled = state.isInputHintEnabled,
-                                                    isShiftEnabled = state.isShiftEnabled,
-                                                    availableWidth = tabletLandscapeAnswerMaxWidth,
-                                                    fieldReferenceWidth = tabletLandscapeAnswerMaxWidth,
-                                                    isStacked = false,
-                                                    isAdaptiveWidth = true,
-                                                    minimumFieldWidth = 220.dp,
-                                                    modifier = Modifier.widthIn(max = tabletLandscapeAnswerMaxWidth),
-                                                    onFieldClick = { isKeyboardVisible = true },
-                                                    onSubmit = onSubmitPressed,
-                                                )
-                                            }
-                                        }
+                                            onCardSelected = view@{ index ->
+                                                when {
+                                                    index < state.currentIndex -> onPreviousClick()
+                                                    index > state.currentIndex -> onNextClick()
+                                                }
+                                            },
+                                        )
+                                        Spacer(modifier = Modifier.height(landscapeGap))
+                                        GalleryGameLikeAnswerSection(
+                                            answerInput = state.answerInput,
+                                            expectedAnswer = currentCard.name,
+                                            inputFeedbackType = state.inputFeedbackType,
+                                            isHintEnabled = state.isInputHintEnabled,
+                                            isShiftEnabled = state.isShiftEnabled,
+                                            availableWidth = landscapeAnswerMaxWidth,
+                                            fieldReferenceWidth = landscapeAnswerMaxWidth,
+                                            isStacked = false,
+                                            isCompact = isPhoneLandscape,
+                                            isAdaptiveWidth = true,
+                                            minimumFieldWidth = if (isPhoneLandscape) 96.dp else 220.dp,
+                                            modifier = Modifier.widthIn(max = landscapeAnswerMaxWidth),
+                                            onFieldClick = { isKeyboardVisible = true },
+                                            onSubmit = onSubmitPressed,
+                                        )
                                     }
                                 }
                             }
