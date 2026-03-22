@@ -19,6 +19,7 @@ fun GameLikeActiveScreenShell(
     modifier: Modifier = Modifier,
     showKeyboard: Boolean,
     isLandscape: Boolean,
+    keyboardTopPadding: androidx.compose.ui.unit.Dp = if (isLandscape) 8.dp else 4.dp,
     keyboard: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -37,7 +38,7 @@ fun GameLikeActiveScreenShell(
                 .padding(
                     start = 6.dp,
                     end = 6.dp,
-                    top = if (isLandscape) 8.dp else 4.dp,
+                    top = keyboardTopPadding,
                     bottom = 4.dp,
                 ),
         ) {

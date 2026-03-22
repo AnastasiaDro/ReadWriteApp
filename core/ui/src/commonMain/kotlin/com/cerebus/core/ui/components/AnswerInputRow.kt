@@ -1,9 +1,11 @@
 package com.cerebus.core.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -32,11 +34,13 @@ fun AnswerInputRow(
     adaptiveFieldWidth: Boolean = false,
     buttonSize: Dp = 56.dp,
     buttonSpacing: Dp = 12.dp,
+    matchFieldHeight: Boolean = false,
     textScaleOverride: Float? = null,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
     Row(
+        modifier = if (matchFieldHeight) Modifier.height(IntrinsicSize.Min) else Modifier,
         horizontalArrangement = if (alignToStart) Arrangement.Start else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -60,7 +64,13 @@ fun AnswerInputRow(
             modifier = Modifier
                 .padding(start = buttonSpacing)
                 .width(buttonSize)
-                .height(buttonSize),
+                .then(
+                    if (matchFieldHeight) {
+                        Modifier.fillMaxHeight()
+                    } else {
+                        Modifier.height(buttonSize)
+                    }
+                ),
             shape = CircleShape,
             contentPadding = PaddingValues(
                 horizontal = 8.dp,

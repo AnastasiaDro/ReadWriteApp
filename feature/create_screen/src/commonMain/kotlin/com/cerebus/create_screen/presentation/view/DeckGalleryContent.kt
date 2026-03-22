@@ -155,6 +155,7 @@ internal fun DeckGalleryScreen(
             GameLikeActiveScreenShell(
                 showKeyboard = isKeyboardVisible && currentCard != null,
                 isLandscape = isLandscape,
+                keyboardTopPadding = if (isPhoneLandscape) 4.dp else if (isLandscape) 8.dp else 4.dp,
                 keyboard = {
                     TrainingKeyboard(
                         referenceText = currentCard?.name.orEmpty(),

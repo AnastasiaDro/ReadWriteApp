@@ -68,6 +68,7 @@ internal fun GalleryGameLikeAnswerSection(
             adaptiveFieldWidth = isAdaptiveWidth,
             buttonSize = checkButtonWidth,
             buttonSpacing = buttonSpacing,
+            matchFieldHeight = isCompact,
             textScaleOverride = if (isCompact) 1f else null,
             onFieldClick = onFieldClick,
             onSubmit = onSubmit,
