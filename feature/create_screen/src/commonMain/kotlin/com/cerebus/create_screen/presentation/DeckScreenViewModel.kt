@@ -3,17 +3,29 @@ package com.cerebus.create_screen.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
+import com.cerebus.core.game_engine.domain.logic.SrsAvailability
+import com.cerebus.core.game_engine.domain.logic.SrsSessionCandidate
+import com.cerebus.core.game_engine.domain.logic.planSrsSession
+import com.cerebus.core.game_engine.domain.logic.toAvailability
+import com.cerebus.core.game_engine.domain.model.CardProgress
+import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
+import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
+import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
+import com.cerebus.core.utils.localStartOfDayMillis
+import com.cerebus.core.utils.nowMillis
 import com.cerebus.core.utils.UniqueIdGenerator
 import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
+import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.core.utils.GameLaunchMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -21,10 +33,15 @@ class DeckScreenViewModel(
     private val deckRepository: DeckRepository,
     private val flashcardRepository: FlashcardRepository,
     private val deckPackageService: DeckPackageService,
+    private val preferencesRepository: PreferencesRepository,
+    private val cardProgressRepository: CardProgressRepository,
+    private val studentPrefsRepository: StudentPrefsRepository,
+    private val reviewLogRepository: ReviewLogRepository,
 ) : ViewModel() {
 
     private companion object {
         const val MAX_DECK_NAME_LENGTH = 40
+        const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
     }
 
     private val _uiState = MutableStateFlow(DeckUiState())
@@ -230,12 +247,19 @@ class DeckScreenViewModel(
         }
 
         observeDeckJob = viewModelScope.launch {
+            val studentId = preferencesRepository.getLastActiveStudentId().orEmpty()
+            val progressFlow = if (studentId.isBlank()) {
+                flowOf(emptyList())
+            } else {
+                cardProgressRepository.observeProgress(studentId)
+            }
             combine(
                 deckRepository.observeDeckById(deckId),
                 flashcardRepository.observeFlashcardsByDeckId(deckId),
-            ) { deck, flashcards ->
-                deck to flashcards
-            }.collect { (deck, flashcards) ->
+                progressFlow,
+            ) { deck, flashcards, progressList ->
+                Triple(deck, flashcards, progressList)
+            }.collect { (deck, flashcards, progressList) ->
                 _uiState.update { state ->
                     if (deck == null) {
                         state.copy(
@@ -245,9 +269,16 @@ class DeckScreenViewModel(
                             selectedCardIds = emptySet(),
                             isLoading = false,
                             validationError = DeckValidationError.DECK_NOT_FOUND,
+                            srsAvailability = null,
                         )
                     } else {
                         val existingCardIds = flashcards.asSequence().map { it.id }.toSet()
+                        val srsAvailability = buildSrsAvailability(
+                            studentId = studentId,
+                            deckId = deckId,
+                            flashcards = flashcards,
+                            progressByCardId = progressList.associateBy(CardProgress::cardId),
+                        )
                         state.copy(
                             deckName = deck.name,
                             coverUri = deck.coverUri,
@@ -260,11 +291,57 @@ class DeckScreenViewModel(
                             } else {
                                 state.validationError
                             },
+                            srsAvailability = srsAvailability,
                         )
                     }
                 }
             }
         }
+    }
+
+    private suspend fun buildSrsAvailability(
+        studentId: String,
+        deckId: String,
+        flashcards: List<Flashcard>,
+        progressByCardId: Map<String, CardProgress>,
+    ): SrsAvailability? {
+        if (studentId.isBlank() || flashcards.isEmpty()) return null
+
+        val prefs = runCatching { studentPrefsRepository.getPrefs(studentId) }.getOrNull() ?: return null
+        val guidedHintThreshold = prefs.guidedHintSuccessThreshold.coerceIn(0, 5)
+        val dayStartMillis = localStartOfDayMillis()
+        val introducedTodayCardIds = reviewLogRepository.getCardIdsFirstReviewedSince(
+            studentId = studentId,
+            sinceEpochMillis = dayStartMillis,
+        )
+        val deckCardIds = flashcards.mapTo(mutableSetOf()) { it.id }
+        val remainingDailyNewSlots = (
+            prefs.maxNewCardsPerDay.coerceAtLeast(0) -
+                introducedTodayCardIds.count { it in deckCardIds }
+            ).coerceAtLeast(0)
+        val candidates = flashcards.map { flashcard ->
+            val progress = progressByCardId[flashcard.id]
+            SrsSessionCandidate(
+                item = flashcard.id,
+                deckId = deckId,
+                cardId = flashcard.id,
+                progressLevel = progress?.level,
+                dueAtEpochMillis = progress?.dueAtEpochMillis,
+                showHintInitially = shouldShowHintInitially(
+                    progress = progress,
+                    guidedHintThreshold = guidedHintThreshold,
+                ),
+            )
+        }
+        return planSrsSession(
+            candidates = candidates,
+            introducedTodayCardIds = introducedTodayCardIds,
+            reviewLimit = prefs.reviewsPerSession.coerceAtLeast(0),
+            newSessionLimit = prefs.newCardsPerSession.coerceAtLeast(0),
+            remainingDailyNewLimit = remainingDailyNewSlots,
+            nowEpochMillis = nowMillis(),
+            dayEndEpochMillis = dayStartMillis + MILLIS_PER_DAY,
+        ).toAvailability()
     }
 
     private fun addCard() {
@@ -532,6 +609,15 @@ class DeckScreenViewModel(
         observeDeckJob?.cancel()
         super.onCleared()
     }
+}
+
+private fun shouldShowHintInitially(
+    progress: CardProgress?,
+    guidedHintThreshold: Int,
+): Boolean {
+    if (guidedHintThreshold <= 0) return false
+    if (progress == null) return true
+    return progress.copySuccessStreak < guidedHintThreshold
 }
 
 sealed interface DeckScreenEffect {

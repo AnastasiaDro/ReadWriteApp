@@ -70,10 +70,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.core.ui.components.AppAnimatedDialog
 import com.cerebus.core.ui.components.AppEntityEditorDialog
 import com.cerebus.core.ui.components.AppEntityEditorMode
 import com.cerebus.core.ui.components.AppConfirmationDialog
+import com.cerebus.core.utils.nowMillis
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -240,14 +242,24 @@ fun DeckScreen(
                     null
                 },
             ) {
-                DeckTrainingModesSection(
-                    isCompact = !isTablet,
-                    strings = strings,
-                    onStartPlanClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
-                    onStartRandomLearnedClick = { onAction(DeckScreenAction.OnStartRandomLearnedClick) },
-                    onStartRandomAllClick = { onAction(DeckScreenAction.OnStartRandomAllClick) },
-                    onOpenGalleryClick = { onAction(DeckScreenAction.OnOpenGalleryClick) },
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    DeckTrainingModesSection(
+                        isCompact = !isTablet,
+                        strings = strings,
+                        onStartPlanClick = { onAction(DeckScreenAction.OnStartTrainingClick) },
+                        onStartRandomLearnedClick = { onAction(DeckScreenAction.OnStartRandomLearnedClick) },
+                        onStartRandomAllClick = { onAction(DeckScreenAction.OnStartRandomAllClick) },
+                        onOpenGalleryClick = { onAction(DeckScreenAction.OnOpenGalleryClick) },
+                    )
+
+                    state.srsAvailability?.let { availability ->
+                        DeckSrsStatusSummary(
+                            availability = availability,
+                            strings = strings,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
 
             SectionCard(
@@ -558,6 +570,97 @@ fun DeckScreen(
 }
 
 @Composable
+private fun DeckSrsStatusSummary(
+    availability: SrsAvailability,
+    strings: DeckScreenStrings,
+    modifier: Modifier = Modifier,
+) {
+    val summary = buildDeckSrsStatusSummary(
+        availability = availability,
+        strings = strings,
+    )
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = summary.title,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+            )
+            summary.subtitle?.let { subtitle ->
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+private fun buildDeckSrsStatusSummary(
+    availability: SrsAvailability,
+    strings: DeckScreenStrings,
+): SrsStatusSummary {
+    val cardCountLabel = formatSrsCountLabel(
+        count = availability.availableNow,
+        one = strings.srsStatusCardOne,
+        few = strings.srsStatusCardFew,
+        many = strings.srsStatusCardMany,
+    )
+    val laterTodayLabel = formatSrsCountLabel(
+        count = availability.laterTodayCount,
+        one = strings.srsStatusCardOne,
+        few = strings.srsStatusCardFew,
+        many = strings.srsStatusCardMany,
+    )
+    val remainingNewLabel = formatSrsCountLabel(
+        count = availability.remainingNewToday,
+        one = strings.srsStatusCardOne,
+        few = strings.srsStatusCardFew,
+        many = strings.srsStatusCardMany,
+    )
+
+    val title = when {
+        availability.availableNow > 0 -> formatTemplate(strings.srsStatusAvailableNow, cardCountLabel)
+        availability.laterTodayCount > 0 -> strings.srsStatusNoReviewsNow
+        else -> strings.srsStatusAllDoneToday
+    }
+
+    val nextDueAtEpochMillis = availability.nextDueAtEpochMillis
+    val subtitle = when {
+        availability.availableNow == 0 &&
+            availability.laterTodayCount > 0 &&
+            nextDueAtEpochMillis != null -> formatTemplate(
+            strings.srsStatusNextDue,
+            laterTodayLabel,
+            formatSrsDelayLabel(nextDueAtEpochMillis),
+        )
+
+        availability.laterTodayCount > 0 -> formatTemplate(strings.srsStatusLaterToday, laterTodayLabel)
+        availability.remainingNewToday == 0 -> strings.srsStatusNoNewToday
+        availability.availableNow > 0 -> formatTemplate(strings.srsStatusRemainingNew, remainingNewLabel)
+        else -> null
+    }
+
+    return SrsStatusSummary(
+        title = title,
+        subtitle = subtitle,
+    )
+}
+
+@Composable
 private fun DeckTrainingModesSection(
     isCompact: Boolean,
     strings: DeckScreenStrings,
@@ -605,6 +708,61 @@ private fun DeckTrainingModesSection(
                 }
             }
         }
+    }
+}
+
+private data class SrsStatusSummary(
+    val title: String,
+    val subtitle: String? = null,
+)
+
+private fun formatSrsCountLabel(
+    count: Int,
+    one: String,
+    few: String,
+    many: String,
+): String {
+    return "$count ${selectPluralForm(count, one, few, many)}"
+}
+
+private fun selectPluralForm(
+    count: Int,
+    one: String,
+    few: String,
+    many: String,
+): String {
+    val normalized = count % 100
+    if (normalized in 11..14) return many
+    return when (count % 10) {
+        1 -> one
+        2, 3, 4 -> few
+        else -> many
+    }
+}
+
+private fun formatSrsDelayLabel(
+    targetEpochMillis: Long,
+): String {
+    val deltaMinutes = ((targetEpochMillis - nowMillis()).coerceAtLeast(0L) + 59_999L) / 60_000L
+    if (deltaMinutes < 60L) {
+        return "${deltaMinutes.coerceAtLeast(1L)} min"
+    }
+
+    val hours = deltaMinutes / 60L
+    val minutes = deltaMinutes % 60L
+    return if (minutes == 0L) {
+        "$hours h"
+    } else {
+        "$hours h $minutes min"
+    }
+}
+
+private fun formatTemplate(
+    template: String,
+    vararg args: String,
+): String {
+    return args.foldIndexed(template) { index, acc, value ->
+        acc.replace("%${index + 1}\$s", value)
     }
 }
 

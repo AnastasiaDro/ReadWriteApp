@@ -4,10 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.customkeyboard.isNeighborKeyboardSlip
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
+import com.cerebus.core.game_engine.domain.logic.SrsAvailability
+import com.cerebus.core.game_engine.domain.logic.SrsSessionCandidate
+import com.cerebus.core.game_engine.domain.logic.interleavedSessionCards
 import com.cerebus.core.game_engine.domain.logic.interleaveReviewAndNewCards
 import com.cerebus.core.game_engine.domain.logic.selectBalancedNewCardsByDeck
 import com.cerebus.core.game_engine.domain.logic.takeRoundRobinByDeck
+import com.cerebus.core.game_engine.domain.logic.planSrsSession
+import com.cerebus.core.game_engine.domain.logic.toAvailability
 import com.cerebus.core.game_engine.domain.model.CardProgress
+import com.cerebus.core.game_engine.domain.model.SrsConfig
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
 import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
@@ -41,7 +47,7 @@ private const val RANDOM_REVIEW_LIMIT = 10
 private const val KEY_FEEDBACK_DURATION_MS = 180L
 private const val FAST_TYPING_INTERVAL_MS = 450L
 private const val FAST_NEIGHBOR_TYPO_SUGGESTION_THRESHOLD = 3
-private const val SRS_LEARNED_LEVEL_THRESHOLD = 4
+private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
 
 class GameScreenViewModel(
     deckIds: List<String>,
@@ -212,7 +218,7 @@ class GameScreenViewModel(
             session = initialSession
 
             _uiState.value = if (preparedSession.cards.isEmpty()) {
-                initialSession.toFinishedUiState()
+                buildFinishedUiState(initialSession)
             } else {
                 initialSession.toActiveUiState()
             }
@@ -359,7 +365,7 @@ class GameScreenViewModel(
             )
             session = cleared
             _uiState.value = if (cleared.isFinished) {
-                cleared.toFinishedUiState()
+                buildFinishedUiState(cleared)
             } else {
                 cleared.toActiveUiState()
             }
@@ -631,7 +637,7 @@ class GameScreenViewModel(
             session = progressed
 
             _uiState.value = if (progressed.isFinished) {
-                progressed.toFinishedUiState()
+                buildFinishedUiState(progressed)
             } else {
                 progressed.toActiveUiState()
             }
@@ -677,7 +683,7 @@ class GameScreenViewModel(
             session = restarted
 
             _uiState.value = if (restarted.cards.isEmpty()) {
-                restarted.toFinishedUiState()
+                buildFinishedUiState(restarted)
             } else {
                 restarted.toActiveUiState()
             }
@@ -713,7 +719,7 @@ class GameScreenViewModel(
             )
             session = restarted
             _uiState.value = if (restarted.cards.isEmpty()) {
-                restarted.toFinishedUiState()
+                buildFinishedUiState(restarted)
             } else {
                 restarted.toActiveUiState()
             }
@@ -751,7 +757,7 @@ class GameScreenViewModel(
             )
             session = restarted
             _uiState.value = if (restarted.cards.isEmpty()) {
-                restarted.toFinishedUiState()
+                buildFinishedUiState(restarted)
             } else {
                 restarted.toActiveUiState()
             }
@@ -763,6 +769,28 @@ class GameScreenViewModel(
         return runCatching { studentPrefsRepository.getPrefs(studentId).learnMoreStep }
             .getOrDefault(DEFAULT_LEARN_MORE_STEP)
             .coerceAtLeast(1)
+    }
+
+    private suspend fun buildFinishedUiState(
+        current: GameSessionData,
+    ): GameUiState.Finished {
+        val srsAvailability = if (launchMode == GameLaunchMode.Plan) {
+            buildSrsAvailability(
+                deckIds = selectedDeckIds,
+                studentId = current.studentId,
+                flashcardRepository = flashcardRepository,
+                cardProgressRepository = cardProgressRepository,
+                reviewLogRepository = reviewLogRepository,
+                studentPrefsRepository = studentPrefsRepository,
+                dailyLimitIncrease = dailyLimitIncrease,
+            )
+        } else {
+            null
+        }
+
+        return current.toFinishedUiState(
+            srsAvailability = srsAvailability,
+        )
     }
 
     private fun persistStudiedSymbols(
@@ -1038,11 +1066,67 @@ private suspend fun buildSessionCards(
         )
     }
 
-    val prefs = runCatching { studentPrefsRepository.getPrefs(studentId) }.getOrNull()
-        ?: return takeRoundRobinByDeck(
-            cardsByDeck = cardsByDeck,
-            limit = cardsByDeck.values.sumOf { it.size },
-        )
+    val plannedSession = planSrsSessionCards(
+        cardsByDeck = cardsByDeck,
+        studentId = studentId,
+        cardProgressRepository = cardProgressRepository,
+        reviewLogRepository = reviewLogRepository,
+        studentPrefsRepository = studentPrefsRepository,
+        dailyLimitIncrease = dailyLimitIncrease,
+    ) ?: return takeRoundRobinByDeck(
+        cardsByDeck = cardsByDeck,
+        limit = cardsByDeck.values.sumOf { it.size },
+    )
+
+    return plannedSession.interleavedSessionCards(
+        reviewToNewRatio = REVIEW_TO_NEW_RATIO,
+    )
+}
+
+private suspend fun buildSrsAvailability(
+    deckIds: List<String>,
+    studentId: String,
+    flashcardRepository: FlashcardRepository,
+    cardProgressRepository: CardProgressRepository,
+    reviewLogRepository: ReviewLogRepository,
+    studentPrefsRepository: StudentPrefsRepository,
+    dailyLimitIncrease: Int = 0,
+): SrsAvailability? {
+    if (studentId.isBlank() || deckIds.isEmpty()) return null
+
+    val cardsByDeck = deckIds.associateWith { deckId ->
+        flashcardRepository.getFlashcardsByDeckId(deckId).map { card ->
+            GameCardData(
+                deckId = deckId,
+                id = card.id,
+                answer = card.name,
+                imagePath = card.imageUrl.ifBlank { null },
+                showHintInitially = false,
+                copyStageSuccessThreshold = 2,
+            )
+        }
+    }
+    val plannedSession = planSrsSessionCards(
+        cardsByDeck = cardsByDeck,
+        studentId = studentId,
+        cardProgressRepository = cardProgressRepository,
+        reviewLogRepository = reviewLogRepository,
+        studentPrefsRepository = studentPrefsRepository,
+        dailyLimitIncrease = dailyLimitIncrease,
+    ) ?: return null
+
+    return plannedSession.toAvailability()
+}
+
+private suspend fun planSrsSessionCards(
+    cardsByDeck: Map<String, List<GameCardData>>,
+    studentId: String,
+    cardProgressRepository: CardProgressRepository,
+    reviewLogRepository: ReviewLogRepository,
+    studentPrefsRepository: StudentPrefsRepository,
+    dailyLimitIncrease: Int = 0,
+) = runCatching {
+    val prefs = studentPrefsRepository.getPrefs(studentId)
     val normalizedDailyIncrease = dailyLimitIncrease.coerceAtLeast(0)
     val reviewLimit = prefs.reviewsPerSession.coerceAtLeast(0) + normalizedDailyIncrease
     val newSessionLimit = prefs.newCardsPerSession.coerceAtLeast(0) + normalizedDailyIncrease
@@ -1054,6 +1138,7 @@ private suspend fun buildSessionCards(
         .associateBy { it.cardId }
     val now = nowMillis()
     val dayStartMillis = localStartOfDayMillis()
+    val dayEndMillis = dayStartMillis + MILLIS_PER_DAY
     val introducedTodayCardIds = reviewLogRepository.getCardIdsFirstReviewedSince(
         studentId = studentId,
         sinceEpochMillis = dayStartMillis,
@@ -1063,13 +1148,8 @@ private suspend fun buildSessionCards(
         .mapTo(mutableSetOf()) { it.id }
     val introducedTodayCount = introducedTodayCardIds.count { it in deckCardIds }
     val remainingDailyNewSlots = (newDailyLimit - introducedTodayCount).coerceAtLeast(0)
-
-    val unseenByDeck = mutableMapOf<String, MutableList<GameCardData>>()
-    val learningByDeck = mutableMapOf<String, MutableList<GameCardData>>()
-    val carryoverByDeck = mutableMapOf<String, MutableList<GameCardData>>()
-    val reviewByDeck = mutableMapOf<String, MutableList<GameCardData>>()
-    cardsByDeck.forEach { (deckId, cards) ->
-        cards.forEach { card ->
+    val candidates = cardsByDeck.flatMap { (deckId, cards) ->
+        cards.map { card ->
             val progress = progressByCardId[card.id]
             val cardWithHintMode = card.copy(
                 showHintInitially = shouldShowHintInitially(
@@ -1079,39 +1159,27 @@ private suspend fun buildSessionCards(
                 copyStageSuccessThreshold = guidedHintThreshold.coerceAtLeast(1),
                 storedCopySuccessStreak = progress?.copySuccessStreak ?: 0,
             )
-            when {
-                progress == null -> {
-                    unseenByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
-                }
-
-                cardWithHintMode.showHintInitially -> {
-                    learningByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
-                }
-
-                progress.dueAtEpochMillis <= now -> {
-                    reviewByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
-                }
-
-                card.id in introducedTodayCardIds &&
-                    progress.dueAtEpochMillis > now &&
-                    progress.level < SRS_LEARNED_LEVEL_THRESHOLD -> {
-                    carryoverByDeck.getOrPut(deckId) { mutableListOf() }.add(cardWithHintMode)
-                }
-            }
+            SrsSessionCandidate(
+                item = cardWithHintMode,
+                deckId = deckId,
+                cardId = card.id,
+                progressLevel = progress?.level,
+                dueAtEpochMillis = progress?.dueAtEpochMillis,
+                showHintInitially = cardWithHintMode.showHintInitially,
+            )
         }
     }
 
-    return composeSrsSessionCards(
-        reviewByDeck = reviewByDeck,
-        learningByDeck = learningByDeck,
-        carryoverByDeck = carryoverByDeck,
-        unseenByDeck = unseenByDeck,
+    planSrsSession(
+        candidates = candidates,
+        introducedTodayCardIds = introducedTodayCardIds,
         reviewLimit = reviewLimit,
         newSessionLimit = newSessionLimit,
         remainingDailyNewLimit = remainingDailyNewSlots,
-        reviewToNewRatio = REVIEW_TO_NEW_RATIO,
+        nowEpochMillis = now,
+        dayEndEpochMillis = dayEndMillis,
     )
-}
+}.getOrNull()
 
 internal fun <T> composeSrsSessionCards(
     reviewByDeck: Map<String, List<T>>,
@@ -1555,11 +1623,14 @@ private fun GameCardData.extractKeyboardSymbols(): Set<String> {
         .toSet()
 }
 
-private fun GameSessionData.toFinishedUiState(): GameUiState.Finished {
+private fun GameSessionData.toFinishedUiState(
+    srsAvailability: SrsAvailability? = null,
+): GameUiState.Finished {
     return GameUiState.Finished(
         deckTitle = deck.title,
         totalCards = cards.size,
         correctAnswers = correctAnswers,
+        srsAvailability = srsAvailability,
     )
 }
 

@@ -38,9 +38,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.core.ui.insets.topSystemBarPadding
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.core.utils.GameLaunchMode
+import com.cerebus.core.utils.nowMillis
 import com.cerebus.readwrite.media.rememberCoverImagePicker
 import com.cerebus.readwrite.media.rememberDeckArchivePicker
 import com.cerebus.readwrite.media.rememberPlatformMessenger
@@ -76,6 +78,16 @@ import readwriteapp.feature.student.generated.resources.active_student_no_active
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
 import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_other_decks
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_all_done_today
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_available_now
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_card_few
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_card_many
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_card_one
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_later_today
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_next_due
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_no_new_today
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_no_reviews_now
+import readwriteapp.feature.student.generated.resources.active_student_srs_status_remaining_new
 import readwriteapp.feature.student.generated.resources.active_student_delete
 import readwriteapp.feature.student.generated.resources.active_student_delete_student_message
 import readwriteapp.feature.student.generated.resources.active_student_delete_student_secondary_message
@@ -300,46 +312,53 @@ private fun ActiveStudentScreen(
                     Button(
                         onClick = { onAction(ActiveStudentAction.OnStartClick) },
                         enabled = state.activeDecks.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(text = stringResource(Res.string.active_student_start))
-                }
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        TextButton(
-                            onClick = { state.studentId?.let(onOpenSessionSettings) },
-                            enabled = state.studentId != null,
-                            modifier = Modifier.weight(1f),
+                        Text(text = stringResource(Res.string.active_student_start))
+                    }
+
+                    state.srsAvailability?.let { availability ->
+                        ActiveStudentSrsStatus(
+                            availability = availability,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Text(
-                                text = stringResource(Res.string.active_student_learning_settings),
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                        TextButton(
-                            onClick = { state.studentId?.let(onOpenKeyboardSettings) },
-                            enabled = state.studentId != null,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(
-                                text = stringResource(Res.string.active_student_keyboard_settings),
-                                textAlign = TextAlign.Center,
-                            )
+                            TextButton(
+                                onClick = { state.studentId?.let(onOpenSessionSettings) },
+                                enabled = state.studentId != null,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.active_student_learning_settings),
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                            TextButton(
+                                onClick = { state.studentId?.let(onOpenKeyboardSettings) },
+                                enabled = state.studentId != null,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.active_student_keyboard_settings),
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
         }
 
         SectionCard(
@@ -727,6 +746,107 @@ private fun ActiveStudentScreen(
     }
 }
 
+@Composable
+private fun ActiveStudentSrsStatus(
+    availability: SrsAvailability,
+    modifier: Modifier = Modifier,
+) {
+    val summary = rememberActiveStudentSrsSummary(availability)
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = summary.title,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+            )
+            summary.subtitle?.let { subtitle ->
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberActiveStudentSrsSummary(
+    availability: SrsAvailability,
+): SrsStatusSummary {
+    val cardOne = stringResource(Res.string.active_student_srs_status_card_one)
+    val cardFew = stringResource(Res.string.active_student_srs_status_card_few)
+    val cardMany = stringResource(Res.string.active_student_srs_status_card_many)
+    val cardCountLabel = formatSrsCountLabel(
+        count = availability.availableNow,
+        one = cardOne,
+        few = cardFew,
+        many = cardMany,
+    )
+    val laterTodayLabel = formatSrsCountLabel(
+        count = availability.laterTodayCount,
+        one = cardOne,
+        few = cardFew,
+        many = cardMany,
+    )
+    val remainingNewLabel = formatSrsCountLabel(
+        count = availability.remainingNewToday,
+        one = cardOne,
+        few = cardFew,
+        many = cardMany,
+    )
+    val nextDueAtEpochMillis = availability.nextDueAtEpochMillis
+
+    val title = when {
+        availability.availableNow > 0 -> stringResource(
+            Res.string.active_student_srs_status_available_now,
+            cardCountLabel,
+        )
+        availability.laterTodayCount > 0 -> stringResource(Res.string.active_student_srs_status_no_reviews_now)
+        else -> stringResource(Res.string.active_student_srs_status_all_done_today)
+    }
+
+    val subtitle = when {
+        availability.availableNow == 0 &&
+            availability.laterTodayCount > 0 &&
+            nextDueAtEpochMillis != null -> stringResource(
+            Res.string.active_student_srs_status_next_due,
+            laterTodayLabel,
+            formatSrsDelayLabel(nextDueAtEpochMillis),
+        )
+
+        availability.laterTodayCount > 0 -> stringResource(
+            Res.string.active_student_srs_status_later_today,
+            laterTodayLabel,
+        )
+
+        availability.remainingNewToday == 0 -> stringResource(Res.string.active_student_srs_status_no_new_today)
+        availability.availableNow > 0 -> stringResource(
+            Res.string.active_student_srs_status_remaining_new,
+            remainingNewLabel,
+        )
+
+        else -> null
+    }
+
+    return SrsStatusSummary(
+        title = title,
+        subtitle = subtitle,
+    )
+}
+
 private val DIGIT_ORDER = ('0'..'9').toList()
 private val RUSSIAN_LETTER_ORDER = listOf(
     'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о',
@@ -791,5 +911,51 @@ private fun StudiedSymbolsRow(
                 }
             }
         }
+    }
+}
+
+private data class SrsStatusSummary(
+    val title: String,
+    val subtitle: String? = null,
+)
+
+private fun formatSrsCountLabel(
+    count: Int,
+    one: String,
+    few: String,
+    many: String,
+): String {
+    return "$count ${selectPluralForm(count, one, few, many)}"
+}
+
+private fun selectPluralForm(
+    count: Int,
+    one: String,
+    few: String,
+    many: String,
+): String {
+    val normalized = count % 100
+    if (normalized in 11..14) return many
+    return when (count % 10) {
+        1 -> one
+        2, 3, 4 -> few
+        else -> many
+    }
+}
+
+private fun formatSrsDelayLabel(
+    targetEpochMillis: Long,
+): String {
+    val deltaMinutes = ((targetEpochMillis - nowMillis()).coerceAtLeast(0L) + 59_999L) / 60_000L
+    if (deltaMinutes < 60L) {
+        return "${deltaMinutes.coerceAtLeast(1L)} min"
+    }
+
+    val hours = deltaMinutes / 60L
+    val minutes = deltaMinutes % 60L
+    return if (minutes == 0L) {
+        "$hours h"
+    } else {
+        "$hours h $minutes min"
     }
 }

@@ -1,5 +1,6 @@
 package com.cerebus.game_screen.presentation
 
+import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
 
 sealed interface GameUiState {
@@ -41,6 +42,7 @@ sealed interface GameUiState {
         val deckTitle: String,
         val totalCards: Int,
         val correctAnswers: Int,
+        val srsAvailability: SrsAvailability? = null,
     ) : GameUiState
 }
 

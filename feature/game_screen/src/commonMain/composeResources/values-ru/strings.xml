@@ -5,6 +5,16 @@
     <string name="game_random_review_hint">Взять 10 случайных изученных карточек из этой колоды. Сначала карточки, которые уже повторяли сегодня, потом другие изученные. Этот режим не обновляет интервалы SRS.</string>
     <string name="game_learn_more">Учить еще</string>
     <string name="game_learn_more_hint">Увеличить лимиты сессии и добавить новые карточки и повторения, срок которых уже наступил.</string>
+    <string name="game_srs_status_available_now">Сейчас доступно %1$s</string>
+    <string name="game_srs_status_no_reviews_now">Сейчас повторов нет</string>
+    <string name="game_srs_status_next_due">Следующие %1$s будут через %2$s</string>
+    <string name="game_srs_status_later_today">Позже сегодня вернутся ещё %1$s</string>
+    <string name="game_srs_status_all_done_today">На сегодня всё</string>
+    <string name="game_srs_status_remaining_new">Новых сегодня ещё можно: %1$s</string>
+    <string name="game_srs_status_no_new_today">Новых карточек на сегодня больше не будет</string>
+    <string name="game_srs_status_card_one">карточка</string>
+    <string name="game_srs_status_card_few">карточки</string>
+    <string name="game_srs_status_card_many">карточек</string>
     <string name="game_back_to_student">Вернуться на экран пользователя</string>
     <string name="game_help_show_word">Показать слово</string>
     <string name="game_help_simplify_keyboard">Упростить клавиатуру</string>

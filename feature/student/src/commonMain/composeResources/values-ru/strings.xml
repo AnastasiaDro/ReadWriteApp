@@ -43,6 +43,16 @@
     <string name="active_student_mode_dialog_random_hint">Свободная практика знакомых карточек без изменения прогресса</string>
     <string name="active_student_mode_dialog_gallery_title">Галерея карточек</string>
     <string name="active_student_mode_dialog_gallery_hint">Выбрать колоду и листать карточки вручную</string>
+    <string name="active_student_srs_status_available_now">SRS сейчас: %1$s</string>
+    <string name="active_student_srs_status_no_reviews_now">Сейчас повторов нет</string>
+    <string name="active_student_srs_status_next_due">Следующие %1$s будут через %2$s</string>
+    <string name="active_student_srs_status_later_today">Позже сегодня вернутся ещё %1$s</string>
+    <string name="active_student_srs_status_all_done_today">На сегодня всё</string>
+    <string name="active_student_srs_status_remaining_new">Новых сегодня ещё можно: %1$s</string>
+    <string name="active_student_srs_status_no_new_today">Новых карточек на сегодня больше не будет</string>
+    <string name="active_student_srs_status_card_one">карточка</string>
+    <string name="active_student_srs_status_card_few">карточки</string>
+    <string name="active_student_srs_status_card_many">карточек</string>
     <string name="active_student_gallery_choose_deck_title">Выберите колоду для галереи</string>
     <string name="active_student_mode_dialog_cancel">Пока не выбирать</string>
     <string name="active_student_no_active_decks">Пока нет активных колод</string>

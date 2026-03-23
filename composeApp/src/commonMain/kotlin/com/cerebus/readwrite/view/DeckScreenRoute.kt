@@ -45,6 +45,16 @@ import readwriteapp.composeapp.generated.resources.deck_training_mode_gallery_hi
 import readwriteapp.composeapp.generated.resources.deck_training_mode_gallery_title
 import readwriteapp.composeapp.generated.resources.deck_training_mode_random_learned_hint
 import readwriteapp.composeapp.generated.resources.deck_training_mode_random_learned_title
+import readwriteapp.composeapp.generated.resources.deck_srs_status_all_done_today
+import readwriteapp.composeapp.generated.resources.deck_srs_status_available_now
+import readwriteapp.composeapp.generated.resources.deck_srs_status_card_few
+import readwriteapp.composeapp.generated.resources.deck_srs_status_card_many
+import readwriteapp.composeapp.generated.resources.deck_srs_status_card_one
+import readwriteapp.composeapp.generated.resources.deck_srs_status_later_today
+import readwriteapp.composeapp.generated.resources.deck_srs_status_next_due
+import readwriteapp.composeapp.generated.resources.deck_srs_status_no_new_today
+import readwriteapp.composeapp.generated.resources.deck_srs_status_no_reviews_now
+import readwriteapp.composeapp.generated.resources.deck_srs_status_remaining_new
 import readwriteapp.composeapp.generated.resources.deck_training_modes_help_action
 import readwriteapp.composeapp.generated.resources.deck_training_modes_help_subtitle
 import readwriteapp.composeapp.generated.resources.deck_training_modes_title
@@ -235,6 +245,16 @@ fun DeckScreenRoute(
         trainingModesHelpAction = stringResource(Res.string.deck_training_modes_help_action),
         trainingPlanTitle = stringResource(Res.string.deck_training_mode_plan_title),
         trainingPlanHint = stringResource(Res.string.deck_training_mode_plan_hint),
+        srsStatusAvailableNow = stringResource(Res.string.deck_srs_status_available_now),
+        srsStatusNoReviewsNow = stringResource(Res.string.deck_srs_status_no_reviews_now),
+        srsStatusNextDue = stringResource(Res.string.deck_srs_status_next_due),
+        srsStatusLaterToday = stringResource(Res.string.deck_srs_status_later_today),
+        srsStatusAllDoneToday = stringResource(Res.string.deck_srs_status_all_done_today),
+        srsStatusRemainingNew = stringResource(Res.string.deck_srs_status_remaining_new),
+        srsStatusNoNewToday = stringResource(Res.string.deck_srs_status_no_new_today),
+        srsStatusCardOne = stringResource(Res.string.deck_srs_status_card_one),
+        srsStatusCardFew = stringResource(Res.string.deck_srs_status_card_few),
+        srsStatusCardMany = stringResource(Res.string.deck_srs_status_card_many),
         randomLearnedTitle = stringResource(Res.string.deck_training_mode_random_learned_title),
         randomLearnedHint = stringResource(Res.string.deck_training_mode_random_learned_hint),
         randomAllTitle = stringResource(Res.string.deck_training_mode_random_all_title),

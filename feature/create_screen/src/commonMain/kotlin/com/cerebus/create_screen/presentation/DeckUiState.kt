@@ -1,5 +1,6 @@
 package com.cerebus.create_screen.presentation
 
+import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.data.flashcards.domain.models.Flashcard
 
 enum class DeckPickerRequest {
@@ -51,4 +52,5 @@ data class DeckUiState(
     val editingName: String = "",
     val validationError: DeckValidationError? = null,
     val flashcards: List<Flashcard> = emptyList(),
+    val srsAvailability: SrsAvailability? = null,
 )

@@ -3,10 +3,18 @@ package com.cerebus.readwrite.view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
+import com.cerebus.core.game_engine.domain.logic.SrsAvailability
+import com.cerebus.core.game_engine.domain.logic.SrsSessionCandidate
+import com.cerebus.core.game_engine.domain.logic.planSrsSession
+import com.cerebus.core.game_engine.domain.logic.toAvailability
 import com.cerebus.core.game_engine.domain.model.CardProgress
 import com.cerebus.core.game_engine.domain.model.SrsConfig
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
+import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
+import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
 import com.cerebus.core.utils.CustomResult
+import com.cerebus.core.utils.localStartOfDayMillis
+import com.cerebus.core.utils.nowMillis
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
@@ -30,6 +38,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 private val learnedLevelThreshold = SrsConfig().learnedLevelThreshold
+private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
 
 data class ActiveStudentUiState(
     val isLoading: Boolean = true,
@@ -48,6 +57,7 @@ data class ActiveStudentUiState(
     val editStudentName: String = "",
     val editStudentAvatarUri: String? = null,
     val pendingPickerRequest: StudentPickerRequest? = null,
+    val srsAvailability: SrsAvailability? = null,
 )
 
 sealed interface ActiveStudentAction {
@@ -98,6 +108,8 @@ class ActiveStudentViewModel(
     private val deckRepository: DeckRepository,
     private val flashcardRepository: FlashcardRepository,
     private val cardProgressRepository: CardProgressRepository,
+    private val studentPrefsRepository: StudentPrefsRepository,
+    private val reviewLogRepository: ReviewLogRepository,
     private val preferencesRepository: PreferencesRepository,
     private val deckPackageService: DeckPackageService,
     private val studentRepository: StudentRepository,
@@ -407,6 +419,7 @@ class ActiveStudentViewModel(
                         activeDecks = emptyList(),
                         studiedDecks = emptyList(),
                         otherDecks = emptyList(),
+                        srsAvailability = null,
                     )
                 )
 
@@ -420,6 +433,13 @@ class ActiveStudentViewModel(
                         assignedDeckIds = assignedDeckIds,
                         cardsByDeck = cardsByDeck,
                         progressByCardId = progressList.associateBy { progress -> progress.cardId },
+                    )
+                    val progressByCardId = progressList.associateBy { progress -> progress.cardId }
+                    val srsAvailability = buildSrsAvailability(
+                        studentId = relation.student.id,
+                        activeDeckIds = buckets.activeDecks.map { deck -> deck.deck.id },
+                        cardsByDeck = cardsByDeck,
+                        progressByCardId = progressByCardId,
                     )
                     ActiveStudentUiState(
                         isLoading = false,
@@ -438,6 +458,7 @@ class ActiveStudentViewModel(
                         editStudentName = _uiState.value.editStudentName,
                         editStudentAvatarUri = _uiState.value.editStudentAvatarUri,
                         pendingPickerRequest = _uiState.value.pendingPickerRequest,
+                        srsAvailability = srsAvailability,
                     )
                 }
             }.collect { state ->
@@ -528,6 +549,70 @@ class ActiveStudentViewModel(
         }
         return students.first()
     }
+
+    private suspend fun buildSrsAvailability(
+        studentId: String,
+        activeDeckIds: List<String>,
+        cardsByDeck: Map<String, List<Flashcard>>,
+        progressByCardId: Map<String, CardProgress>,
+    ): SrsAvailability? {
+        if (studentId.isBlank() || activeDeckIds.isEmpty()) return null
+
+        val prefs = runCatching { studentPrefsRepository.getPrefs(studentId) }.getOrNull() ?: return null
+        val normalizedReviewLimit = prefs.reviewsPerSession.coerceAtLeast(0)
+        val normalizedNewSessionLimit = prefs.newCardsPerSession.coerceAtLeast(0)
+        val normalizedNewDailyLimit = prefs.maxNewCardsPerDay.coerceAtLeast(0)
+        val guidedHintThreshold = prefs.guidedHintSuccessThreshold
+            .coerceIn(0, 5)
+        val dayStartMillis = localStartOfDayMillis()
+        val introducedTodayCardIds = reviewLogRepository.getCardIdsFirstReviewedSince(
+            studentId = studentId,
+            sinceEpochMillis = dayStartMillis,
+        )
+        val activeDeckCardIds = activeDeckIds
+            .flatMapTo(mutableSetOf()) { deckId ->
+                cardsByDeck[deckId].orEmpty().map { card -> card.id }
+            }
+        val remainingDailyNewSlots = (normalizedNewDailyLimit - introducedTodayCardIds.count { it in activeDeckCardIds })
+            .coerceAtLeast(0)
+
+        val candidates = activeDeckIds.flatMap { deckId ->
+            cardsByDeck[deckId].orEmpty().map { card ->
+                val progress = progressByCardId[card.id]
+                SrsSessionCandidate(
+                    item = card.id,
+                    deckId = deckId,
+                    cardId = card.id,
+                    progressLevel = progress?.level,
+                    dueAtEpochMillis = progress?.dueAtEpochMillis,
+                    showHintInitially = shouldShowHintInitially(
+                        progress = progress,
+                        guidedHintThreshold = guidedHintThreshold,
+                    ),
+                )
+            }
+        }
+        val planningResult = planSrsSession(
+            candidates = candidates,
+            introducedTodayCardIds = introducedTodayCardIds,
+            reviewLimit = normalizedReviewLimit,
+            newSessionLimit = normalizedNewSessionLimit,
+            remainingDailyNewLimit = remainingDailyNewSlots,
+            nowEpochMillis = nowMillis(),
+            dayEndEpochMillis = dayStartMillis + MILLIS_PER_DAY,
+            learnedLevelThreshold = learnedLevelThreshold,
+        )
+        return planningResult.toAvailability()
+    }
+}
+
+private fun shouldShowHintInitially(
+    progress: CardProgress?,
+    guidedHintThreshold: Int,
+): Boolean {
+    if (guidedHintThreshold <= 0) return false
+    if (progress == null) return true
+    return progress.copySuccessStreak < guidedHintThreshold
 }
 
 private data class ActiveStudentSnapshot(

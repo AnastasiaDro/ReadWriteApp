@@ -36,6 +36,16 @@
     <string name="deck_training_modes_help_action">Понятно</string>
     <string name="deck_training_mode_plan_title">По плану</string>
     <string name="deck_training_mode_plan_hint">Новые карточки и повторения по расписанию для этой колоды</string>
+    <string name="deck_srs_status_available_now">SRS сейчас: %1$s</string>
+    <string name="deck_srs_status_no_reviews_now">Сейчас повторов нет</string>
+    <string name="deck_srs_status_next_due">Следующие %1$s будут через %2$s</string>
+    <string name="deck_srs_status_later_today">Позже сегодня вернутся ещё %1$s</string>
+    <string name="deck_srs_status_all_done_today">На сегодня всё</string>
+    <string name="deck_srs_status_remaining_new">Новых сегодня ещё можно: %1$s</string>
+    <string name="deck_srs_status_no_new_today">Новых карточек на сегодня больше не будет</string>
+    <string name="deck_srs_status_card_one">карточка</string>
+    <string name="deck_srs_status_card_few">карточки</string>
+    <string name="deck_srs_status_card_many">карточек</string>
     <string name="deck_training_mode_random_learned_title">Случайные изученные</string>
     <string name="deck_training_mode_random_learned_hint">Свободная практика знакомых карточек без изменения прогресса</string>
     <string name="deck_training_mode_random_all_title">Случайные из колоды</string>

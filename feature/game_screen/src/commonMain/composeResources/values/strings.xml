@@ -5,6 +5,16 @@
     <string name="game_random_review_hint">Take 10 random studied cards from this deck. First cards reviewed today, then other studied cards. This mode does not update SRS intervals.</string>
     <string name="game_learn_more">Learn more</string>
     <string name="game_learn_more_hint">Increase session limits and add extra new and currently due review cards.</string>
+    <string name="game_srs_status_available_now">Available right now: %1$s</string>
+    <string name="game_srs_status_no_reviews_now">No reviews right now</string>
+    <string name="game_srs_status_next_due">Next %1$s will appear in %2$s</string>
+    <string name="game_srs_status_later_today">Another %1$s will return later today</string>
+    <string name="game_srs_status_all_done_today">All done for today</string>
+    <string name="game_srs_status_remaining_new">New cards still available today: %1$s</string>
+    <string name="game_srs_status_no_new_today">No more new cards today</string>
+    <string name="game_srs_status_card_one">card</string>
+    <string name="game_srs_status_card_few">cards</string>
+    <string name="game_srs_status_card_many">cards</string>
     <string name="game_back_to_student">Back to student screen</string>
     <string name="game_help_show_word">Show word</string>
     <string name="game_help_simplify_keyboard">Simplify keyboard</string>
