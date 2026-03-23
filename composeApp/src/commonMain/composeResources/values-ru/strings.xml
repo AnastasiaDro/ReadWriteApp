@@ -46,6 +46,8 @@
     <string name="deck_srs_status_card_one">карточка</string>
     <string name="deck_srs_status_card_few">карточки</string>
     <string name="deck_srs_status_card_many">карточек</string>
+    <string name="deck_srs_time_minutes_short">мин</string>
+    <string name="deck_srs_time_hours_short">ч</string>
     <string name="deck_training_mode_random_learned_title">Случайные изученные</string>
     <string name="deck_training_mode_random_learned_hint">Свободная практика знакомых карточек без изменения прогресса</string>
     <string name="deck_training_mode_random_all_title">Случайные из колоды</string>

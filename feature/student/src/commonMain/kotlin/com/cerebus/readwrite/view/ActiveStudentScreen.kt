@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +89,8 @@ import readwriteapp.feature.student.generated.resources.active_student_srs_statu
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_no_new_today
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_no_reviews_now
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_remaining_new
+import readwriteapp.feature.student.generated.resources.active_student_srs_time_hours_short
+import readwriteapp.feature.student.generated.resources.active_student_srs_time_minutes_short
 import readwriteapp.feature.student.generated.resources.active_student_delete
 import readwriteapp.feature.student.generated.resources.active_student_delete_student_message
 import readwriteapp.feature.student.generated.resources.active_student_delete_student_secondary_message
@@ -106,6 +109,7 @@ import readwriteapp.feature.student.generated.resources.choose_from_gallery
 import readwriteapp.feature.student.generated.resources.take_photo
 import readwriteapp.feature.student.generated.resources.close
 import readwriteapp.feature.student.generated.resources.save
+import kotlinx.coroutines.delay
 
 @Composable
 fun ActiveStudentRoute(
@@ -751,7 +755,11 @@ private fun ActiveStudentSrsStatus(
     availability: SrsAvailability,
     modifier: Modifier = Modifier,
 ) {
-    val summary = rememberActiveStudentSrsSummary(availability)
+    val currentTimeMillis by rememberSrsNowMillis()
+    val summary = rememberActiveStudentSrsSummary(
+        availability = availability,
+        currentTimeMillis = currentTimeMillis,
+    )
 
     Surface(
         modifier = modifier,
@@ -785,10 +793,13 @@ private fun ActiveStudentSrsStatus(
 @Composable
 private fun rememberActiveStudentSrsSummary(
     availability: SrsAvailability,
+    currentTimeMillis: Long,
 ): SrsStatusSummary {
     val cardOne = stringResource(Res.string.active_student_srs_status_card_one)
     val cardFew = stringResource(Res.string.active_student_srs_status_card_few)
     val cardMany = stringResource(Res.string.active_student_srs_status_card_many)
+    val minutesShort = stringResource(Res.string.active_student_srs_time_minutes_short)
+    val hoursShort = stringResource(Res.string.active_student_srs_time_hours_short)
     val cardCountLabel = formatSrsCountLabel(
         count = availability.availableNow,
         one = cardOne,
@@ -824,7 +835,12 @@ private fun rememberActiveStudentSrsSummary(
             nextDueAtEpochMillis != null -> stringResource(
             Res.string.active_student_srs_status_next_due,
             laterTodayLabel,
-            formatSrsDelayLabel(nextDueAtEpochMillis),
+            formatSrsDelayLabel(
+                targetEpochMillis = nextDueAtEpochMillis,
+                currentTimeMillis = currentTimeMillis,
+                minutesShort = minutesShort,
+                hoursShort = hoursShort,
+            ),
         )
 
         availability.laterTodayCount > 0 -> stringResource(
@@ -945,17 +961,28 @@ private fun selectPluralForm(
 
 private fun formatSrsDelayLabel(
     targetEpochMillis: Long,
+    currentTimeMillis: Long,
+    minutesShort: String,
+    hoursShort: String,
 ): String {
-    val deltaMinutes = ((targetEpochMillis - nowMillis()).coerceAtLeast(0L) + 59_999L) / 60_000L
+    val deltaMinutes = ((targetEpochMillis - currentTimeMillis).coerceAtLeast(0L) + 59_999L) / 60_000L
     if (deltaMinutes < 60L) {
-        return "${deltaMinutes.coerceAtLeast(1L)} min"
+        return "${deltaMinutes.coerceAtLeast(1L)} $minutesShort"
     }
 
     val hours = deltaMinutes / 60L
     val minutes = deltaMinutes % 60L
     return if (minutes == 0L) {
-        "$hours h"
+        "$hours $hoursShort"
     } else {
-        "$hours h $minutes min"
+        "$hours $hoursShort $minutes $minutesShort"
+    }
+}
+
+@Composable
+private fun rememberSrsNowMillis() = produceState(initialValue = nowMillis()) {
+    while (true) {
+        delay(60_000L)
+        value = nowMillis()
     }
 }

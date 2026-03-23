@@ -8,7 +8,7 @@ data class SessionSettingsState(
     val reviewsPerSession: Int = 15,
     val learnMoreStep: Int = 5,
     val guidedHintSuccessThreshold: Int = 2,
-    val maxNewCardsPerDay: Int = 15,
+    val maxNewCardsPerDay: Int = 5,
     val allowNearMatch: Boolean = true,
     val preventWrongKeyPress: Boolean = true,
     val keyboardPressDelay: KeyboardPressDelay = KeyboardPressDelay.Normal,

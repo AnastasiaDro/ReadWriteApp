@@ -46,6 +46,8 @@
     <string name="deck_srs_status_card_one">card</string>
     <string name="deck_srs_status_card_few">cards</string>
     <string name="deck_srs_status_card_many">cards</string>
+    <string name="deck_srs_time_minutes_short">min</string>
+    <string name="deck_srs_time_hours_short">h</string>
     <string name="deck_training_mode_random_learned_title">Random studied cards</string>
     <string name="deck_training_mode_random_learned_hint">Free practice with familiar cards without changing progress</string>
     <string name="deck_training_mode_random_all_title">Random from this deck</string>

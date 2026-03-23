@@ -5,7 +5,7 @@ data class StudentSrsPrefs(
     val newCardsPerSession: Int = 5,
     val reviewsPerSession: Int = 15,
     val learnMoreStep: Int = 5,
-    val maxNewCardsPerDay: Int = 15,
+    val maxNewCardsPerDay: Int = 5,
     val allowNearMatch: Boolean = true,
     val similarityThreshold: Double = 0.85,
     val easyStreakRequired: Int = 2,

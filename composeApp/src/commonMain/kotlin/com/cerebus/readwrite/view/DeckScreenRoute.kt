@@ -55,6 +55,8 @@ import readwriteapp.composeapp.generated.resources.deck_srs_status_next_due
 import readwriteapp.composeapp.generated.resources.deck_srs_status_no_new_today
 import readwriteapp.composeapp.generated.resources.deck_srs_status_no_reviews_now
 import readwriteapp.composeapp.generated.resources.deck_srs_status_remaining_new
+import readwriteapp.composeapp.generated.resources.deck_srs_time_hours_short
+import readwriteapp.composeapp.generated.resources.deck_srs_time_minutes_short
 import readwriteapp.composeapp.generated.resources.deck_training_modes_help_action
 import readwriteapp.composeapp.generated.resources.deck_training_modes_help_subtitle
 import readwriteapp.composeapp.generated.resources.deck_training_modes_title
@@ -255,6 +257,8 @@ fun DeckScreenRoute(
         srsStatusCardOne = stringResource(Res.string.deck_srs_status_card_one),
         srsStatusCardFew = stringResource(Res.string.deck_srs_status_card_few),
         srsStatusCardMany = stringResource(Res.string.deck_srs_status_card_many),
+        srsTimeMinutesShort = stringResource(Res.string.deck_srs_time_minutes_short),
+        srsTimeHoursShort = stringResource(Res.string.deck_srs_time_hours_short),
         randomLearnedTitle = stringResource(Res.string.deck_training_mode_random_learned_title),
         randomLearnedHint = stringResource(Res.string.deck_training_mode_random_learned_hint),
         randomAllTitle = stringResource(Res.string.deck_training_mode_random_all_title),

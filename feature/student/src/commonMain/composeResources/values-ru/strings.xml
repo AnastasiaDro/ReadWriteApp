@@ -53,6 +53,8 @@
     <string name="active_student_srs_status_card_one">карточка</string>
     <string name="active_student_srs_status_card_few">карточки</string>
     <string name="active_student_srs_status_card_many">карточек</string>
+    <string name="active_student_srs_time_minutes_short">мин</string>
+    <string name="active_student_srs_time_hours_short">ч</string>
     <string name="active_student_gallery_choose_deck_title">Выберите колоду для галереи</string>
     <string name="active_student_mode_dialog_cancel">Пока не выбирать</string>
     <string name="active_student_no_active_decks">Пока нет активных колод</string>

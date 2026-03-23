@@ -21,6 +21,8 @@ data class DeckScreenStrings(
     val srsStatusCardOne: String,
     val srsStatusCardFew: String,
     val srsStatusCardMany: String,
+    val srsTimeMinutesShort: String,
+    val srsTimeHoursShort: String,
     val randomLearnedTitle: String,
     val randomLearnedHint: String,
     val randomAllTitle: String,

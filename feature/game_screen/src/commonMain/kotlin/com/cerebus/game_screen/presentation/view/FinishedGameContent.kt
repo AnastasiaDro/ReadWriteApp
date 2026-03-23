@@ -11,6 +11,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +41,9 @@ import readwriteapp.feature.game_screen.generated.resources.game_srs_status_next
 import readwriteapp.feature.game_screen.generated.resources.game_srs_status_no_new_today
 import readwriteapp.feature.game_screen.generated.resources.game_srs_status_no_reviews_now
 import readwriteapp.feature.game_screen.generated.resources.game_srs_status_remaining_new
+import readwriteapp.feature.game_screen.generated.resources.game_srs_time_hours_short
+import readwriteapp.feature.game_screen.generated.resources.game_srs_time_minutes_short
+import kotlinx.coroutines.delay
 
 
 @Composable
@@ -152,7 +157,11 @@ private fun FinishedSrsStatus(
     availability: SrsAvailability,
     modifier: Modifier = Modifier,
 ) {
-    val summary = rememberFinishedSrsSummary(availability)
+    val currentTimeMillis by rememberSrsNowMillis()
+    val summary = rememberFinishedSrsSummary(
+        availability = availability,
+        currentTimeMillis = currentTimeMillis,
+    )
 
     Surface(
         modifier = modifier,
@@ -195,10 +204,13 @@ private fun FinishedSrsStatus(
 @Composable
 private fun rememberFinishedSrsSummary(
     availability: SrsAvailability,
+    currentTimeMillis: Long,
 ): SrsSummary {
     val cardOne = stringResource(Res.string.game_srs_status_card_one)
     val cardFew = stringResource(Res.string.game_srs_status_card_few)
     val cardMany = stringResource(Res.string.game_srs_status_card_many)
+    val minutesShort = stringResource(Res.string.game_srs_time_minutes_short)
+    val hoursShort = stringResource(Res.string.game_srs_time_hours_short)
     val availableLabel = formatSrsCountLabel(availability.availableNow, cardOne, cardFew, cardMany)
     val laterLabel = formatSrsCountLabel(availability.laterTodayCount, cardOne, cardFew, cardMany)
     val remainingNewLabel = formatSrsCountLabel(availability.remainingNewToday, cardOne, cardFew, cardMany)
@@ -225,7 +237,12 @@ private fun rememberFinishedSrsSummary(
             subtitle = stringResource(
                 Res.string.game_srs_status_next_due,
                 laterLabel,
-                formatSrsDelayLabel(nextDueAtEpochMillis),
+                formatSrsDelayLabel(
+                    targetEpochMillis = nextDueAtEpochMillis,
+                    currentTimeMillis = currentTimeMillis,
+                    minutesShort = minutesShort,
+                    hoursShort = hoursShort,
+                ),
             ),
             detail = newStatusLine,
         )
@@ -269,17 +286,28 @@ private fun selectPluralForm(
 
 private fun formatSrsDelayLabel(
     targetEpochMillis: Long,
+    currentTimeMillis: Long,
+    minutesShort: String,
+    hoursShort: String,
 ): String {
-    val deltaMinutes = ((targetEpochMillis - nowMillis()).coerceAtLeast(0L) + 59_999L) / 60_000L
+    val deltaMinutes = ((targetEpochMillis - currentTimeMillis).coerceAtLeast(0L) + 59_999L) / 60_000L
     if (deltaMinutes < 60L) {
-        return "${deltaMinutes.coerceAtLeast(1L)} min"
+        return "${deltaMinutes.coerceAtLeast(1L)} $minutesShort"
     }
 
     val hours = deltaMinutes / 60L
     val minutes = deltaMinutes % 60L
     return if (minutes == 0L) {
-        "$hours h"
+        "$hours $hoursShort"
     } else {
-        "$hours h $minutes min"
+        "$hours $hoursShort $minutes $minutesShort"
+    }
+}
+
+@Composable
+private fun rememberSrsNowMillis() = produceState(initialValue = nowMillis()) {
+    while (true) {
+        delay(60_000L)
+        value = nowMillis()
     }
 }

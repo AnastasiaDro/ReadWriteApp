@@ -53,6 +53,8 @@
     <string name="active_student_srs_status_card_one">card</string>
     <string name="active_student_srs_status_card_few">cards</string>
     <string name="active_student_srs_status_card_many">cards</string>
+    <string name="active_student_srs_time_minutes_short">min</string>
+    <string name="active_student_srs_time_hours_short">h</string>
     <string name="active_student_gallery_choose_deck_title">Choose a deck for the gallery</string>
     <string name="active_student_mode_dialog_cancel">Not now</string>
     <string name="active_student_no_active_decks">No active decks yet</string>

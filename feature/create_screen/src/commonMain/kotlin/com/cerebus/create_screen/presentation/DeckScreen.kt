@@ -54,6 +54,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -575,9 +576,11 @@ private fun DeckSrsStatusSummary(
     strings: DeckScreenStrings,
     modifier: Modifier = Modifier,
 ) {
+    val currentTimeMillis by rememberSrsNowMillis()
     val summary = buildDeckSrsStatusSummary(
         availability = availability,
         strings = strings,
+        currentTimeMillis = currentTimeMillis,
     )
 
     Surface(
@@ -612,6 +615,7 @@ private fun DeckSrsStatusSummary(
 private fun buildDeckSrsStatusSummary(
     availability: SrsAvailability,
     strings: DeckScreenStrings,
+    currentTimeMillis: Long,
 ): SrsStatusSummary {
     val cardCountLabel = formatSrsCountLabel(
         count = availability.availableNow,
@@ -645,7 +649,12 @@ private fun buildDeckSrsStatusSummary(
             nextDueAtEpochMillis != null -> formatTemplate(
             strings.srsStatusNextDue,
             laterTodayLabel,
-            formatSrsDelayLabel(nextDueAtEpochMillis),
+            formatSrsDelayLabel(
+                targetEpochMillis = nextDueAtEpochMillis,
+                currentTimeMillis = currentTimeMillis,
+                minutesShort = strings.srsTimeMinutesShort,
+                hoursShort = strings.srsTimeHoursShort,
+            ),
         )
 
         availability.laterTodayCount > 0 -> formatTemplate(strings.srsStatusLaterToday, laterTodayLabel)
@@ -742,18 +751,29 @@ private fun selectPluralForm(
 
 private fun formatSrsDelayLabel(
     targetEpochMillis: Long,
+    currentTimeMillis: Long,
+    minutesShort: String,
+    hoursShort: String,
 ): String {
-    val deltaMinutes = ((targetEpochMillis - nowMillis()).coerceAtLeast(0L) + 59_999L) / 60_000L
+    val deltaMinutes = ((targetEpochMillis - currentTimeMillis).coerceAtLeast(0L) + 59_999L) / 60_000L
     if (deltaMinutes < 60L) {
-        return "${deltaMinutes.coerceAtLeast(1L)} min"
+        return "${deltaMinutes.coerceAtLeast(1L)} $minutesShort"
     }
 
     val hours = deltaMinutes / 60L
     val minutes = deltaMinutes % 60L
     return if (minutes == 0L) {
-        "$hours h"
+        "$hours $hoursShort"
     } else {
-        "$hours h $minutes min"
+        "$hours $hoursShort $minutes $minutesShort"
+    }
+}
+
+@Composable
+private fun rememberSrsNowMillis() = produceState(initialValue = nowMillis()) {
+    while (true) {
+        delay(60_000L)
+        value = nowMillis()
     }
 }
 
