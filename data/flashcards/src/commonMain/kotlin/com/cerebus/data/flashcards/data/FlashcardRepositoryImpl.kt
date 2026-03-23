@@ -1,6 +1,8 @@
 package com.cerebus.data.flashcards.data
 
 import com.cerebus.core.utils.CustomResult
+import com.cerebus.core.utils.persistLocalFileUri
+import com.cerebus.core.utils.resolvePersistedLocalFileUri
 import com.cerebus.data.flashcards.data.entity.FlashcardEntity
 import com.cerebus.data.flashcards.data.storage.FlashcardStorage
 import com.cerebus.data.flashcards.domain.models.BulkInsertResult
@@ -61,7 +63,7 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
 
     private fun FlashcardEntity.toDomain() = Flashcard(
         id = id,
-        imageUrl = imageUrl,
+        imageUrl = resolvePersistedLocalFileUri(imageUrl).orEmpty(),
         name = name,
         activeLetters = activeLetters,
         deckId = deckId,
@@ -69,7 +71,7 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
 
     private fun Flashcard.toEntity() = FlashcardEntity(
         id = id,
-        imageUrl = imageUrl,
+        imageUrl = persistLocalFileUri(imageUrl).orEmpty(),
         name = name,
         activeLetters = buildActiveLetters(name),
         deckId = deckId,

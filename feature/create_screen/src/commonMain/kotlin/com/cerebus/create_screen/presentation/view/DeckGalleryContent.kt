@@ -302,7 +302,7 @@ internal fun DeckGalleryScreen(
                                     ).coerceAtLeast(120.dp)
 
                                     Column(
-                                        modifier = Modifier.width(portraitContentWidth),
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                                     ) {
@@ -323,18 +323,23 @@ internal fun DeckGalleryScreen(
                                             },
                                         )
 
-                                        GalleryGameLikeAnswerSection(
-                                            answerInput = state.answerInput,
-                                            expectedAnswer = currentCard.name,
-                                            inputFeedbackType = state.inputFeedbackType,
-                                            isHintEnabled = state.isInputHintEnabled,
-                                            isShiftEnabled = state.isShiftEnabled,
-                                            availableWidth = portraitContentWidth,
-                                            fieldReferenceWidth = portraitContentWidth,
-                                            isStacked = true,
-                                            onFieldClick = { isKeyboardVisible = true },
-                                            onSubmit = onSubmitPressed,
-                                        )
+                                        Box(
+                                            modifier = Modifier.width(portraitContentWidth),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            GalleryGameLikeAnswerSection(
+                                                answerInput = state.answerInput,
+                                                expectedAnswer = currentCard.name,
+                                                inputFeedbackType = state.inputFeedbackType,
+                                                isHintEnabled = state.isInputHintEnabled,
+                                                isShiftEnabled = state.isShiftEnabled,
+                                                availableWidth = portraitContentWidth,
+                                                fieldReferenceWidth = portraitContentWidth,
+                                                isStacked = true,
+                                                onFieldClick = { isKeyboardVisible = true },
+                                                onSubmit = onSubmitPressed,
+                                            )
+                                        }
                                     }
                                 }
                             }

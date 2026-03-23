@@ -1,6 +1,8 @@
 package com.cerebus.data.decks.data
 
 import com.cerebus.core.utils.CustomResult
+import com.cerebus.core.utils.persistLocalFileUri
+import com.cerebus.core.utils.resolvePersistedLocalFileUri
 import com.cerebus.data.decks.data.entity.DeckEntity
 import com.cerebus.data.decks.data.storage.DeckStorage
 import com.cerebus.data.decks.domain.models.BulkDeleteResult
@@ -50,7 +52,7 @@ class DeckRepositoryImpl(
     }
 
     override suspend fun updateDeckCoverUri(id: String, coverUri: String?): Boolean {
-        return storage.updateCoverUri(id, coverUri)
+        return storage.updateCoverUri(id, persistLocalFileUri(coverUri))
     }
 
     override suspend fun downloadDeck(id: String): CustomResult<Deck> {
@@ -63,12 +65,12 @@ class DeckRepositoryImpl(
     private fun Deck.toEntity() = DeckEntity(
         id = id,
         name = name,
-        coverUri = coverUri,
+        coverUri = persistLocalFileUri(coverUri),
     )
 
     private fun DeckEntity.toDomain() = Deck(
         id = id,
         name = name,
-        coverUri = coverUri,
+        coverUri = resolvePersistedLocalFileUri(coverUri),
     )
 }
