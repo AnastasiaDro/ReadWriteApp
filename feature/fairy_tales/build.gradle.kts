@@ -53,8 +53,10 @@ kotlin {
                 implementation(libs.compose.components.resources)
                 implementation(libs.androidx.navigation.compose)
                 implementation(libs.koin.compose.viewmodel)
+                implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.compottie)
                 implementation(libs.compottie.resources)
+                implementation(projects.core.soundPlayer)
             }
         }
 

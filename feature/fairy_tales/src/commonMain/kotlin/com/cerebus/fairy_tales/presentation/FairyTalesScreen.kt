@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,20 +14,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebus.core.sound_player.SoundClip
+import com.cerebus.core.sound_player.SoundSource
+import com.cerebus.core.sound_player.createSoundPlayer
+import com.cerebus.fairy_tales.presentation.util.rememberResourceFileCache
 import io.github.alexzhirkevich.compottie.Compottie
 import io.github.alexzhirkevich.compottie.LottieCompositionSpec
 import io.github.alexzhirkevich.compottie.rememberLottieComposition
 import io.github.alexzhirkevich.compottie.rememberLottiePainter
+import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import readwriteapp.feature.fairy_tales.generated.resources.Res
@@ -40,10 +50,42 @@ fun FairyTalesScreenRoute(
         parameters = { parametersOf(fairyTaleId) },
     )
     val state by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { viewModel.state } }
+    val soundPlayer = remember { createSoundPlayer() }
+    val resourceFileCache = rememberResourceFileCache()
+
+    DisposableEffect(soundPlayer) {
+        onDispose {
+            soundPlayer.release()
+        }
+    }
+
+    LaunchedEffect(viewModel, resourceFileCache, soundPlayer) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is FairyTalesEffect.PlaySound -> {
+                    val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull() ?: return@collect
+                    val fileUri = resourceFileCache.cacheBytes(
+                        fileName = effect.cue.fileName,
+                        bytes = bytes,
+                    ) ?: return@collect
+                    soundPlayer.play(
+                        clip = SoundClip(
+                            id = effect.cue.id,
+                            source = SoundSource.FileUri(fileUri),
+                        ),
+                    )
+                }
+            }
+        }
+    }
 
     FairyTalesScreen(
         state = state,
         onBackClick = onBackClick,
+        onPlayIdle = viewModel::playIdle,
+        onPlayBodaet = viewModel::playBodaet,
+        onPlayTopTop = viewModel::playTopTop,
+        onAnimationCompleted = viewModel::onAnimationCompleted,
     )
 }
 
@@ -51,6 +93,10 @@ fun FairyTalesScreenRoute(
 fun FairyTalesScreen(
     state: FairyTalesUiState,
     onBackClick: () -> Unit,
+    onPlayIdle: () -> Unit,
+    onPlayBodaet: () -> Unit,
+    onPlayTopTop: () -> Unit,
+    onAnimationCompleted: (Long) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -78,9 +124,47 @@ fun FairyTalesScreen(
         )
 
         FairyTaleAnimationSlot(
-            animationAssetPath = state.animationAssetPath,
+            animationState = state.animationState,
+            onAnimationCompleted = onAnimationCompleted,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (state.fairyTaleId == KOZA_FAIRY_TALE_ID) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onPlayBodaet,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Bodaet",
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                Button(
+                    onClick = onPlayIdle,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Idle",
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                Button(
+                    onClick = onPlayTopTop,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Top top",
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -102,9 +186,11 @@ fun FairyTalesScreen(
 
 @Composable
 private fun FairyTaleAnimationSlot(
-    animationAssetPath: String?,
+    animationState: FairyTaleAnimationState,
+    onAnimationCompleted: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val animationAssetPath = animationState.assetPath
     val compositionResult = animationAssetPath?.let { assetPath ->
         rememberLottieComposition(assetPath) {
             val json = Res.readBytes(assetPath).decodeToString()
@@ -114,6 +200,13 @@ private fun FairyTaleAnimationSlot(
     val composition by (compositionResult ?: androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(null)
     })
+
+    LaunchedEffect(animationState) {
+        val playbackToken = animationState.playbackToken ?: return@LaunchedEffect
+        val durationMillis = animationState.durationMillis ?: return@LaunchedEffect
+        delay(durationMillis)
+        onAnimationCompleted(playbackToken)
+    }
 
     Box(
         modifier = modifier
@@ -144,7 +237,12 @@ private fun FairyTaleAnimationSlot(
                 Image(
                     painter = rememberLottiePainter(
                         composition = composition,
-                        iterations = Compottie.IterateForever,
+                        iterations = when (animationState) {
+                            FairyTaleAnimationState.None,
+                            FairyTaleAnimationState.Idle -> Compottie.IterateForever
+                            is FairyTaleAnimationState.Bodaet,
+                            is FairyTaleAnimationState.TopTop -> 1
+                        },
                     ),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),

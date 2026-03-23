@@ -276,6 +276,12 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                                 wrongFeedback = stringResource(Res.string.deck_gallery_wrong_feedback),
                             ),
                             onBackClick = { navController.closeDeckGallery() },
+                            onOpenKeyboardSettings = { studentId ->
+                                navController.openKeyboardSettings(
+                                    studentId = studentId,
+                                    returnRoute = Screens.DECK_GALLERY.route,
+                                )
+                            },
                         )
                     }
                 }

@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.cerebus.create_screen.presentation.view.DeckGalleryScreen
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
 import com.cerebus.data.flashcards.domain.models.Flashcard
@@ -24,6 +27,7 @@ data class DeckGalleryStrings(
 data class DeckGalleryUiState(
     val isLoading: Boolean = true,
     val deckId: String = "",
+    val studentId: String = "",
     val cards: List<Flashcard> = emptyList(),
     val currentIndex: Int = 0,
     val activeSymbols: Set<String> = emptySet(),
@@ -50,6 +54,11 @@ data class DeckGalleryFeedbackUi(
     val emoji: String,
 )
 
+sealed interface DeckGalleryEffect {
+    data class AnimateToCard(
+        val index: Int,
+    ) : DeckGalleryEffect
+}
 
 @Composable
 fun DeckGalleryRoute(
@@ -57,20 +66,42 @@ fun DeckGalleryRoute(
     initialCardId: String?,
     strings: DeckGalleryStrings,
     onBackClick: () -> Unit,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val viewModel = koinViewModel<DeckGalleryViewModel>(
         parameters = { parametersOf(deckId, initialCardId) },
     )
     val state by viewModel.uiState.collectAsState()
+    var animatedScrollTargetIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(deckId, initialCardId) {
         viewModel.load()
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is DeckGalleryEffect.AnimateToCard -> {
+                    animatedScrollTargetIndex = effect.index
+                }
+            }
+        }
+    }
+
     DeckGalleryScreen(
         state = state,
         strings = strings,
+        animatedScrollTargetIndex = animatedScrollTargetIndex,
+        onAnimatedScrollTargetConsumed = {
+            animatedScrollTargetIndex = null
+        },
         onBackClick = onBackClick,
+        onOpenKeyboardSettings = {
+            val studentId = state.studentId
+            if (studentId.isNotBlank()) {
+                onOpenKeyboardSettings(studentId)
+            }
+        },
         onPreviousClick = viewModel::showPrevious,
         onNextClick = viewModel::showNext,
         onShiftChanged = viewModel::onShiftChanged,

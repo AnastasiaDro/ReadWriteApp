@@ -15,7 +15,10 @@ import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.student.domain.repositories.StudentRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -34,6 +37,10 @@ class DeckGalleryViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DeckGalleryUiState(deckId = deckId))
     val uiState: StateFlow<DeckGalleryUiState> = _uiState.asStateFlow()
+    private val _effects = MutableSharedFlow<DeckGalleryEffect>(
+        extraBufferCapacity = 1,
+    )
+    val effects: SharedFlow<DeckGalleryEffect> = _effects.asSharedFlow()
 
     private var pendingInitialCardId: String? = initialCardId
     private var observeDeckJob: Job? = null
@@ -68,6 +75,7 @@ class DeckGalleryViewModel(
                 it.copy(
                     isLoading = true,
                     deckId = deckId,
+                    studentId = studentId,
                     isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
                     isInputHintEnabled = preferencesRepository.getGalleryInputHintEnabled(studentId) == true,
                     hideDigitsOnTightScreen = preferencesRepository
@@ -225,12 +233,22 @@ class DeckGalleryViewModel(
         showAttemptFeedback(
             feedback = DeckGalleryFeedbackUi(
                 message = strings.correctFeedback,
-                emoji = "✅",
+                emoji = "🥳",
             ),
             afterDelay = {
-                resetAttemptForCurrentCard(keepHintVisible = current.isHintVisible)
+                val hasNextCard = current.currentIndex < _uiState.value.cards.lastIndex
+                if (hasNextCard) {
+                    _effects.tryEmit(DeckGalleryEffect.AnimateToCard(current.currentIndex + 1))
+                } else {
+                    resetAttemptForCurrentCard(keepHintVisible = current.isHintVisible)
+                }
             },
         )
+
+        val updatedStudiedSymbols = studiedSymbols + currentCard.extractKeyboardSymbols()
+        studiedSymbols = updatedStudiedSymbols
+        persistStudiedSymbols(updatedStudiedSymbols)
+        refreshActiveSymbols()
     }
 
     fun onShowWordToggle(isEnabled: Boolean) {
@@ -430,6 +448,22 @@ class DeckGalleryViewModel(
             .filter { it.isLetterOrDigit() }
             .map { it.toString() }
             .toSet()
+    }
+
+    private fun persistStudiedSymbols(
+        symbols: Set<String>,
+    ) {
+        if (studentId.isBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                studentRepository.updateActiveLetters(
+                    id = studentId,
+                    activeLetters = symbols
+                        .mapNotNull { symbol -> symbol.singleOrNull() }
+                        .joinToString(separator = ""),
+                )
+            }
+        }
     }
 
     override fun onCleared() {

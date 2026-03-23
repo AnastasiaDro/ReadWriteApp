@@ -45,6 +45,8 @@ import kotlin.math.absoluteValue
 internal fun GalleryTrainingCard(
     cards: List<Flashcard>,
     currentIndex: Int,
+    animatedScrollTargetIndex: Int?,
+    onAnimatedScrollTargetConsumed: () -> Unit,
     isHintVisible: Boolean,
     isLandscape: Boolean,
     isPhoneLandscape: Boolean,
@@ -64,6 +66,15 @@ internal fun GalleryTrainingCard(
         if (pagerState.currentPage != targetPage) {
             pagerState.scrollToPage(targetPage)
         }
+    }
+
+    LaunchedEffect(animatedScrollTargetIndex, cards.size) {
+        val targetPage = animatedScrollTargetIndex ?: return@LaunchedEffect
+        val safeTargetPage = targetPage.coerceIn(0, cards.lastIndex)
+        if (pagerState.currentPage != safeTargetPage) {
+            pagerState.animateScrollToPage(safeTargetPage)
+        }
+        onAnimatedScrollTargetConsumed()
     }
 
     LaunchedEffect(pagerState.settledPage) {

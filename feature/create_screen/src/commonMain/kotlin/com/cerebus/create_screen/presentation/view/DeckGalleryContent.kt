@@ -50,7 +50,10 @@ import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
 internal fun DeckGalleryScreen(
     state: DeckGalleryUiState,
     strings: DeckGalleryStrings,
+    animatedScrollTargetIndex: Int?,
+    onAnimatedScrollTargetConsumed: () -> Unit,
     onBackClick: () -> Unit,
+    onOpenKeyboardSettings: () -> Unit,
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     onShiftChanged: (Boolean) -> Unit,
@@ -168,7 +171,7 @@ internal fun DeckGalleryScreen(
                         onBackspacePressed = onBackspacePressed,
                         onSpacePressed = { onSymbolPressed(" ") },
                         onSubmitPressed = onSubmitPressed,
-                        onSettingsPressed = {},
+                        onSettingsPressed = onOpenKeyboardSettings,
                         showDigitsRow = showDigitsRow,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -239,6 +242,8 @@ internal fun DeckGalleryScreen(
                                         GalleryTrainingCard(
                                             cards = cards,
                                             currentIndex = state.currentIndex,
+                                            animatedScrollTargetIndex = animatedScrollTargetIndex,
+                                            onAnimatedScrollTargetConsumed = onAnimatedScrollTargetConsumed,
                                             isHintVisible = state.isHintVisible,
                                             isLandscape = true,
                                             isPhoneLandscape = isPhoneLandscape,
@@ -304,6 +309,8 @@ internal fun DeckGalleryScreen(
                                         GalleryTrainingCard(
                                             cards = cards,
                                             currentIndex = state.currentIndex,
+                                            animatedScrollTargetIndex = animatedScrollTargetIndex,
+                                            onAnimatedScrollTargetConsumed = onAnimatedScrollTargetConsumed,
                                             isHintVisible = state.isHintVisible,
                                             isLandscape = false,
                                             isPhoneLandscape = false,
