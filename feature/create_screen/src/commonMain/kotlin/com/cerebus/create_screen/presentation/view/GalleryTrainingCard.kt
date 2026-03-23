@@ -89,13 +89,13 @@ internal fun GalleryTrainingCard(
     ) {
         val pageWidth = preferredCardSize ?: when {
             isLandscape -> minOf(360.dp, (maxWidth - 8.dp).coerceAtLeast(120.dp))
-            else -> minOf(360.dp, (maxWidth * 0.78f).coerceAtLeast(120.dp))
+            else -> minOf(360.dp, (maxWidth * 0.74f).coerceAtLeast(120.dp))
         }
         val horizontalPeek = ((maxWidth - pageWidth) / 2f).coerceAtLeast(0.dp)
         val pageSpacing = when {
             isPhoneLandscape -> 6.dp
             isLandscape -> 10.dp
-            else -> 12.dp
+            else -> 8.dp
         }
 
         HorizontalPager(
@@ -111,7 +111,7 @@ internal fun GalleryTrainingCard(
             val scale = if (isLandscape) {
                 1f - (0.5f * coercedOffset)
             } else {
-                1f
+                1f - (0.18f * coercedOffset)
             }
             val alpha = if (isLandscape) {
                 1f - (0.28f * coercedOffset)
