@@ -7,12 +7,18 @@ import readwriteapp.feature.fairy_tales.generated.resources.Res
 import readwriteapp.feature.fairy_tales.generated.resources.koza
 import readwriteapp.feature.fairy_tales.generated.resources.horse
 
+/** Goat block **/
 internal const val KOZA_FAIRY_TALE_ID = "koza-rogataya"
 internal const val KOZA_IDLE_ASSET = "files/koza_idle.json"
 internal const val KOZA_WALK_ASSET = "files/1_koza_walk.json"
 internal const val KOZA_BODAET_ASSET = "files/6_koza_bodaet.json"
 internal const val KOZA_HLOP_ASSET = "files/4_koza_hlop.json"
 internal const val KOZA_TOP_TOP_ASSET = "files/3_koza_top_top.json"
+
+
+/** Horse block **/
+internal const val HORSE_TALE_ID = "love-my-horse"
+
 
 sealed interface FairyTaleAnimationKind {
     val assetPath: String?
@@ -53,7 +59,7 @@ data class FairyTaleStoryLine(
     val text: String,
     val soundResourcePath: String,
     val soundFileName: String,
-    val animationKind: FairyTaleAnimationKind,
+    val contentKind: FairyTaleAnimationKind,
 )
 
 data class FairyTaleContent(
@@ -78,50 +84,50 @@ internal object FairyTalesCatalog {
                     text = "Идёт коза рогатая",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "За малыми ребятами",
                     soundResourcePath = "files/koza_story/2_for_kids.m4a",
                     soundFileName = "2_for_kids.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Ножками топ топ",
                     soundResourcePath = "files/koza_story/3_top-top.m4a",
                     soundFileName = "3_top-top.m4a",
-                    animationKind = FairyTaleAnimationKind.TopTop,
+                    contentKind = FairyTaleAnimationKind.TopTop,
                 ),
                 FairyTaleStoryLine(
                     text = "Глазками хлоп хлоп",
                     soundResourcePath = "files/koza_story/4_eyes_hlop.m4a",
                     soundFileName = "4_eyes_hlop.m4a",
-                    animationKind = FairyTaleAnimationKind.Hlop,
+                    contentKind = FairyTaleAnimationKind.Hlop,
                 ),
                 FairyTaleStoryLine(
                     text = "Кто кашу не ест",
                     soundResourcePath = "files/koza_story/5_porridge.m4a",
                     soundFileName = "5_porridge.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Молока не пьёт",
                     soundResourcePath = "files/koza_story/6_milk.m4a",
                     soundFileName = "6_milk.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Того забодает",
                     soundResourcePath = "files/koza_story/7_zabodaet.m4a",
                     soundFileName = "7_zabodaet.m4a",
-                    animationKind = FairyTaleAnimationKind.Bodaet,
+                    contentKind = FairyTaleAnimationKind.Bodaet,
                 ),
             ),
         ),
         FairyTaleContent(
-            id = "three-little-pigs",
+            id = HORSE_TALE_ID,
             title = "Я люблю свою лошадку",
-            description = "Причешу ей шёрстку гладко...",
+            description = "Стихотворение Агнии Барто про лошадку и заботу о ней",
             coverColor = Color(0xFFB8D49C),
             coverRes = Res.drawable.horse,
             storyLines = listOf(
@@ -129,25 +135,25 @@ internal object FairyTalesCatalog {
                     text = "Я люблю свою лошадку",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Причешу ей шёрстку гладко",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Гребешком приглажу хвостик",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "И верхом поеду в гости",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    animationKind = FairyTaleAnimationKind.Walk,
+                    contentKind = FairyTaleAnimationKind.Walk,
                 ),
             ),
         ),

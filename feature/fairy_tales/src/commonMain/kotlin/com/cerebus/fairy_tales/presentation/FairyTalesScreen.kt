@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -36,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -195,7 +195,7 @@ fun FairyTalesScreen(
             }
             state.animationState.assetPath?.let(::add)
             state.storyLines.forEach { line ->
-                line.animationKind.assetPath?.let(::add)
+                line.contentKind.assetPath?.let(::add)
             }
         }.distinct()
     }
@@ -260,7 +260,6 @@ fun FairyTalesScreen(
                     if (isLandscape) {
                         FairyTalesLandscapeContent(
                             state = state,
-                            availableWidth = maxWidth,
                             isTablet = isTablet,
                             isPhoneLandscape = isPhoneLandscape,
                             compositionCache = compositionCache,
@@ -365,48 +364,57 @@ private fun FairyTalesPortraitContent(
 @Composable
 private fun FairyTalesLandscapeContent(
     state: FairyTalesUiState,
-    availableWidth: Dp,
     isTablet: Boolean,
     isPhoneLandscape: Boolean,
     compositionCache: Map<String, FairyTaleCompositionCacheEntry>,
     onSubmitPressed: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically,
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .navigationBarsPadding(),
     ) {
-        Box(
-            modifier = Modifier
-                .weight(0.4f)
-                .fillMaxHeight(),
-            contentAlignment = Alignment.Center,
+        val safeAvailableWidth = maxWidth
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            FairyTaleAnimationPanel(
-                state = state,
-                isTablet = isTablet,
-                compositionCache = compositionCache,
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (isPhoneLandscape) Modifier.widthIn(max = 220.dp) else Modifier
-                    ),
-            )
-        }
-        Box(
-            modifier = Modifier
-                .weight(0.6f)
-                .fillMaxHeight(),
-            contentAlignment = if (isPhoneLandscape) Alignment.CenterStart else Alignment.Center,
-        ) {
-            FairyTalePromptAndInput(
-                state = state,
-                availableWidth = (availableWidth * 0.6f - if (isPhoneLandscape) 8.dp else 24.dp).coerceAtLeast(200.dp),
-                maxContainerWidth = if (isTablet) 560.dp else 340.dp,
-                minimumFieldWidth = if (isTablet) 140.dp else 120.dp,
-                isCompact = isPhoneLandscape,
-                modifier = Modifier.fillMaxWidth(),
-                onSubmitPressed = onSubmitPressed,
-            )
+                    .weight(0.4f)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center,
+            ) {
+                FairyTaleAnimationPanel(
+                    state = state,
+                    isTablet = isTablet,
+                    showCompletedLines = false,
+                    compositionCache = compositionCache,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (isPhoneLandscape) Modifier.widthIn(max = 220.dp) else Modifier
+                        ),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(0.6f)
+                    .fillMaxHeight(),
+                contentAlignment = if (isPhoneLandscape) Alignment.CenterStart else Alignment.Center,
+            ) {
+                FairyTalePromptAndInput(
+                    state = state,
+                    availableWidth = (safeAvailableWidth * 0.6f - if (isPhoneLandscape) 8.dp else 24.dp).coerceAtLeast(200.dp),
+                    maxContainerWidth = if (isTablet) 560.dp else 340.dp,
+                    minimumFieldWidth = if (isTablet) 140.dp else 120.dp,
+                    isCompact = isPhoneLandscape,
+                    showCompletedLinesAboveAnswer = true,
+                    isTablet = isTablet,
+                    modifier = Modifier.fillMaxWidth(),
+                    onSubmitPressed = onSubmitPressed,
+                )
+            }
         }
     }
 }
@@ -419,33 +427,38 @@ private fun FairyTaleAnimationPanel(
     compositionCache: Map<String, FairyTaleCompositionCacheEntry>,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top,
-    ) {
-        val animationModifier = if (showCompletedLines) {
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
+    val completedLinesMaxHeight = fairyTaleCompletedLinesMaxHeight(isTablet = isTablet)
+    BoxWithConstraints(modifier = modifier) {
+        val showLines = showCompletedLines && state.storyLines.isNotEmpty()
+        val reservedLinesHeight = if (showLines) completedLinesMaxHeight + 8.dp else 0.dp
+        val availableAnimationHeight = (maxHeight - reservedLinesHeight).coerceAtLeast(0.dp)
+        val animationSize = if (showLines) {
+            minOf(maxWidth, availableAnimationHeight)
         } else {
-            Modifier.fillMaxSize()
+            minOf(maxWidth, maxHeight)
         }
-        FairyTaleAnimationSlot(
-            animationState = state.animationState,
-            compositionCache = compositionCache,
-            modifier = animationModifier,
-        )
-        if (showCompletedLines && state.storyLines.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            FairyTaleCompletedLines(
-                storyLines = state.storyLines,
-                completedCount = state.currentLineIndex.coerceAtMost(state.storyLines.size),
-                isTablet = isTablet,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 84.dp, max = 160.dp),
+
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top,
+        ) {
+            FairyTaleAnimationSlot(
+                animationState = state.animationState,
+                compositionCache = compositionCache,
+                modifier = Modifier.size(animationSize),
             )
+            if (showLines) {
+                Spacer(modifier = Modifier.height(8.dp))
+                FairyTaleCompletedLines(
+                    storyLines = state.storyLines,
+                    completedCount = state.currentLineIndex.coerceAtMost(state.storyLines.size),
+                    isTablet = isTablet,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                )
+            }
         }
     }
 }
@@ -457,6 +470,8 @@ private fun FairyTalePromptAndInput(
     maxContainerWidth: Dp,
     minimumFieldWidth: Dp,
     isCompact: Boolean,
+    showCompletedLinesAboveAnswer: Boolean = false,
+    isTablet: Boolean = false,
     modifier: Modifier = Modifier,
     onSubmitPressed: () -> Unit,
 ) {
@@ -466,10 +481,22 @@ private fun FairyTalePromptAndInput(
     )
     val spacing = if (isCompact) 4.dp else 8.dp
     Column(
-        modifier = modifier.widthIn(max = maxContainerWidth),
+        modifier = modifier
+            .widthIn(max = maxContainerWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(spacing),
     ) {
+        if (showCompletedLinesAboveAnswer && state.storyLines.isNotEmpty()) {
+            FairyTaleCompletedLines(
+                storyLines = state.storyLines,
+                completedCount = state.currentLineIndex.coerceAtMost(state.storyLines.size),
+                isTablet = isTablet,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+            )
+        }
+
         Crossfade(
             targetState = state.storyText.uppercase().takeIf { state.isHintVisible },
             animationSpec = tween(durationMillis = TextFadeDurationMillis),
@@ -533,20 +560,10 @@ private fun FairyTaleCompletedLines(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
-    val textStyle = if (isTablet) {
-        MaterialTheme.typography.bodyMedium
-    } else {
-        MaterialTheme.typography.bodySmall
-    }
+    val textStyle = fairyTaleCompletedLinesTextStyle(isTablet = isTablet)
     val maxVisibleLines = 4
-    val approxLineHeight = if (textStyle.lineHeight != TextUnit.Unspecified) {
-        textStyle.lineHeight
-    } else {
-        textStyle.fontSize * 1.3f
-    }
-    val maxHeight = with(LocalDensity.current) {
-        (approxLineHeight * maxVisibleLines).toDp() + 4.dp
-    }
+    val maxHeight = fairyTaleCompletedLinesMaxHeight(isTablet = isTablet)
+    val approxLineHeight = if (textStyle.lineHeight != TextUnit.Unspecified) textStyle.lineHeight else textStyle.fontSize * 1.3f
     val approxLineHeightPx = with(LocalDensity.current) {
         approxLineHeight.toPx()
     }
@@ -587,6 +604,42 @@ private fun FairyTaleCompletedLines(
             )
         }
     }
+}
+
+@Composable
+private fun fairyTaleCompletedLinesMaxHeight(
+    isTablet: Boolean,
+): Dp {
+    val textStyle = fairyTaleCompletedLinesTextStyle(isTablet = isTablet)
+    val approxLineHeight = if (textStyle.lineHeight != TextUnit.Unspecified) {
+        textStyle.lineHeight
+    } else {
+        textStyle.fontSize * 1.3f
+    }
+    return with(LocalDensity.current) {
+        (approxLineHeight * 4).toDp() + 4.dp
+    }
+}
+
+@Composable
+private fun fairyTaleCompletedLinesTextStyle(
+    isTablet: Boolean,
+): TextStyle {
+    val baseStyle = if (isTablet) {
+        MaterialTheme.typography.bodyMedium
+    } else {
+        MaterialTheme.typography.bodySmall
+    }
+    if (!isTablet) return baseStyle
+
+    return baseStyle.copy(
+        fontSize = baseStyle.fontSize * 1.5f,
+        lineHeight = if (baseStyle.lineHeight != TextUnit.Unspecified) {
+            baseStyle.lineHeight * 1.5f
+        } else {
+            TextUnit.Unspecified
+        },
+    )
 }
 
 @Composable

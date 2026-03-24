@@ -81,7 +81,7 @@ class FairyTalesViewModel(
     ) {
         if (activePlaybackToken != playbackToken) return
         val currentLine = state.currentStoryLine ?: return
-        val animationKind = currentLine.animationKind
+        val animationKind = currentLine.contentKind
         val playbackDurationMillis = (audioDurationMillis ?: 0L).coerceAtLeast(0L)
 
         applyState(
@@ -250,7 +250,7 @@ class FairyTalesViewModel(
         _effects.tryEmit(
             FairyTalesEffect.StartStoryPlayback(
                 playbackToken = playbackToken,
-                animationKind = currentLine.animationKind,
+                animationKind = currentLine.contentKind,
                 cue = FairyTaleSoundCue(
                     id = "fairy-tale-line-$playbackToken",
                     resourcePath = currentLine.soundResourcePath,
