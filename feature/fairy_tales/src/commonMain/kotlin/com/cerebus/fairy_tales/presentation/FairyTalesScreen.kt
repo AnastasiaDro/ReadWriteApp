@@ -29,7 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -288,6 +290,7 @@ private fun FairyTalesPortraitContent(
                 val animationMaxSize = minOf(animationMaxWidth, maxHeight)
                 FairyTaleAnimationPanel(
                     state = state,
+                    isTablet = isTablet,
                     onAnimationCompleted = onAnimationCompleted,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -331,6 +334,7 @@ private fun FairyTalesLandscapeContent(
         ) {
             FairyTaleAnimationPanel(
                 state = state,
+                isTablet = isTablet,
                 onAnimationCompleted = onAnimationCompleted,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -361,6 +365,7 @@ private fun FairyTalesLandscapeContent(
 @Composable
 private fun FairyTaleAnimationPanel(
     state: FairyTalesUiState,
+    isTablet: Boolean,
     onAnimationCompleted: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -379,6 +384,7 @@ private fun FairyTaleAnimationPanel(
             FairyTaleCompletedLines(
                 storyLines = state.storyLines,
                 completedCount = state.currentLineIndex.coerceAtMost(state.storyLines.size),
+                isTablet = isTablet,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 84.dp, max = 160.dp),
@@ -459,14 +465,10 @@ private fun FairyTalePromptAndInput(
 private fun FairyTaleCompletedLines(
     storyLines: List<FairyTaleStoryLine>,
     completedCount: Int,
+    isTablet: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
-    val density = LocalDensity.current
-    val windowInfo = LocalWindowInfo.current
-    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
-    val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
-    val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -503,11 +505,18 @@ private fun FairyTaleAnimationSlot(
     modifier: Modifier = Modifier,
 ) {
     val animationAssetPath = animationState.assetPath
-    val compositionResult = animationAssetPath?.let { assetPath ->
-        rememberLottieComposition(assetPath) {
-            val json = Res.readBytes(assetPath).decodeToString()
-            LottieCompositionSpec.JsonString(json)
+    val latestOnAnimationCompleted by rememberUpdatedState(onAnimationCompleted)
+    val compositionSpecResult by produceState<Result<LottieCompositionSpec>?>(initialValue = null, key1 = animationAssetPath) {
+        value = animationAssetPath?.let { assetPath ->
+            runCatching {
+                val json = Res.readBytes(assetPath).decodeToString()
+                LottieCompositionSpec.JsonString(json)
+            }
         }
+    }
+    val compositionSpec = compositionSpecResult?.getOrNull()
+    val compositionResult = compositionSpec?.let { spec ->
+        rememberLottieComposition(spec) { spec }
     }
     val composition by (compositionResult ?: androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(null)
@@ -516,7 +525,7 @@ private fun FairyTaleAnimationSlot(
     LaunchedEffect(animationState) {
         val playbackState = animationState as? FairyTaleAnimationState.Playback ?: return@LaunchedEffect
         delay(playbackState.totalDurationMillis)
-        onAnimationCompleted(playbackState.playbackToken)
+        latestOnAnimationCompleted(playbackState.playbackToken)
     }
 
     Box(
@@ -559,7 +568,7 @@ private fun FairyTaleAnimationSlot(
                 )
             }
 
-            compositionResult?.isFailure == true -> {
+            compositionSpecResult?.isFailure == true -> {
                 Text(
                     text = "Не удалось загрузить анимацию",
                     style = MaterialTheme.typography.bodyLarge,

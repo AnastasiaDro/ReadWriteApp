@@ -9,7 +9,9 @@ import readwriteapp.feature.fairy_tales.generated.resources.koza
 
 internal const val KOZA_FAIRY_TALE_ID = "koza-rogataya"
 internal const val KOZA_IDLE_ASSET = "files/koza_idle.json"
+internal const val KOZA_WALK_ASSET = "files/1_koza_walk.json"
 internal const val KOZA_BODAET_ASSET = "files/6_koza_bodaet.json"
+internal const val KOZA_HLOP_ASSET = "files/4_koza_hlop.json"
 internal const val KOZA_TOP_TOP_ASSET = "files/3_koza_top_top.json"
 
 sealed interface FairyTaleAnimationKind {
@@ -26,9 +28,19 @@ sealed interface FairyTaleAnimationKind {
         override val loopDurationMillis: Long = 3_000L
     }
 
+    data object Walk : FairyTaleAnimationKind {
+        override val assetPath: String = KOZA_WALK_ASSET
+        override val loopDurationMillis: Long = 3_000L
+    }
+
     data object TopTop : FairyTaleAnimationKind {
         override val assetPath: String = KOZA_TOP_TOP_ASSET
         override val loopDurationMillis: Long = 4_000L
+    }
+
+    data object Hlop : FairyTaleAnimationKind {
+        override val assetPath: String = KOZA_HLOP_ASSET
+        override val loopDurationMillis: Long = 3_000L
     }
 
     data object Bodaet : FairyTaleAnimationKind {
@@ -87,7 +99,7 @@ internal object FairyTalesCatalog {
                     text = "Идёт коза рогатая",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    animationKind = FairyTaleAnimationKind.Idle,
+                    animationKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "За малыми ребятами",
@@ -105,7 +117,7 @@ internal object FairyTalesCatalog {
                     text = "Глазками хлоп хлоп",
                     soundResourcePath = "files/koza_story/4_eyes_hlop.m4a",
                     soundFileName = "4_eyes_hlop.m4a",
-                    animationKind = FairyTaleAnimationKind.Idle,
+                    animationKind = FairyTaleAnimationKind.Hlop,
                 ),
                 FairyTaleStoryLine(
                     text = "Кто кашу не ест",

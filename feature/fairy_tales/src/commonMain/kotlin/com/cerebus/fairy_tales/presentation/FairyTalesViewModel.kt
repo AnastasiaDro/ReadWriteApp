@@ -83,7 +83,9 @@ class FairyTalesViewModel(
             animationState = when (animationKind) {
                 FairyTaleAnimationKind.None -> FairyTaleAnimationState.None
                 FairyTaleAnimationKind.Idle,
+                FairyTaleAnimationKind.Walk,
                 FairyTaleAnimationKind.TopTop,
+                FairyTaleAnimationKind.Hlop,
                 FairyTaleAnimationKind.Bodaet -> FairyTaleAnimationState.Playback(
                     kind = animationKind,
                     playbackToken = playbackToken,
