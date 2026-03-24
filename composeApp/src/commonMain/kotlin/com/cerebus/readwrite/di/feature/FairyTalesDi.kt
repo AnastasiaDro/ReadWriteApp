@@ -6,6 +6,10 @@ import org.koin.dsl.module
 
 val fairyTalesModule = module {
     viewModel { (fairyTaleId: String) ->
-        FairyTalesViewModel(fairyTaleId)
+        FairyTalesViewModel(
+            fairyTaleId = fairyTaleId,
+            preferencesRepository = get(),
+            studentRepository = get(),
+        )
     }
 }

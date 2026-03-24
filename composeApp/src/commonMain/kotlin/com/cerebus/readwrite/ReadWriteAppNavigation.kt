@@ -286,7 +286,15 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                     }
                 }
 
-                fairyTalesGraph(navController)
+                fairyTalesGraph(
+                    navController = navController,
+                    onOpenKeyboardSettings = { studentId ->
+                        navController.openKeyboardSettings(
+                            studentId = studentId,
+                            returnRoute = FairyTalesGraph.DETAIL_ROUTE,
+                        )
+                    },
+                )
 
                 composable(Screens.GAME.route) {
                     GameScreenWrapper(

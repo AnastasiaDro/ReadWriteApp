@@ -183,7 +183,7 @@ internal fun DeckGalleryScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = if (isLandscape) 20.dp else 0.dp)
                         .padding(
                             top = when {
                                 isPhoneLandscape -> 8.dp
@@ -246,6 +246,7 @@ internal fun DeckGalleryScreen(
                                             onAnimatedScrollTargetConsumed = onAnimatedScrollTargetConsumed,
                                             isHintVisible = state.isHintVisible,
                                             isLandscape = true,
+                                            isTablet = isTablet,
                                             isPhoneLandscape = isPhoneLandscape,
                                             preferredCardSize = landscapeCardSize,
                                             modifier = Modifier.fillMaxWidth(),
@@ -289,9 +290,9 @@ internal fun DeckGalleryScreen(
                                         .weight(1f)
                                         .fillMaxWidth()
                                         .padding(
-                                            start = if (isTablet) 40.dp else 8.dp,
+                                            start = 0.dp,
                                             top = if (isTablet) 20.dp else 16.dp,
-                                            end = if (isTablet) 40.dp else 8.dp,
+                                            end = 0.dp,
                                             bottom = if (isTablet) 12.dp else 0.dp,
                                         ),
                                     contentAlignment = Alignment.Center,
@@ -313,6 +314,7 @@ internal fun DeckGalleryScreen(
                                             onAnimatedScrollTargetConsumed = onAnimatedScrollTargetConsumed,
                                             isHintVisible = state.isHintVisible,
                                             isLandscape = false,
+                                            isTablet = isTablet,
                                             isPhoneLandscape = false,
                                             modifier = Modifier.fillMaxWidth(),
                                             onCardSelected = view@{ index ->

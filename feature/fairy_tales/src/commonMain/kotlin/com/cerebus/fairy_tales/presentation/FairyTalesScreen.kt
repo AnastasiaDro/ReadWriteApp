@@ -1,21 +1,26 @@
 package com.cerebus.fairy_tales.presentation
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,12 +30,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cerebus.core.sound_player.SoundClip
 import com.cerebus.core.sound_player.SoundSource
 import com.cerebus.core.sound_player.createSoundPlayer
+import com.cerebus.core.ui.components.FeedbackOverlay
+import com.cerebus.core.ui.components.GameLikeActiveScreenShell
+import com.cerebus.core.ui.components.GameLikeScreenShell
+import com.cerebus.customkeyboard.TrainingKeyboard
+import com.cerebus.customkeyboard.resolveShowDigitsRow
+import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
 import com.cerebus.fairy_tales.presentation.util.rememberResourceFileCache
 import io.github.alexzhirkevich.compottie.Compottie
 import io.github.alexzhirkevich.compottie.LottieCompositionSpec
@@ -45,11 +59,12 @@ import readwriteapp.feature.fairy_tales.generated.resources.Res
 fun FairyTalesScreenRoute(
     fairyTaleId: String,
     onBackClick: () -> Unit,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     val viewModel = koinViewModel<FairyTalesViewModel>(
         parameters = { parametersOf(fairyTaleId) },
     )
-    val state by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { viewModel.state } }
+    val state = viewModel.state
     val soundPlayer = remember { createSoundPlayer() }
     val resourceFileCache = rememberResourceFileCache()
 
@@ -62,18 +77,35 @@ fun FairyTalesScreenRoute(
     LaunchedEffect(viewModel, resourceFileCache, soundPlayer) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is FairyTalesEffect.PlaySound -> {
-                    val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull() ?: return@collect
+                is FairyTalesEffect.StartStoryPlayback -> {
+                    val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull()
+                    if (bytes == null) {
+                        viewModel.onStoryPlaybackStarted(
+                            playbackToken = effect.playbackToken,
+                            audioDurationMillis = null,
+                        )
+                        return@collect
+                    }
                     val fileUri = resourceFileCache.cacheBytes(
                         fileName = effect.cue.fileName,
                         bytes = bytes,
-                    ) ?: return@collect
-                    soundPlayer.play(
-                        clip = SoundClip(
-                            id = effect.cue.id,
-                            source = SoundSource.FileUri(fileUri),
-                        ),
                     )
+                    if (fileUri == null) {
+                        viewModel.onStoryPlaybackStarted(
+                            playbackToken = effect.playbackToken,
+                            audioDurationMillis = null,
+                        )
+                        return@collect
+                    }
+                    val clip = SoundClip(
+                        id = effect.cue.id,
+                        source = SoundSource.FileUri(fileUri),
+                    )
+                    viewModel.onStoryPlaybackStarted(
+                        playbackToken = effect.playbackToken,
+                        audioDurationMillis = soundPlayer.durationMillis(clip),
+                    )
+                    soundPlayer.play(clip = clip)
                 }
             }
         }
@@ -82,9 +114,19 @@ fun FairyTalesScreenRoute(
     FairyTalesScreen(
         state = state,
         onBackClick = onBackClick,
-        onPlayIdle = viewModel::playIdle,
-        onPlayBodaet = viewModel::playBodaet,
-        onPlayTopTop = viewModel::playTopTop,
+        onOpenKeyboardSettings = {
+            val studentId = state.studentId
+            if (studentId.isNotBlank()) {
+                onOpenKeyboardSettings(studentId)
+            }
+        },
+        onShiftChanged = viewModel::onShiftChanged,
+        onSymbolPressed = viewModel::onSymbolPressed,
+        onBackspacePressed = viewModel::onBackspacePressed,
+        onSubmitPressed = viewModel::onSubmitPressed,
+        onHintToggle = viewModel::onHintToggle,
+        onShowWordToggle = viewModel::onShowWordToggle,
+        onSimplifyKeyboardToggle = viewModel::onSimplifyKeyboardToggle,
         onAnimationCompleted = viewModel::onAnimationCompleted,
     )
 }
@@ -93,94 +135,295 @@ fun FairyTalesScreenRoute(
 fun FairyTalesScreen(
     state: FairyTalesUiState,
     onBackClick: () -> Unit,
-    onPlayIdle: () -> Unit,
-    onPlayBodaet: () -> Unit,
-    onPlayTopTop: () -> Unit,
+    onOpenKeyboardSettings: () -> Unit,
+    onShiftChanged: (Boolean) -> Unit,
+    onSymbolPressed: (String) -> Unit,
+    onBackspacePressed: () -> Unit,
+    onSubmitPressed: () -> Unit,
+    onHintToggle: (Boolean) -> Unit,
+    onShowWordToggle: (Boolean) -> Unit,
+    onSimplifyKeyboardToggle: (Boolean) -> Unit,
+    onAnimationCompleted: (Long) -> Unit,
+) {
+    val density = LocalDensity.current
+    val windowInfo = LocalWindowInfo.current
+    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
+    val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
+    val isLandscape = windowWidthDp > windowHeightDp
+    val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
+    val isPhoneLandscape = isLandscape && !isTablet
+    val isSmallScreen = !isTablet
+    val showDigitsRow = resolveShowDigitsRow(
+        isPhoneLandscape = isPhoneLandscape,
+        hideDigitsOnTightScreen = state.hideDigitsOnTightScreen,
+        referenceText = state.expectedAnswer,
+    )
+    val keyboardHeight = remember(windowWidthDp, windowHeightDp, showDigitsRow) {
+        val baseHeight = if (isLandscape) {
+            (windowHeightDp * 0.5f).coerceIn(220.dp, 340.dp)
+        } else {
+            (windowHeightDp * 0.3f).coerceIn(220.dp, 340.dp)
+        }
+        resolveTrainingKeyboardHeight(
+            baseHeight = baseHeight,
+            showDigitsRow = showDigitsRow,
+        )
+    }
+
+    GameLikeScreenShell(
+        modifier = Modifier.background(MaterialTheme.colorScheme.background),
+        topLeft = {
+            TextButton(onClick = onBackClick) {
+                Text("✕")
+            }
+        },
+        topRight = {
+            FairyTalesTopRightHelpChips(
+                isHintEnabled = state.isInputHintEnabled,
+                isShowWordEnabled = state.isHintVisible,
+                isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
+                usedHint = state.usedHint,
+                usedShowWord = state.usedShowWord,
+                usedSimplifiedKeyboard = state.usedSimplifiedKeyboard,
+                onHintToggle = onHintToggle,
+                onShowWordToggle = onShowWordToggle,
+                onSimplifyKeyboardToggle = onSimplifyKeyboardToggle,
+            )
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            GameLikeActiveScreenShell(
+                showKeyboard = true,
+                isLandscape = isLandscape,
+                keyboardTopPadding = if (isSmallScreen) 4.dp else if (isLandscape) 8.dp else 4.dp,
+                keyboard = {
+                    TrainingKeyboard(
+                        referenceText = state.expectedAnswer,
+                        activeSymbols = state.activeSymbols,
+                        isShiftEnabled = state.isShiftEnabled,
+                        feedbackKey = state.keyboardFeedbackKey,
+                        feedbackType = state.keyboardFeedbackType,
+                        onShiftChanged = onShiftChanged,
+                        onSymbolPressed = onSymbolPressed,
+                        onBackspacePressed = onBackspacePressed,
+                        onSpacePressed = { onSymbolPressed(" ") },
+                        onSubmitPressed = onSubmitPressed,
+                        onSettingsPressed = onOpenKeyboardSettings,
+                        showDigitsRow = showDigitsRow,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = keyboardHeight, max = keyboardHeight),
+                    )
+                },
+            ) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = if (!isLandscape && !isTablet) 6.dp else if (isPhoneLandscape) 12.dp else if (isLandscape) 20.dp else 16.dp)
+                        .padding(
+                            top = if (isPhoneLandscape) 18.dp else if (isLandscape) 24.dp else 20.dp,
+                            bottom = if (isSmallScreen) 0.dp else if (isLandscape) 12.dp else 16.dp,
+                        ),
+                ) {
+                    if (isLandscape) {
+                        FairyTalesLandscapeContent(
+                            state = state,
+                            availableWidth = maxWidth,
+                            isTablet = isTablet,
+                            isPhoneLandscape = isPhoneLandscape,
+                            onSubmitPressed = onSubmitPressed,
+                            onAnimationCompleted = onAnimationCompleted,
+                        )
+                    } else {
+                        FairyTalesPortraitContent(
+                            state = state,
+                            availableWidth = maxWidth,
+                            isTablet = isTablet,
+                            onSubmitPressed = onSubmitPressed,
+                            onAnimationCompleted = onAnimationCompleted,
+                        )
+                    }
+                }
+            }
+
+            FeedbackOverlay(
+                message = state.feedback?.message,
+                emoji = state.feedback?.emoji,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FairyTalesPortraitContent(
+    state: FairyTalesUiState,
+    availableWidth: Dp,
+    isTablet: Boolean,
+    onSubmitPressed: () -> Unit,
     onAnimationCompleted: (Long) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = 10.dp,
-                bottom = 10.dp,
-            )
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onBackClick) {
-            Text(text = "Назад")
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                val animationMaxWidth = if (isTablet) 360.dp else 190.dp
+                val animationMaxSize = minOf(animationMaxWidth, maxHeight)
+                FairyTaleAnimationPanel(
+                    state = state,
+                    onAnimationCompleted = onAnimationCompleted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = animationMaxSize),
+                )
+            }
         }
 
-        Text(
-            text = state.title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
+        FairyTalePromptAndInput(
+            state = state,
+            availableWidth = if (isTablet) minOf(availableWidth, 560.dp) else availableWidth,
+            maxContainerWidth = if (isTablet) 560.dp else availableWidth,
+            minimumFieldWidth = if (isTablet) 140.dp else 120.dp,
+            isCompact = !isTablet,
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            onSubmitPressed = onSubmitPressed,
         )
+    }
+}
 
+@Composable
+private fun FairyTalesLandscapeContent(
+    state: FairyTalesUiState,
+    availableWidth: Dp,
+    isTablet: Boolean,
+    isPhoneLandscape: Boolean,
+    onSubmitPressed: () -> Unit,
+    onAnimationCompleted: (Long) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(0.4f)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center,
+        ) {
+            FairyTaleAnimationPanel(
+                state = state,
+                onAnimationCompleted = onAnimationCompleted,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isPhoneLandscape) Modifier.widthIn(max = 220.dp) else Modifier
+                    ),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .weight(0.6f)
+                .fillMaxHeight(),
+            contentAlignment = if (isPhoneLandscape) Alignment.CenterStart else Alignment.Center,
+        ) {
+            FairyTalePromptAndInput(
+                state = state,
+                availableWidth = (availableWidth * 0.6f - if (isPhoneLandscape) 8.dp else 24.dp).coerceAtLeast(200.dp),
+                maxContainerWidth = if (isTablet) 560.dp else 340.dp,
+                minimumFieldWidth = if (isTablet) 140.dp else 120.dp,
+                isCompact = isPhoneLandscape,
+                modifier = Modifier.fillMaxWidth(),
+                onSubmitPressed = onSubmitPressed,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FairyTaleAnimationPanel(
+    state: FairyTalesUiState,
+    onAnimationCompleted: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top,
+    ) {
         FairyTaleAnimationSlot(
             animationState = state.animationState,
             onAnimationCompleted = onAnimationCompleted,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
 
-        if (state.fairyTaleId == KOZA_FAIRY_TALE_ID) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+@Composable
+private fun FairyTalePromptAndInput(
+    state: FairyTalesUiState,
+    availableWidth: Dp,
+    maxContainerWidth: Dp,
+    minimumFieldWidth: Dp,
+    isCompact: Boolean,
+    modifier: Modifier = Modifier,
+    onSubmitPressed: () -> Unit,
+) {
+    Column(
+        modifier = modifier.widthIn(max = maxContainerWidth),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Button(
-                    onClick = onPlayBodaet,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        text = "Bodaet",
-                        textAlign = TextAlign.Center,
-                    )
-                }
-
-                Button(
-                    onClick = onPlayIdle,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        text = "Idle",
-                        textAlign = TextAlign.Center,
-                    )
-                }
-
-                Button(
-                    onClick = onPlayTopTop,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        text = "Top top",
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                Text(
+                    text = state.storyText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
 
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = state.description,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-            )
-
-            Text(
-                text = state.storyText,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
+        FairyTalesAnswerSection(
+            answerInput = state.answerInput,
+            expectedAnswer = state.expectedAnswer,
+            inputFeedbackType = state.inputFeedbackType,
+            isHintEnabled = state.isInputHintEnabled,
+            isShiftEnabled = state.isShiftEnabled,
+            isSubmitEnabled = !state.isStoryPlaybackInProgress,
+            availableWidth = availableWidth,
+            fieldReferenceWidth = availableWidth,
+            isStacked = true,
+            minimumFieldWidth = minimumFieldWidth,
+            isCompact = isCompact,
+            onFieldClick = {},
+            onSubmit = onSubmitPressed,
+        )
     }
 }
 
@@ -202,23 +445,22 @@ private fun FairyTaleAnimationSlot(
     })
 
     LaunchedEffect(animationState) {
-        val playbackToken = animationState.playbackToken ?: return@LaunchedEffect
-        val durationMillis = animationState.durationMillis ?: return@LaunchedEffect
-        delay(durationMillis)
-        onAnimationCompleted(playbackToken)
+        val playbackState = animationState as? FairyTaleAnimationState.Playback ?: return@LaunchedEffect
+        delay(playbackState.totalDurationMillis)
+        onAnimationCompleted(playbackState.playbackToken)
     }
 
     Box(
         modifier = modifier
-            .aspectRatio(1.2f)
+            .aspectRatio(1f)
             .background(
                 color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.extraLarge,
             )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.extraLarge,
             )
             .padding(20.dp),
         contentAlignment = Alignment.Center,
@@ -240,8 +482,7 @@ private fun FairyTaleAnimationSlot(
                         iterations = when (animationState) {
                             FairyTaleAnimationState.None,
                             FairyTaleAnimationState.Idle -> Compottie.IterateForever
-                            is FairyTaleAnimationState.Bodaet,
-                            is FairyTaleAnimationState.TopTop -> 1
+                            is FairyTaleAnimationState.Playback -> animationState.iterations
                         },
                     ),
                     contentDescription = null,
@@ -259,12 +500,7 @@ private fun FairyTaleAnimationSlot(
             }
 
             else -> {
-                Text(
-                    text = "Загружаем анимацию...",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
+                CircularProgressIndicator()
             }
         }
     }

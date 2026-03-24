@@ -49,6 +49,7 @@ internal fun GalleryTrainingCard(
     onAnimatedScrollTargetConsumed: () -> Unit,
     isHintVisible: Boolean,
     isLandscape: Boolean,
+    isTablet: Boolean,
     isPhoneLandscape: Boolean,
     preferredCardSize: Dp? = null,
     modifier: Modifier = Modifier,
@@ -95,6 +96,7 @@ internal fun GalleryTrainingCard(
         val pageSpacing = when {
             isPhoneLandscape -> 6.dp
             isLandscape -> 10.dp
+            isTablet -> 24.dp
             else -> 8.dp
         }
 

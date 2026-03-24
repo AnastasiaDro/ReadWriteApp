@@ -56,7 +56,12 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.compottie)
                 implementation(libs.compottie.resources)
+                implementation(projects.core.ui)
+                implementation(projects.core.utils)
                 implementation(projects.core.soundPlayer)
+                implementation(projects.data.preferences)
+                implementation(projects.data.student)
+                implementation(projects.feature.customkeyboard)
             }
         }
 

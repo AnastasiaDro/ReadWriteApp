@@ -12,6 +12,8 @@ data class SoundClip(
 )
 
 interface SoundPlayer {
+    fun durationMillis(clip: SoundClip): Long?
+
     fun play(
         clip: SoundClip,
         restartIfPlaying: Boolean = true,

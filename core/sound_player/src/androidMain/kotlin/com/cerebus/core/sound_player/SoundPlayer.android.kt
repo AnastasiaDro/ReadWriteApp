@@ -8,6 +8,13 @@ actual fun createSoundPlayer(): SoundPlayer = AndroidSoundPlayer()
 private class AndroidSoundPlayer : SoundPlayer {
     private val playersByClipId = mutableMapOf<String, MediaPlayer>()
 
+    override fun durationMillis(clip: SoundClip): Long? {
+        return runCatching {
+            val player = playersByClipId[clip.id] ?: buildPlayer(clip).also { playersByClipId[clip.id] = it }
+            player.duration.toLong().takeIf { it > 0L }
+        }.getOrNull()
+    }
+
     override fun play(
         clip: SoundClip,
         restartIfPlaying: Boolean,

@@ -19,6 +19,7 @@ object FairyTalesNavigationState {
 
 fun NavGraphBuilder.fairyTalesGraph(
     navController: NavHostController,
+    onOpenKeyboardSettings: (String) -> Unit,
 ) {
     navigation(
         startDestination = FairyTalesGraph.LIST_ROUTE,
@@ -36,6 +37,7 @@ fun NavGraphBuilder.fairyTalesGraph(
             FairyTalesScreenRoute(
                 fairyTaleId = FairyTalesNavigationState.selectedFairyTaleId,
                 onBackClick = { navController.popBackStack() },
+                onOpenKeyboardSettings = onOpenKeyboardSettings,
             )
         }
     }

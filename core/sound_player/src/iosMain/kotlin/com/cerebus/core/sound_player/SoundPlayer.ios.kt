@@ -10,6 +10,15 @@ actual fun createSoundPlayer(): SoundPlayer = IosSoundPlayer()
 private class IosSoundPlayer : SoundPlayer {
     private val playersByClipId = mutableMapOf<String, AVAudioPlayer>()
 
+    override fun durationMillis(clip: SoundClip): Long? {
+        return runCatching {
+            val player = playersByClipId[clip.id] ?: buildPlayer(clip).also { newPlayer ->
+                playersByClipId[clip.id] = newPlayer
+            }
+            (player.duration * 1000.0).toLong().takeIf { it > 0L }
+        }.getOrNull()
+    }
+
     override fun play(
         clip: SoundClip,
         restartIfPlaying: Boolean,

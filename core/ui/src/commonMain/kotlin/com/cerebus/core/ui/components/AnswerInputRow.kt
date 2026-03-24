@@ -39,6 +39,7 @@ fun AnswerInputRow(
     multilineMaxLines: Int = 2,
     revealExpectedAnswer: Boolean = false,
     isShiftEnabled: Boolean = false,
+    submitEnabled: Boolean = true,
     onFieldClick: () -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -66,7 +67,7 @@ fun AnswerInputRow(
         )
         Button(
             onClick = onSubmit,
-            enabled = answerInput.isNotBlank(),
+            enabled = submitEnabled && answerInput.isNotBlank(),
             modifier = Modifier
                 .padding(start = buttonSpacing)
                 .width(buttonSize)
