@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -60,15 +61,20 @@ import com.cerebus.customkeyboard.resolveShowDigitsRow
 import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
 import com.cerebus.fairy_tales.presentation.util.rememberResourceFileCache
 import io.github.alexzhirkevich.compottie.Compottie
+import io.github.alexzhirkevich.compottie.LottieComposition
 import io.github.alexzhirkevich.compottie.LottieCompositionSpec
 import io.github.alexzhirkevich.compottie.rememberLottieComposition
 import io.github.alexzhirkevich.compottie.rememberLottiePainter
-import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import readwriteapp.feature.fairy_tales.generated.resources.Res
 
 private const val TextFadeDurationMillis = 220
+
+private data class FairyTaleCompositionCacheEntry(
+    val composition: LottieComposition?,
+    val loadFailed: Boolean,
+)
 
 @Composable
 fun FairyTalesScreenRoute(
@@ -142,7 +148,6 @@ fun FairyTalesScreenRoute(
         onHintToggle = viewModel::onHintToggle,
         onShowWordToggle = viewModel::onShowWordToggle,
         onSimplifyKeyboardToggle = viewModel::onSimplifyKeyboardToggle,
-        onAnimationCompleted = viewModel::onAnimationCompleted,
     )
 }
 
@@ -158,7 +163,6 @@ fun FairyTalesScreen(
     onHintToggle: (Boolean) -> Unit,
     onShowWordToggle: (Boolean) -> Unit,
     onSimplifyKeyboardToggle: (Boolean) -> Unit,
-    onAnimationCompleted: (Long) -> Unit,
 ) {
     val density = LocalDensity.current
     val windowInfo = LocalWindowInfo.current
@@ -184,6 +188,18 @@ fun FairyTalesScreen(
             showDigitsRow = showDigitsRow,
         )
     }
+    val animationAssetPaths = remember(state.fairyTaleId, state.storyLines, state.animationState.assetPath) {
+        buildList {
+            if (state.fairyTaleId == KOZA_FAIRY_TALE_ID) {
+                add(KOZA_IDLE_ASSET)
+            }
+            state.animationState.assetPath?.let(::add)
+            state.storyLines.forEach { line ->
+                line.animationKind.assetPath?.let(::add)
+            }
+        }.distinct()
+    }
+    val compositionCache = rememberFairyTaleCompositionCache(animationAssetPaths)
 
     GameLikeScreenShell(
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
@@ -247,16 +263,16 @@ fun FairyTalesScreen(
                             availableWidth = maxWidth,
                             isTablet = isTablet,
                             isPhoneLandscape = isPhoneLandscape,
+                            compositionCache = compositionCache,
                             onSubmitPressed = onSubmitPressed,
-                            onAnimationCompleted = onAnimationCompleted,
                         )
                     } else {
                         FairyTalesPortraitContent(
                             state = state,
                             availableWidth = maxWidth,
                             isTablet = isTablet,
+                            compositionCache = compositionCache,
                             onSubmitPressed = onSubmitPressed,
-                            onAnimationCompleted = onAnimationCompleted,
                         )
                     }
                 }
@@ -276,8 +292,8 @@ private fun FairyTalesPortraitContent(
     state: FairyTalesUiState,
     availableWidth: Dp,
     isTablet: Boolean,
+    compositionCache: Map<String, FairyTaleCompositionCacheEntry>,
     onSubmitPressed: () -> Unit,
-    onAnimationCompleted: (Long) -> Unit,
 ) {
     val contentHorizontalPadding = if (isTablet) 32.dp else 6.dp
     val minimumFieldWidth = if (isTablet) 140.dp else 120.dp
@@ -305,7 +321,7 @@ private fun FairyTalesPortraitContent(
                     state = state,
                     isTablet = isTablet,
                     showCompletedLines = false,
-                    onAnimationCompleted = onAnimationCompleted,
+                    compositionCache = compositionCache,
                     modifier = Modifier
                         .size(animationMaxSize),
                 )
@@ -352,8 +368,8 @@ private fun FairyTalesLandscapeContent(
     availableWidth: Dp,
     isTablet: Boolean,
     isPhoneLandscape: Boolean,
+    compositionCache: Map<String, FairyTaleCompositionCacheEntry>,
     onSubmitPressed: () -> Unit,
-    onAnimationCompleted: (Long) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxSize(),
@@ -368,7 +384,7 @@ private fun FairyTalesLandscapeContent(
             FairyTaleAnimationPanel(
                 state = state,
                 isTablet = isTablet,
-                onAnimationCompleted = onAnimationCompleted,
+                compositionCache = compositionCache,
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(
@@ -400,7 +416,7 @@ private fun FairyTaleAnimationPanel(
     state: FairyTalesUiState,
     isTablet: Boolean,
     showCompletedLines: Boolean = true,
-    onAnimationCompleted: (Long) -> Unit,
+    compositionCache: Map<String, FairyTaleCompositionCacheEntry>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -417,7 +433,7 @@ private fun FairyTaleAnimationPanel(
         }
         FairyTaleAnimationSlot(
             animationState = state.animationState,
-            onAnimationCompleted = onAnimationCompleted,
+            compositionCache = compositionCache,
             modifier = animationModifier,
         )
         if (showCompletedLines && state.storyLines.isNotEmpty()) {
@@ -576,16 +592,26 @@ private fun FairyTaleCompletedLines(
 @Composable
 private fun FairyTaleAnimationSlot(
     animationState: FairyTaleAnimationState,
-    onAnimationCompleted: (Long) -> Unit,
+    compositionCache: Map<String, FairyTaleCompositionCacheEntry>,
     modifier: Modifier = Modifier,
 ) {
     val animationAssetPath = animationState.assetPath
-    val latestOnAnimationCompleted by rememberUpdatedState(onAnimationCompleted)
+    val cachedEntry = animationAssetPath?.let(compositionCache::get)
+    val animationRenderKey = when (animationState) {
+        FairyTaleAnimationState.None -> "none"
+        FairyTaleAnimationState.Idle -> "idle"
+        FairyTaleAnimationState.Walk -> "walk"
+        is FairyTaleAnimationState.Playback -> "playback:${animationState.playbackToken}:${animationState.kind.assetPath}"
+    }
     val compositionSpecResult by produceState<Result<LottieCompositionSpec>?>(initialValue = null, key1 = animationAssetPath) {
-        value = animationAssetPath?.let { assetPath ->
-            runCatching {
-                val json = Res.readBytes(assetPath).decodeToString()
-                LottieCompositionSpec.JsonString(json)
+        value = if (cachedEntry?.composition != null || cachedEntry?.loadFailed == true) {
+            null
+        } else {
+            animationAssetPath?.let { assetPath ->
+                runCatching {
+                    val json = Res.readBytes(assetPath).decodeToString()
+                    LottieCompositionSpec.JsonString(json)
+                }
             }
         }
     }
@@ -596,12 +622,7 @@ private fun FairyTaleAnimationSlot(
     val composition by (compositionResult ?: androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(null)
     })
-
-    LaunchedEffect(animationState) {
-        val playbackState = animationState as? FairyTaleAnimationState.Playback ?: return@LaunchedEffect
-        delay(playbackState.totalDurationMillis)
-        latestOnAnimationCompleted(playbackState.playbackToken)
-    }
+    val compositionToShow = cachedEntry?.composition ?: composition
 
     Box(
         modifier = modifier
@@ -627,15 +648,15 @@ private fun FairyTaleAnimationSlot(
                 )
             }
 
-            composition != null -> {
+            compositionToShow != null -> androidx.compose.runtime.key(animationRenderKey) {
                 Image(
                     painter = rememberLottiePainter(
-                        composition = composition,
+                        composition = compositionToShow,
                         iterations = when (animationState) {
                             FairyTaleAnimationState.None,
                             FairyTaleAnimationState.Idle,
-                            FairyTaleAnimationState.Walk -> Compottie.IterateForever
-                            is FairyTaleAnimationState.Playback -> animationState.iterations
+                            FairyTaleAnimationState.Walk,
+                            is FairyTaleAnimationState.Playback -> Compottie.IterateForever
                         },
                     ),
                     contentDescription = null,
@@ -643,7 +664,7 @@ private fun FairyTaleAnimationSlot(
                 )
             }
 
-            compositionSpecResult?.isFailure == true -> {
+            cachedEntry?.loadFailed == true || compositionSpecResult?.isFailure == true -> {
                 Text(
                     text = "Не удалось загрузить анимацию",
                     style = MaterialTheme.typography.bodyLarge,
@@ -657,4 +678,41 @@ private fun FairyTaleAnimationSlot(
             }
         }
     }
+}
+
+@Composable
+private fun rememberFairyTaleCompositionCache(
+    assetPaths: List<String>,
+): Map<String, FairyTaleCompositionCacheEntry> {
+    val cache = linkedMapOf<String, FairyTaleCompositionCacheEntry>()
+    assetPaths.forEach { assetPath ->
+        key(assetPath) {
+            cache[assetPath] = rememberFairyTaleCompositionCacheEntry(assetPath)
+        }
+    }
+    return cache
+}
+
+@Composable
+private fun rememberFairyTaleCompositionCacheEntry(
+    assetPath: String,
+): FairyTaleCompositionCacheEntry {
+    val compositionSpecResult by produceState<Result<LottieCompositionSpec>?>(initialValue = null, key1 = assetPath) {
+        value = runCatching {
+            val json = Res.readBytes(assetPath).decodeToString()
+            LottieCompositionSpec.JsonString(json)
+        }
+    }
+    val compositionSpec = compositionSpecResult?.getOrNull()
+    val compositionResult = compositionSpec?.let { spec ->
+        rememberLottieComposition(spec) { spec }
+    }
+    val composition by (compositionResult ?: remember {
+        androidx.compose.runtime.mutableStateOf(null)
+    })
+
+    return FairyTaleCompositionCacheEntry(
+        composition = composition,
+        loadFailed = compositionSpecResult?.isFailure == true,
+    )
 }

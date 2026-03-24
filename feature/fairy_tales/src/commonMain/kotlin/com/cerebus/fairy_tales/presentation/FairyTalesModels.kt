@@ -2,7 +2,6 @@ package com.cerebus.fairy_tales.presentation
 
 import androidx.compose.ui.graphics.Color
 import com.cerebus.customkeyboard.TrainingKeyboardFeedbackType
-import kotlin.math.ceil
 import org.jetbrains.compose.resources.DrawableResource
 import readwriteapp.feature.fairy_tales.generated.resources.Res
 import readwriteapp.feature.fairy_tales.generated.resources.koza
@@ -48,27 +47,6 @@ sealed interface FairyTaleAnimationKind {
         override val assetPath: String = KOZA_BODAET_ASSET
         override val loopDurationMillis: Long = 7_500L
     }
-}
-
-data class FairyTalePlaybackPlan(
-    val iterations: Int,
-    val totalDurationMillis: Long,
-)
-
-internal fun FairyTaleAnimationKind.planForAudio(audioDurationMillis: Long?): FairyTalePlaybackPlan {
-    val loopDuration = loopDurationMillis
-    if (assetPath.isNullOrBlank() || loopDuration == null || loopDuration <= 0L) {
-        return FairyTalePlaybackPlan(
-            iterations = 1,
-            totalDurationMillis = (audioDurationMillis ?: 0L).coerceAtLeast(0L),
-        )
-    }
-    val safeAudioDuration = (audioDurationMillis ?: loopDuration).coerceAtLeast(1L)
-    val iterations = ceil(safeAudioDuration.toDouble() / loopDuration.toDouble()).toInt().coerceAtLeast(1)
-    return FairyTalePlaybackPlan(
-        iterations = iterations,
-        totalDurationMillis = iterations * loopDuration,
-    )
 }
 
 data class FairyTaleStoryLine(
@@ -196,8 +174,6 @@ sealed class FairyTaleAnimationState {
     data class Playback(
         val kind: FairyTaleAnimationKind,
         val playbackToken: Long,
-        val iterations: Int,
-        val totalDurationMillis: Long,
     ) : FairyTaleAnimationState() {
         override val assetPath: String? = kind.assetPath
     }

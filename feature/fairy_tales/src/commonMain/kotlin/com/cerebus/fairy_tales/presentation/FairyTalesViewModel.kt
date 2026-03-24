@@ -47,6 +47,9 @@ class FairyTalesViewModel(
     private var lastHandledKeyPressAtEpochMillis: Long = 0L
     private var keyFeedbackJob: Job? = null
     private var feedbackJob: Job? = null
+    private var playbackCompletionJob: Job? = null
+    private var animationTransitionJob: Job? = null
+    private var animationCycleStartedAtEpochMillis: Long = nowMillis()
 
     init {
         viewModelScope.launch {
@@ -58,13 +61,15 @@ class FairyTalesViewModel(
                 ?: NeighborTypoSensitivity.Strict
             keyboardPressDelayMs = (preferencesRepository.getKeyboardPressDelay(studentId)
                 ?: KeyboardPressDelay.Normal).intervalMs
-            state = state.copy(
+            applyState(
+                state.copy(
                 studentId = studentId,
                 isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
                 isInputHintEnabled = preferencesRepository.getGalleryInputHintEnabled(studentId) == true,
                 isSimplifiedKeyboardEnabled = preferencesRepository
                     .getFairyTalesSimplifiedKeyboardEnabled(studentId) ?: true,
                 hideDigitsOnTightScreen = preferencesRepository.getHideDigitsOnTightScreenEnabled(studentId) ?: true,
+                )
             )
             refreshActiveSymbols()
         }
@@ -77,9 +82,10 @@ class FairyTalesViewModel(
         if (activePlaybackToken != playbackToken) return
         val currentLine = state.currentStoryLine ?: return
         val animationKind = currentLine.animationKind
-        val playbackPlan = animationKind.planForAudio(audioDurationMillis)
+        val playbackDurationMillis = (audioDurationMillis ?: 0L).coerceAtLeast(0L)
 
-        state = state.copy(
+        applyState(
+            state.copy(
             animationState = when (animationKind) {
                 FairyTaleAnimationKind.None -> FairyTaleAnimationState.None
                 FairyTaleAnimationKind.Idle,
@@ -89,13 +95,19 @@ class FairyTalesViewModel(
                 FairyTaleAnimationKind.Bodaet -> FairyTaleAnimationState.Playback(
                     kind = animationKind,
                     playbackToken = playbackToken,
-                    iterations = playbackPlan.iterations,
-                    totalDurationMillis = playbackPlan.totalDurationMillis,
                 )
             },
+            )
         )
 
-        if (animationKind == FairyTaleAnimationKind.None && playbackPlan.totalDurationMillis <= 0L) {
+        playbackCompletionJob?.cancel()
+        if (playbackDurationMillis <= 0L) {
+            onAnimationCompleted(playbackToken)
+            return
+        }
+
+        playbackCompletionJob = viewModelScope.launch {
+            delay(playbackDurationMillis)
             onAnimationCompleted(playbackToken)
         }
     }
@@ -104,28 +116,35 @@ class FairyTalesViewModel(
         val currentAnimation = state.animationState as? FairyTaleAnimationState.Playback ?: return
         if (currentAnimation.playbackToken != playbackToken || activePlaybackToken != playbackToken) return
 
+        playbackCompletionJob?.cancel()
         activePlaybackToken = null
         val nextLineIndex = state.currentLineIndex + 1
         if (nextLineIndex < state.storyLines.size) {
-            openStoryLine(nextLineIndex)
+            transitionAfterCurrentAnimationCycle {
+                openStoryLine(nextLineIndex)
+            }
             return
         }
 
-        state = state.copy(
-            currentLineIndex = state.storyLines.size,
-            isStoryPlaybackInProgress = false,
-            animationState = defaultAnimationStateFor(state.fairyTaleId),
-        )
+        transitionAfterCurrentAnimationCycle {
+            applyState(
+                state.copy(
+                    currentLineIndex = state.storyLines.size,
+                    isStoryPlaybackInProgress = false,
+                    animationState = defaultAnimationStateFor(state.fairyTaleId),
+                )
+            )
 
-        showAttemptFeedback(
-            feedback = FairyTalesFeedbackUi(
-                message = "Ура!",
-                emoji = "🥳",
-            ),
-            afterDelay = {
-                resetStoryProgress()
-            },
-        )
+            showAttemptFeedback(
+                feedback = FairyTalesFeedbackUi(
+                    message = "Ура!",
+                    emoji = "🥳",
+                ),
+                afterDelay = {
+                    resetStoryProgress()
+                },
+            )
+        }
     }
 
     fun onShiftChanged(isEnabled: Boolean) {
@@ -346,12 +365,14 @@ class FairyTalesViewModel(
     }
 
     private fun refreshActiveSymbols() {
-        state = state.copy(
+        applyState(
+            state.copy(
             activeSymbols = if (state.isSimplifiedKeyboardEnabled) {
                 state.expectedAnswer.extractKeyboardSymbols()
             } else {
                 studiedSymbols + state.expectedAnswer.extractKeyboardSymbols()
             },
+            )
         )
     }
 
@@ -367,18 +388,22 @@ class FairyTalesViewModel(
         type: TrainingKeyboardFeedbackType,
     ) {
         keyFeedbackJob?.cancel()
-        state = state.copy(
+        applyState(
+            state.copy(
             keyboardFeedbackKey = symbol.lowercase(),
             keyboardFeedbackType = type,
             inputFeedbackType = type,
+            )
         )
 
         keyFeedbackJob = viewModelScope.launch {
             delay(180L)
-            state = state.copy(
+            applyState(
+                state.copy(
                 keyboardFeedbackKey = null,
                 keyboardFeedbackType = null,
                 inputFeedbackType = null,
+                )
             )
         }
     }
@@ -388,7 +413,7 @@ class FairyTalesViewModel(
         afterDelay: () -> Unit,
     ) {
         feedbackJob?.cancel()
-        state = state.copy(feedback = feedback)
+        applyState(state.copy(feedback = feedback))
         feedbackJob = viewModelScope.launch {
             delay(1_000L)
             afterDelay()
@@ -397,7 +422,8 @@ class FairyTalesViewModel(
 
     private fun openStoryLine(index: Int) {
         val line = state.storyLines.getOrNull(index) ?: return
-        state = state.copy(
+        applyState(
+            state.copy(
             currentLineIndex = index,
             storyText = line.text,
             expectedAnswer = line.text,
@@ -415,26 +441,71 @@ class FairyTalesViewModel(
             usedShowWord = false,
             usedSimplifiedKeyboard = false,
             feedback = null,
+            )
         )
         refreshActiveSymbols()
     }
 
     private fun resetStoryProgress() {
+        playbackCompletionJob?.cancel()
+        animationTransitionJob?.cancel()
         activePlaybackToken = null
         if (state.storyLines.isNotEmpty()) {
             openStoryLine(index = 0)
         } else {
-            state = state.copy(
+            applyState(
+                state.copy(
                 answerInput = "",
                 isStoryPlaybackInProgress = false,
                 animationState = defaultAnimationStateFor(state.fairyTaleId),
                 feedback = null,
+                )
             )
             refreshActiveSymbols()
         }
     }
 
+    private fun applyState(newState: FairyTalesUiState) {
+        val previousAssetPath = state.animationState.assetPath
+        state = newState
+        if (previousAssetPath != newState.animationState.assetPath) {
+            animationCycleStartedAtEpochMillis = nowMillis()
+        }
+    }
+
+    private fun transitionAfterCurrentAnimationCycle(
+        onTransition: () -> Unit,
+    ) {
+        animationTransitionJob?.cancel()
+        val loopDurationMillis = when (val animationState = state.animationState) {
+            FairyTaleAnimationState.None -> null
+            FairyTaleAnimationState.Idle -> FairyTaleAnimationKind.Idle.loopDurationMillis
+            FairyTaleAnimationState.Walk -> FairyTaleAnimationKind.Walk.loopDurationMillis
+            is FairyTaleAnimationState.Playback -> animationState.kind.loopDurationMillis
+        } ?: 0L
+        if (loopDurationMillis <= 0L) {
+            onTransition()
+            return
+        }
+
+        val elapsedMillis = (nowMillis() - animationCycleStartedAtEpochMillis).coerceAtLeast(0L)
+        val remainderMillis = (loopDurationMillis - (elapsedMillis % loopDurationMillis))
+            .let { if (it == loopDurationMillis) 0L else it }
+
+        if (remainderMillis <= 0L) {
+            onTransition()
+            return
+        }
+
+        animationTransitionJob = viewModelScope.launch {
+            delay(remainderMillis)
+            onTransition()
+        }
+    }
+
     override fun onCleared() {
+        animationTransitionJob?.cancel()
+        playbackCompletionJob?.cancel()
         keyFeedbackJob?.cancel()
         feedbackJob?.cancel()
         super.onCleared()
