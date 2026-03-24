@@ -403,7 +403,10 @@ class FairyTalesViewModel(
             expectedAnswer = line.text,
             answerInput = "",
             isStoryPlaybackInProgress = false,
-            animationState = defaultAnimationStateFor(state.fairyTaleId),
+            animationState = waitingAnimationStateFor(
+                fairyTaleId = state.fairyTaleId,
+                lineIndex = index,
+            ),
             keyboardFeedbackKey = null,
             keyboardFeedbackType = null,
             inputFeedbackType = null,
@@ -454,9 +457,22 @@ private fun FairyTaleContent.toUiState(): FairyTalesUiState {
     )
 }
 
-private fun defaultAnimationStateFor(fairyTaleId: String): FairyTaleAnimationState =
+private fun waitingAnimationStateFor(
+    fairyTaleId: String,
+    lineIndex: Int,
+): FairyTaleAnimationState =
     if (fairyTaleId == KOZA_FAIRY_TALE_ID) {
-        FairyTaleAnimationState.Idle
+        if (lineIndex == 0) {
+            FairyTaleAnimationState.Idle
+        } else {
+            FairyTaleAnimationState.Walk
+        }
     } else {
         FairyTaleAnimationState.None
     }
+
+private fun defaultAnimationStateFor(fairyTaleId: String): FairyTaleAnimationState =
+    waitingAnimationStateFor(
+        fairyTaleId = fairyTaleId,
+        lineIndex = 0,
+    )

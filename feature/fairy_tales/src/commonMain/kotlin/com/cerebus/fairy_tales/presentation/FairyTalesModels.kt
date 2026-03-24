@@ -105,7 +105,7 @@ internal object FairyTalesCatalog {
                     text = "За малыми ребятами",
                     soundResourcePath = "files/koza_story/2_for_kids.m4a",
                     soundFileName = "2_for_kids.m4a",
-                    animationKind = FairyTaleAnimationKind.Idle,
+                    animationKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Ножками топ топ",
@@ -123,13 +123,13 @@ internal object FairyTalesCatalog {
                     text = "Кто кашу не ест",
                     soundResourcePath = "files/koza_story/5_porridge.m4a",
                     soundFileName = "5_porridge.m4a",
-                    animationKind = FairyTaleAnimationKind.Idle,
+                    animationKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Молока не пьёт",
                     soundResourcePath = "files/koza_story/6_milk.m4a",
                     soundFileName = "6_milk.m4a",
-                    animationKind = FairyTaleAnimationKind.Idle,
+                    animationKind = FairyTaleAnimationKind.Walk,
                 ),
                 FairyTaleStoryLine(
                     text = "Того забодает",
@@ -165,6 +165,10 @@ sealed class FairyTaleAnimationState {
 
     data object Idle : FairyTaleAnimationState() {
         override val assetPath: String = KOZA_IDLE_ASSET
+    }
+
+    data object Walk : FairyTaleAnimationState() {
+        override val assetPath: String = KOZA_WALK_ASSET
     }
 
     data class Playback(

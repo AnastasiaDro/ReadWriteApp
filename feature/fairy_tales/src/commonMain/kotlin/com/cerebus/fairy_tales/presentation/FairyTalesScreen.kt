@@ -559,7 +559,8 @@ private fun FairyTaleAnimationSlot(
                         composition = composition,
                         iterations = when (animationState) {
                             FairyTaleAnimationState.None,
-                            FairyTaleAnimationState.Idle -> Compottie.IterateForever
+                            FairyTaleAnimationState.Idle,
+                            FairyTaleAnimationState.Walk -> Compottie.IterateForever
                             is FairyTaleAnimationState.Playback -> animationState.iterations
                         },
                     ),
