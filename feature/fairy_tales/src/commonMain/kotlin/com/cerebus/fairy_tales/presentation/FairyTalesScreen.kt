@@ -1,5 +1,8 @@
 package com.cerebus.fairy_tales.presentation
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.verticalScroll
@@ -40,7 +44,9 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebus.core.sound_player.SoundClip
@@ -61,6 +67,8 @@ import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import readwriteapp.feature.fairy_tales.generated.resources.Res
+
+private const val TextFadeDurationMillis = 220
 
 @Composable
 fun FairyTalesScreenRoute(
@@ -271,6 +279,11 @@ private fun FairyTalesPortraitContent(
     onSubmitPressed: () -> Unit,
     onAnimationCompleted: (Long) -> Unit,
 ) {
+    val contentHorizontalPadding = if (isTablet) 32.dp else 6.dp
+    val minimumFieldWidth = if (isTablet) 140.dp else 120.dp
+    val contentWidth = (availableWidth - contentHorizontalPadding * 2)
+        .coerceAtLeast(minimumFieldWidth)
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -278,38 +291,58 @@ private fun FairyTalesPortraitContent(
     ) {
         Box(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .weight(1f),
             contentAlignment = Alignment.TopCenter,
         ) {
             BoxWithConstraints(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize(),
                 contentAlignment = Alignment.TopCenter,
             ) {
-                val animationMaxWidth = if (isTablet) 360.dp else 190.dp
-                val animationMaxSize = minOf(animationMaxWidth, maxHeight)
+                val animationMaxSize = minOf(maxWidth, maxHeight)
                 FairyTaleAnimationPanel(
                     state = state,
                     isTablet = isTablet,
+                    showCompletedLines = false,
                     onAnimationCompleted = onAnimationCompleted,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = animationMaxSize),
+                        .size(animationMaxSize),
                 )
             }
         }
 
-        FairyTalePromptAndInput(
-            state = state,
-            availableWidth = if (isTablet) minOf(availableWidth, 560.dp) else availableWidth,
-            maxContainerWidth = if (isTablet) 560.dp else availableWidth,
-            minimumFieldWidth = if (isTablet) 140.dp else 120.dp,
-            isCompact = !isTablet,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = contentHorizontalPadding)
                 .wrapContentHeight(),
-            onSubmitPressed = onSubmitPressed,
-        )
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (state.storyLines.isNotEmpty()) {
+                FairyTaleCompletedLines(
+                    storyLines = state.storyLines,
+                    completedCount = state.currentLineIndex.coerceAtMost(state.storyLines.size),
+                    isTablet = isTablet,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                )
+            }
+
+            FairyTalePromptAndInput(
+                state = state,
+                availableWidth = contentWidth,
+                maxContainerWidth = contentWidth,
+                minimumFieldWidth = minimumFieldWidth,
+                isCompact = !isTablet,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                onSubmitPressed = onSubmitPressed,
+            )
+        }
     }
 }
 
@@ -366,6 +399,7 @@ private fun FairyTalesLandscapeContent(
 private fun FairyTaleAnimationPanel(
     state: FairyTalesUiState,
     isTablet: Boolean,
+    showCompletedLines: Boolean = true,
     onAnimationCompleted: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -374,12 +408,19 @@ private fun FairyTaleAnimationPanel(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
     ) {
+        val animationModifier = if (showCompletedLines) {
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+        } else {
+            Modifier.fillMaxSize()
+        }
         FairyTaleAnimationSlot(
             animationState = state.animationState,
             onAnimationCompleted = onAnimationCompleted,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = animationModifier,
         )
-        if (state.storyLines.isNotEmpty()) {
+        if (showCompletedLines && state.storyLines.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             FairyTaleCompletedLines(
                 storyLines = state.storyLines,
@@ -407,38 +448,45 @@ private fun FairyTalePromptAndInput(
         fontSize = 18.sp,
         lineHeight = 20.sp,
     )
+    val spacing = if (isCompact) 4.dp else 8.dp
     Column(
         modifier = modifier.widthIn(max = maxContainerWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing),
     ) {
-        if (state.isHintVisible) {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(
-                        start = 20.dp,
-                        end = 20.dp,
-                        top = 0.dp,
-                        bottom = 0.dp,
-                    ),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
+        Crossfade(
+            targetState = state.storyText.uppercase().takeIf { state.isHintVisible },
+            animationSpec = tween(durationMillis = TextFadeDurationMillis),
+            label = "fairy_tale_prompt_text",
+        ) { visibleStoryText ->
+            if (visibleStoryText != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
                 ) {
-                    Text(
-                        text = state.storyText.uppercase(),
-                        style = storyTextStyle,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(
+                        modifier = Modifier.padding(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = 0.dp,
+                            bottom = 0.dp,
+                        ),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                    ) {
+                        Text(
+                            text = visibleStoryText,
+                            style = storyTextStyle,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Start,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
@@ -469,28 +517,55 @@ private fun FairyTaleCompletedLines(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
+    val textStyle = if (isTablet) {
+        MaterialTheme.typography.bodyMedium
+    } else {
+        MaterialTheme.typography.bodySmall
+    }
+    val maxVisibleLines = 4
+    val approxLineHeight = if (textStyle.lineHeight != TextUnit.Unspecified) {
+        textStyle.lineHeight
+    } else {
+        textStyle.fontSize * 1.3f
+    }
+    val maxHeight = with(LocalDensity.current) {
+        (approxLineHeight * maxVisibleLines).toDp() + 4.dp
+    }
+    val approxLineHeightPx = with(LocalDensity.current) {
+        approxLineHeight.toPx()
+    }
+
+    LaunchedEffect(completedCount, storyLines.size) {
+        if (completedCount <= maxVisibleLines) return@LaunchedEffect
+        androidx.compose.runtime.withFrameNanos { }
+        val hiddenLinesCount = (completedCount - maxVisibleLines).coerceAtLeast(0)
+        val targetScroll = (hiddenLinesCount * approxLineHeightPx)
+            .toInt()
+            .coerceIn(0, scrollState.maxValue)
+        scrollState.animateScrollTo(targetScroll)
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(max = maxHeight)
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         storyLines.forEachIndexed { index, line ->
             val isVisible = index < completedCount
+            val lineAlpha by animateFloatAsState(
+                targetValue = if (isVisible) 1f else 0f,
+                animationSpec = tween(durationMillis = TextFadeDurationMillis),
+                label = "fairy_tale_completed_line_alpha",
+            )
             Text(
                 text = line.text,
-                style = if (isTablet) {
-                    MaterialTheme.typography.bodyMedium
-                } else {
-                    MaterialTheme.typography.bodySmall
-                },
-                color = if (isVisible) {
-                    Color(0xFF8D8D8D)
-                } else {
-                    Color.Transparent
-                },
+                style = textStyle,
+                color = Color(0xFF8D8D8D),
                 textAlign = TextAlign.Start,
                 modifier = Modifier
+                    .alpha(lineAlpha)
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
             )
@@ -530,7 +605,6 @@ private fun FairyTaleAnimationSlot(
 
     Box(
         modifier = modifier
-            .aspectRatio(1f)
             .background(
                 color = MaterialTheme.colorScheme.surface,
                 shape = MaterialTheme.shapes.extraLarge,

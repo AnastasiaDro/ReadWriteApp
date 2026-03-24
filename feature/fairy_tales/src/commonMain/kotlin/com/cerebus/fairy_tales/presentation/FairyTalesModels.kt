@@ -6,6 +6,7 @@ import kotlin.math.ceil
 import org.jetbrains.compose.resources.DrawableResource
 import readwriteapp.feature.fairy_tales.generated.resources.Res
 import readwriteapp.feature.fairy_tales.generated.resources.koza
+import readwriteapp.feature.fairy_tales.generated.resources.horse
 
 internal const val KOZA_FAIRY_TALE_ID = "koza-rogataya"
 internal const val KOZA_IDLE_ASSET = "files/koza_idle.json"
@@ -141,15 +142,36 @@ internal object FairyTalesCatalog {
         ),
         FairyTaleContent(
             id = "three-little-pigs",
-            title = "Три поросенка",
-            description = "История про домики, ветер и то, как смекалка помогает справиться с бедой.",
+            title = "Я люблю свою лошадку",
+            description = "Причешу ей шёрстку гладко...",
             coverColor = Color(0xFFB8D49C),
-        ),
-        FairyTaleContent(
-            id = "snow-queen",
-            title = "Снежная королева",
-            description = "Зимняя сказка о дружбе, поиске близкого человека и смелом путешествии.",
-            coverColor = Color(0xFF9EC7E8),
+            coverRes = Res.drawable.horse,
+            storyLines = listOf(
+                FairyTaleStoryLine(
+                    text = "Я люблю свою лошадку",
+                    soundResourcePath = "files/koza_story/1_walk.m4a",
+                    soundFileName = "1_walk.m4a",
+                    animationKind = FairyTaleAnimationKind.Walk,
+                ),
+                FairyTaleStoryLine(
+                    text = "Причешу ей шёрстку гладко",
+                    soundResourcePath = "files/koza_story/1_walk.m4a",
+                    soundFileName = "1_walk.m4a",
+                    animationKind = FairyTaleAnimationKind.Walk,
+                ),
+                FairyTaleStoryLine(
+                    text = "Гребешком приглажу хвостик",
+                    soundResourcePath = "files/koza_story/1_walk.m4a",
+                    soundFileName = "1_walk.m4a",
+                    animationKind = FairyTaleAnimationKind.Walk,
+                ),
+                FairyTaleStoryLine(
+                    text = "И верхом поеду в гости",
+                    soundResourcePath = "files/koza_story/1_walk.m4a",
+                    soundFileName = "1_walk.m4a",
+                    animationKind = FairyTaleAnimationKind.Walk,
+                ),
+            ),
         ),
     )
 
