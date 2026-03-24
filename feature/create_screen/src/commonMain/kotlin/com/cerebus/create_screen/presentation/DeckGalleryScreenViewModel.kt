@@ -78,6 +78,8 @@ class DeckGalleryViewModel(
                     studentId = studentId,
                     isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
                     isInputHintEnabled = preferencesRepository.getGalleryInputHintEnabled(studentId) == true,
+                    isSimplifiedKeyboardEnabled = preferencesRepository
+                        .getGallerySimplifiedKeyboardEnabled(studentId) ?: true,
                     hideDigitsOnTightScreen = preferencesRepository
                         .getHideDigitsOnTightScreenEnabled(studentId) ?: true,
                 )
@@ -287,6 +289,11 @@ class DeckGalleryViewModel(
                 isSimplifiedKeyboardEnabled = isEnabled,
             )
         }
+        if (studentId.isNotBlank()) {
+            runCatching {
+                preferencesRepository.setGallerySimplifiedKeyboardEnabled(studentId, isEnabled)
+            }
+        }
         refreshActiveSymbols()
     }
 
@@ -314,7 +321,7 @@ class DeckGalleryViewModel(
                 answerInput = "",
                 isHintVisible = keepHintVisible,
                 isInputHintEnabled = state.isInputHintEnabled,
-                isSimplifiedKeyboardEnabled = false,
+                isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
                 usedHint = false,
                 usedShowWord = false,
                 usedSimplifiedKeyboard = false,
@@ -334,7 +341,7 @@ class DeckGalleryViewModel(
                 answerInput = "",
                 isHintVisible = keepHintVisible,
                 isInputHintEnabled = state.isInputHintEnabled,
-                isSimplifiedKeyboardEnabled = false,
+                isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
                 keyboardFeedbackKey = null,
                 keyboardFeedbackType = null,
                 inputFeedbackType = null,

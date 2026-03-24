@@ -3,6 +3,7 @@ package com.cerebus.fairy_tales.presentation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,12 +32,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cerebus.core.sound_player.SoundClip
 import com.cerebus.core.sound_player.SoundSource
 import com.cerebus.core.sound_player.createSoundPlayer
@@ -267,7 +272,7 @@ private fun FairyTalesPortraitContent(
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Box(
             modifier = Modifier
@@ -369,6 +374,16 @@ private fun FairyTaleAnimationPanel(
             onAnimationCompleted = onAnimationCompleted,
             modifier = Modifier.fillMaxWidth(),
         )
+        if (state.storyLines.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            FairyTaleCompletedLines(
+                storyLines = state.storyLines,
+                completedCount = state.currentLineIndex.coerceAtMost(state.storyLines.size),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 84.dp, max = 160.dp),
+            )
+        }
     }
 }
 
@@ -382,30 +397,43 @@ private fun FairyTalePromptAndInput(
     modifier: Modifier = Modifier,
     onSubmitPressed: () -> Unit,
 ) {
+    val storyTextStyle = MaterialTheme.typography.titleMedium.copy(
+        fontSize = 18.sp,
+        lineHeight = 20.sp,
+    )
     Column(
         modifier = modifier.widthIn(max = maxContainerWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surface,
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+        if (state.isHintVisible) {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = MaterialTheme.shapes.extraLarge,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
             ) {
-                Text(
-                    text = state.storyText,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Column(
+                    modifier = Modifier.padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 0.dp,
+                        bottom = 0.dp,
+                    ),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                ) {
+                    Text(
+                        text = state.storyText.uppercase(),
+                        style = storyTextStyle,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
 
@@ -424,6 +452,47 @@ private fun FairyTalePromptAndInput(
             onFieldClick = {},
             onSubmit = onSubmitPressed,
         )
+    }
+}
+
+@Composable
+private fun FairyTaleCompletedLines(
+    storyLines: List<FairyTaleStoryLine>,
+    completedCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+    val windowInfo = LocalWindowInfo.current
+    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
+    val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
+    val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
+        storyLines.forEachIndexed { index, line ->
+            val isVisible = index < completedCount
+            Text(
+                text = line.text,
+                style = if (isTablet) {
+                    MaterialTheme.typography.bodyMedium
+                } else {
+                    MaterialTheme.typography.bodySmall
+                },
+                color = if (isVisible) {
+                    Color(0xFF8D8D8D)
+                } else {
+                    Color.Transparent
+                },
+                textAlign = TextAlign.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+            )
+        }
     }
 }
 

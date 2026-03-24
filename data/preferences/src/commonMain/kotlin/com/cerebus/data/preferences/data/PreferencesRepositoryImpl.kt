@@ -110,6 +110,28 @@ class PreferencesRepositoryImpl(
         )
     }
 
+    override fun getGallerySimplifiedKeyboardEnabled(studentId: String): Boolean? {
+        return storage.getGallerySimplifiedKeyboardEnabled(studentId)
+    }
+
+    override fun setGallerySimplifiedKeyboardEnabled(studentId: String, isEnabled: Boolean) {
+        storage.setGallerySimplifiedKeyboardEnabled(
+            studentId = studentId,
+            isEnabled = isEnabled,
+        )
+    }
+
+    override fun getFairyTalesSimplifiedKeyboardEnabled(studentId: String): Boolean? {
+        return storage.getFairyTalesSimplifiedKeyboardEnabled(studentId)
+    }
+
+    override fun setFairyTalesSimplifiedKeyboardEnabled(studentId: String, isEnabled: Boolean) {
+        storage.setFairyTalesSimplifiedKeyboardEnabled(
+            studentId = studentId,
+            isEnabled = isEnabled,
+        )
+    }
+
     override fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

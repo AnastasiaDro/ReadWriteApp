@@ -62,6 +62,8 @@ class FairyTalesViewModel(
                 studentId = studentId,
                 isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
                 isInputHintEnabled = preferencesRepository.getGalleryInputHintEnabled(studentId) == true,
+                isSimplifiedKeyboardEnabled = preferencesRepository
+                    .getFairyTalesSimplifiedKeyboardEnabled(studentId) ?: true,
                 hideDigitsOnTightScreen = preferencesRepository.getHideDigitsOnTightScreenEnabled(studentId) ?: true,
             )
             refreshActiveSymbols()
@@ -106,6 +108,12 @@ class FairyTalesViewModel(
             openStoryLine(nextLineIndex)
             return
         }
+
+        state = state.copy(
+            currentLineIndex = state.storyLines.size,
+            isStoryPlaybackInProgress = false,
+            animationState = defaultAnimationStateFor(state.fairyTaleId),
+        )
 
         showAttemptFeedback(
             feedback = FairyTalesFeedbackUi(
@@ -258,6 +266,11 @@ class FairyTalesViewModel(
             usedSimplifiedKeyboard = state.usedSimplifiedKeyboard || isEnabled,
             isSimplifiedKeyboardEnabled = isEnabled,
         )
+        if (studentId.isNotBlank()) {
+            runCatching {
+                preferencesRepository.setFairyTalesSimplifiedKeyboardEnabled(studentId, isEnabled)
+            }
+        }
         refreshActiveSymbols()
     }
 
@@ -392,7 +405,7 @@ class FairyTalesViewModel(
             keyboardFeedbackKey = null,
             keyboardFeedbackType = null,
             inputFeedbackType = null,
-            isSimplifiedKeyboardEnabled = false,
+            isSimplifiedKeyboardEnabled = state.isSimplifiedKeyboardEnabled,
             usedHint = false,
             usedShowWord = false,
             usedSimplifiedKeyboard = false,

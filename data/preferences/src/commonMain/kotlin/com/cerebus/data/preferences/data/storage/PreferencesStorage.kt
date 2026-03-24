@@ -25,6 +25,10 @@ interface PreferencesStorage {
     fun setHideDigitsOnTightScreenEnabled(studentId: String, isEnabled: Boolean)
     fun getGalleryInputHintEnabled(studentId: String): Boolean?
     fun setGalleryInputHintEnabled(studentId: String, isEnabled: Boolean)
+    fun getGallerySimplifiedKeyboardEnabled(studentId: String): Boolean?
+    fun setGallerySimplifiedKeyboardEnabled(studentId: String, isEnabled: Boolean)
+    fun getFairyTalesSimplifiedKeyboardEnabled(studentId: String): Boolean?
+    fun setFairyTalesSimplifiedKeyboardEnabled(studentId: String, isEnabled: Boolean)
     fun getLastSessionCardIds(
         studentId: String,
         deckIds: List<String>,

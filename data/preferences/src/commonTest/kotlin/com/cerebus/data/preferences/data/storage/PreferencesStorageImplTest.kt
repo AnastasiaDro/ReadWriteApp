@@ -316,4 +316,50 @@ class PreferencesStorageImplTest {
 
         assertNull(restored)
     }
+
+    @Test
+    fun saveAndRestoreGallerySimplifiedKeyboardEnabled_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setGallerySimplifiedKeyboardEnabled(
+            studentId = "student_1",
+            isEnabled = false,
+        )
+
+        val restored = storage.getGallerySimplifiedKeyboardEnabled("student_1")
+
+        assertEquals(false, restored)
+    }
+
+    @Test
+    fun gallerySimplifiedKeyboardEnabled_withoutSavedValue_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        val restored = storage.getGallerySimplifiedKeyboardEnabled("student_1")
+
+        assertNull(restored)
+    }
+
+    @Test
+    fun saveAndRestoreFairyTalesSimplifiedKeyboardEnabled_sameStudent_returnsSavedValue() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        storage.setFairyTalesSimplifiedKeyboardEnabled(
+            studentId = "student_1",
+            isEnabled = false,
+        )
+
+        val restored = storage.getFairyTalesSimplifiedKeyboardEnabled("student_1")
+
+        assertEquals(false, restored)
+    }
+
+    @Test
+    fun fairyTalesSimplifiedKeyboardEnabled_withoutSavedValue_returnsNull() {
+        val storage = PreferencesStorageImpl(settings = MapSettings())
+
+        val restored = storage.getFairyTalesSimplifiedKeyboardEnabled("student_1")
+
+        assertNull(restored)
+    }
 }
