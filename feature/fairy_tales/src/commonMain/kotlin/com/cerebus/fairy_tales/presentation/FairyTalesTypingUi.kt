@@ -87,7 +87,9 @@ internal fun FairyTalesAnswerSection(
         .split(Regex("\\s+"))
         .count { it.isNotBlank() }
     val shouldExpandForSingleWord = wordCount == 1
-    val useSeparatedLetters = expectedAnswer.length <= 12
+    val normalizedAnswerLength = expectedAnswer.count { !it.isWhitespace() }
+    val separatedLettersMaxLength = if (allowMultilineAnswer) 24 else 12
+    val useSeparatedLetters = normalizedAnswerLength <= separatedLettersMaxLength
     val baseFieldWidth = if (isStacked) maxFieldWidth else minOf(fieldReferenceWidth, maxFieldWidth)
     val fieldWidth = if (shouldExpandForSingleWord) maxFieldWidth else baseFieldWidth
 

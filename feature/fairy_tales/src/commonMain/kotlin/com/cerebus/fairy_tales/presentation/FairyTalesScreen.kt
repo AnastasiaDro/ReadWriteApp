@@ -743,8 +743,7 @@ private fun FairyTaleAnimationSlot(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
                 shape = MaterialTheme.shapes.extraLarge,
-            )
-            .padding(20.dp),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Crossfade(
