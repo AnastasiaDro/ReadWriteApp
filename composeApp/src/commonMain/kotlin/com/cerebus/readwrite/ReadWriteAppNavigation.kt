@@ -34,6 +34,7 @@ import com.cerebus.fairy_tales.navigation.fairyTalesGraph
 import com.cerebus.game_screen.navigation.GameSessionNavigationState
 import com.cerebus.game_screen.presentation.GameScreenWrapper
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
+import com.cerebus.readwrite.navigation.StudentImportNavigationState
 import com.cerebus.readwrite.view.ActiveStudentRoute
 import com.cerebus.readwrite.view.AppStartRoute
 import com.cerebus.readwrite.view.ChangeStudentRoute
@@ -74,6 +75,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
 
     val navController = rememberNavController()
     val pendingImportDeckArchiveUri = CreateNavigationState.pendingImportDeckArchiveUri.collectAsState().value
+    val pendingImportStudentArchiveUri = StudentImportNavigationState.pendingImportStudentArchiveUri.collectAsState().value
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
     val currentRoute = currentDestination?.route
     val topLevelTabs = remember {
@@ -102,6 +104,13 @@ fun ReadWriteAppNavigation() = MaterialTheme {
         if (currentRoute == null || currentRoute == Screens.SPLASH.route) return@LaunchedEffect
         if (currentRoute == Screens.CREATE.route) return@LaunchedEffect
         navController.openDeckImportScreen()
+    }
+
+    LaunchedEffect(pendingImportStudentArchiveUri, currentRoute) {
+        if (pendingImportStudentArchiveUri.isNullOrBlank()) return@LaunchedEffect
+        if (currentRoute == null || currentRoute == Screens.SPLASH.route) return@LaunchedEffect
+        if (currentRoute == Screens.ACTIVE_STUDENT.route) return@LaunchedEffect
+        navController.openStudentImportScreen()
     }
 
     Scaffold(
@@ -433,6 +442,19 @@ private fun androidx.navigation.NavHostController.openDeckImportScreen() {
     if (openedCreate) return
 
     navigate(TopLevelGraphs.DECKS) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = false
+    }
+}
+
+private fun androidx.navigation.NavHostController.openStudentImportScreen() {
+    val openedActiveStudent = popBackStack(Screens.ACTIVE_STUDENT.route, inclusive = false)
+    if (openedActiveStudent) return
+
+    navigate(TopLevelGraphs.STUDENT) {
         popUpTo(graph.findStartDestination().id) {
             saveState = true
         }

@@ -302,6 +302,8 @@ private class FakeReviewLogRepository : ReviewLogRepository {
         lastInsertedLog = log
     }
 
+    override suspend fun getLogs(studentId: String): List<ReviewLog> = emptyList()
+
     override suspend fun getCardIdsFirstReviewedSince(
         studentId: String,
         sinceEpochMillis: Long,

@@ -9,7 +9,7 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onOpenURL { url in
-                    IncomingDeckArchiveBridgeKt.handleIncomingDeckArchiveUrl(url: url.absoluteString)
+                    IncomingDeckArchiveBridgeKt.handleIncomingArchiveUrl(url: url.absoluteString)
                 }
         }
     }

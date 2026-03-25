@@ -5,6 +5,8 @@ import com.cerebus.core.game_engine.domain.model.ReviewLog
 interface ReviewLogRepository {
     suspend fun insertLog(log: ReviewLog)
 
+    suspend fun getLogs(studentId: String): List<ReviewLog>
+
     suspend fun getCardIdsFirstReviewedSince(
         studentId: String,
         sinceEpochMillis: Long,

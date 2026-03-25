@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSCharacterSet
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
@@ -210,7 +211,14 @@ private fun shareArchiveFiles(
 private fun copyPickedArchiveToTemp(url: NSURL): String? {
     val hasSecurityScope = url.startAccessingSecurityScopedResource()
     try {
-        val tempPath = normalizePath("${NSTemporaryDirectory()}/rwdeck_import_${NSUUID().UUIDString}.rwdeck")
+        val fileExtension = url.pathExtension
+            ?.takeIf { it.isNotBlank() }
+            ?.lowercase()
+            ?.let(::sanitizeFileComponent)
+            ?: "zip"
+        val tempPath = normalizePath(
+            "${NSTemporaryDirectory()}/archive_import_${NSUUID().UUIDString}.$fileExtension"
+        )
         val tempUrl = NSURL.fileURLWithPath(tempPath)
         NSFileManager.defaultManager.removeItemAtURL(tempUrl, error = null)
         val copied = NSFileManager.defaultManager.copyItemAtURL(
@@ -246,4 +254,15 @@ private fun normalizePath(path: String): String {
     } else {
         path
     }
+}
+
+private fun sanitizeFileComponent(value: String): String {
+    val allowedCharacterSet = NSCharacterSet.alphanumericCharacterSet
+    return buildString {
+        value.forEach { character ->
+            if (allowedCharacterSet.characterIsMember(character.code.toUShort())) {
+                append(character)
+            }
+        }
+    }.ifBlank { "zip" }
 }

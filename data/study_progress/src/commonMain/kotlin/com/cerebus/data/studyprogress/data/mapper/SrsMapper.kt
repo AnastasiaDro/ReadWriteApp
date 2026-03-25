@@ -62,6 +62,31 @@ fun ReviewLog.toEntity(): ReviewLogEntity {
     )
 }
 
+fun ReviewLogEntity.toDomain(): ReviewLog {
+    return ReviewLog(
+        studentId = studentId,
+        cardId = cardId,
+        shownAtEpochMillis = shownAtEpochMillis,
+        submittedAtEpochMillis = submittedAtEpochMillis,
+        userInputRaw = userInputRaw,
+        userInputNormalized = userInputNormalized,
+        expectedAnswerNormalized = expectedAnswerNormalized,
+        isCorrect = isCorrect,
+        hintLevel = hintLevel,
+        wrongPressCount = wrongPressCount,
+        durationMs = durationMs,
+        copyStage = copyStage,
+        levelBefore = levelBefore,
+        levelAfter = levelAfter,
+        recallSuccessStreakBefore = recallSuccessStreakBefore,
+        recallSuccessStreakAfter = recallSuccessStreakAfter,
+        copySuccessStreakBefore = copySuccessStreakBefore,
+        copySuccessStreakAfter = copySuccessStreakAfter,
+        dueAtBeforeEpochMillis = dueAtBeforeEpochMillis,
+        dueAtAfterEpochMillis = dueAtAfterEpochMillis,
+    )
+}
+
 fun StudentSrsPrefsEntity.toDomain(): StudentSrsPrefs {
     return StudentSrsPrefs(
         studentId = studentId,

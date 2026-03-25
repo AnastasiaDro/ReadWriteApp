@@ -27,6 +27,27 @@
 				<string>com.cerebus.readwrite.rwdeck</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>rwstudent</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/x-rwstudent</string>
+				<string>application/vnd.readwrite.student+zip</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>ReadWrite Student Archive</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.cerebus.readwrite.rwstudent</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Нужен доступ к камере, чтобы сделать обложку колоды.</string>
@@ -61,6 +82,26 @@
 				</array>
 				<key>public.mime-type</key>
 				<string>application/x-rwdeck</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>ReadWrite Student Archive</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.cerebus.readwrite.rwstudent</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>rwstudent</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/x-rwstudent</string>
 			</dict>
 		</dict>
 	</array>

@@ -1,7 +1,9 @@
 package com.cerebus.readwrite.di
 
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
+import com.cerebus.core.deck_package.domain.service.StudentPackageService
 import com.cerebus.readwrite.deckpackage.AndroidDeckPackageService
+import com.cerebus.readwrite.deckpackage.AndroidStudentPackageService
 import com.cerebus.readwrite.MyApp
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -17,6 +19,18 @@ val androidModules = listOf<Module>(
                 deckRepository = get(),
                 flashcardRepository = get(),
                 studentDeckRepository = get(),
+            )
+        }
+        single<StudentPackageService> {
+            AndroidStudentPackageService(
+                appContext = androidContext(),
+                studentRepository = get(),
+                studentDeckRepository = get(),
+                deckRepository = get(),
+                flashcardRepository = get(),
+                cardProgressRepository = get(),
+                reviewLogRepository = get(),
+                studentPrefsRepository = get(),
             )
         }
     }

@@ -47,6 +47,10 @@ class RoomReviewLogRepository(
         dao.insertReviewLog(log.toEntity())
     }
 
+    override suspend fun getLogs(studentId: String): List<ReviewLog> {
+        return dao.getReviewLogsByStudent(studentId).map { it.toDomain() }
+    }
+
     override suspend fun getCardIdsFirstReviewedSince(
         studentId: String,
         sinceEpochMillis: Long,

@@ -47,8 +47,11 @@ import com.cerebus.core.ui.insets.topSystemBarPadding
 import com.cerebus.create_screen.navigation.DeckNavigationState
 import com.cerebus.core.utils.GameLaunchMode
 import com.cerebus.core.utils.nowMillis
+import com.cerebus.readwrite.navigation.StudentImportNavigationState
+import com.cerebus.readwrite.media.DeckArchiveShareItem
 import com.cerebus.readwrite.media.rememberCoverImagePicker
 import com.cerebus.readwrite.media.rememberDeckArchivePicker
+import com.cerebus.readwrite.media.rememberDeckArchiveShareLauncher
 import com.cerebus.readwrite.media.rememberPlatformMessenger
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -59,16 +62,24 @@ import readwriteapp.feature.student.generated.resources.active_student_change
 import readwriteapp.feature.student.generated.resources.active_student_create_in_other
 import readwriteapp.feature.student.generated.resources.active_student_deck_progress
 import readwriteapp.feature.student.generated.resources.active_student_error_import_deck_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_import_student_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_delete_student_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_open_archive_picker_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_open_photo_picker_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_share_student_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_update_student_failed
+import readwriteapp.feature.student.generated.resources.active_student_export_student
 import readwriteapp.feature.student.generated.resources.active_student_fallback_name
 import readwriteapp.feature.student.generated.resources.active_student_gallery_choose_deck_title
 import readwriteapp.feature.student.generated.resources.active_student_edit_student_title
 import readwriteapp.feature.student.generated.resources.active_student_import_deck_add_missing_summary
 import readwriteapp.feature.student.generated.resources.active_student_import_deck_replace_summary
 import readwriteapp.feature.student.generated.resources.active_student_import
+import readwriteapp.feature.student.generated.resources.active_student_import_student
+import readwriteapp.feature.student.generated.resources.active_student_import_student_confirmation_message
+import readwriteapp.feature.student.generated.resources.active_student_import_student_confirmation_title
+import readwriteapp.feature.student.generated.resources.active_student_import_student_summary
+import readwriteapp.feature.student.generated.resources.active_student_update_student
 import readwriteapp.feature.student.generated.resources.active_student_keyboard_settings
 import readwriteapp.feature.student.generated.resources.active_student_learning_settings
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_cancel
@@ -133,18 +144,34 @@ fun ActiveStudentRoute(
     val viewModel = koinViewModel<ActiveStudentViewModel>()
     val state by viewModel.uiState.collectAsState()
     val effect by viewModel.effects.collectAsState()
+    val pendingImportStudentArchiveUri by StudentImportNavigationState.pendingImportStudentArchiveUri.collectAsState()
     val messenger = rememberPlatformMessenger()
     val importDeckErrorText = stringResource(Res.string.active_student_error_import_deck_failed)
+    val importStudentErrorText = stringResource(Res.string.active_student_error_import_student_failed)
     val archivePickerErrorText = stringResource(Res.string.active_student_error_open_archive_picker_failed)
     val photoPickerErrorText = stringResource(Res.string.active_student_error_open_photo_picker_failed)
     val updateStudentErrorText = stringResource(Res.string.active_student_error_update_student_failed)
     val deleteStudentErrorText = stringResource(Res.string.active_student_error_delete_student_failed)
-    val archivePicker = rememberDeckArchivePicker(
+    val shareStudentErrorText = stringResource(Res.string.active_student_error_share_student_failed)
+    val deckArchivePicker = rememberDeckArchivePicker(
         onArchivePicked = { uri ->
             viewModel.onAction(ActiveStudentAction.OnImportDeckFilePicked(uri))
         },
         onError = {
             messenger.showMessage(archivePickerErrorText)
+        },
+    )
+    val studentArchivePicker = rememberDeckArchivePicker(
+        onArchivePicked = { uri ->
+            viewModel.onAction(ActiveStudentAction.OnImportStudentFilePicked(uri))
+        },
+        onError = {
+            messenger.showMessage(archivePickerErrorText)
+        },
+    )
+    val archiveShareLauncher = rememberDeckArchiveShareLauncher(
+        onError = {
+            messenger.showMessage(shareStudentErrorText)
         },
     )
     val photoPicker = rememberCoverImagePicker(
@@ -204,12 +231,39 @@ fun ActiveStudentRoute(
             }
 
             ActiveStudentEffect.OpenImportDeckPicker -> {
-                archivePicker.openArchivePicker()
+                deckArchivePicker.openArchivePicker()
+                viewModel.consumeEffect()
+            }
+
+            ActiveStudentEffect.OpenImportStudentPicker -> {
+                studentArchivePicker.openArchivePicker()
                 viewModel.consumeEffect()
             }
 
             ActiveStudentEffect.ShowImportDeckFailed -> {
                 messenger.showMessage(importDeckErrorText)
+                viewModel.consumeEffect()
+            }
+
+            ActiveStudentEffect.ShowImportStudentFailed -> {
+                messenger.showMessage(importStudentErrorText)
+                viewModel.consumeEffect()
+            }
+
+            ActiveStudentEffect.ShowExportStudentFailed -> {
+                messenger.showMessage(shareStudentErrorText)
+                viewModel.consumeEffect()
+            }
+
+            is ActiveStudentEffect.ShareStudentArchive -> {
+                archiveShareLauncher.shareArchives(
+                    listOf(
+                        DeckArchiveShareItem(
+                            filePath = current.file.path,
+                            fileName = current.file.fileName,
+                        )
+                    )
+                )
                 viewModel.consumeEffect()
             }
 
@@ -230,6 +284,12 @@ fun ActiveStudentRoute(
 
             null -> Unit
         }
+    }
+
+    LaunchedEffect(pendingImportStudentArchiveUri) {
+        val uri = pendingImportStudentArchiveUri ?: return@LaunchedEffect
+        viewModel.onAction(ActiveStudentAction.OnImportStudentFilePicked(uri))
+        StudentImportNavigationState.consumePendingImportStudentArchive(uri)
     }
 
     ActiveStudentScreen(
@@ -481,27 +541,56 @@ private fun ActiveStudentScreen(
         SectionCard(
             title = stringResource(Res.string.active_student_more),
         ) {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                OutlinedButton(
-                    onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
-                    modifier = Modifier.weight(1f),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(
-                        text = stringResource(Res.string.active_student_import),
-                        textAlign = TextAlign.Center,
-                    )
+                    OutlinedButton(
+                        onClick = { onAction(ActiveStudentAction.OnImportDeckClick) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.active_student_import),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.active_student_create_in_other),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
-                OutlinedButton(
-                    onClick = { onAction(ActiveStudentAction.OnCreateDeckClick) },
-                    modifier = Modifier.weight(1f),
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(
-                        text = stringResource(Res.string.active_student_create_in_other),
-                        textAlign = TextAlign.Center,
-                    )
+                    OutlinedButton(
+                        onClick = { onAction(ActiveStudentAction.OnImportStudentClick) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.active_student_import_student),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { onAction(ActiveStudentAction.OnExportStudentClick) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.active_student_export_student),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
         }
@@ -806,6 +895,46 @@ private fun ActiveStudentScreen(
             },
             dismissButton = {
                 TextButton(onClick = { onAction(ActiveStudentAction.OnDismissImportDeckReplacement) }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            },
+        )
+    }
+
+    val pendingStudentImportConfirmation = state.pendingStudentImportConfirmation
+    if (pendingStudentImportConfirmation != null) {
+        AlertDialog(
+            onDismissRequest = { onAction(ActiveStudentAction.OnDismissImportStudentUpdate) },
+            title = {
+                Text(stringResource(Res.string.active_student_import_student_confirmation_title))
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = stringResource(
+                            Res.string.active_student_import_student_confirmation_message,
+                            pendingStudentImportConfirmation.importedStudentName,
+                            pendingStudentImportConfirmation.existingStudentName,
+                        ),
+                    )
+                    Text(
+                        text = stringResource(
+                            Res.string.active_student_import_student_summary,
+                            pendingStudentImportConfirmation.matchedDecksCount,
+                            pendingStudentImportConfirmation.missingDecksCount,
+                            pendingStudentImportConfirmation.matchedCardsCount,
+                            pendingStudentImportConfirmation.missingCardsCount,
+                        ),
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { onAction(ActiveStudentAction.OnConfirmImportStudentUpdate) }) {
+                    Text(stringResource(Res.string.active_student_update_student))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onAction(ActiveStudentAction.OnDismissImportStudentUpdate) }) {
                     Text(stringResource(Res.string.cancel))
                 }
             },

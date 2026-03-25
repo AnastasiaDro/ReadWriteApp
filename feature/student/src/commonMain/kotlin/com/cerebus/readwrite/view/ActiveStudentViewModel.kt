@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.cerebus.core.deck_package.domain.service.DeckImportMode
 import com.cerebus.core.deck_package.domain.service.DeckPackageImportPreview
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
+import com.cerebus.core.deck_package.domain.service.StudentPackageExportFile
+import com.cerebus.core.deck_package.domain.service.StudentPackageImportPreview
+import com.cerebus.core.deck_package.domain.service.StudentPackageService
 import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.core.game_engine.domain.logic.SrsSessionCandidate
 import com.cerebus.core.game_engine.domain.logic.planSrsSession
@@ -51,6 +54,16 @@ data class PendingStudentDeckImportConfirmation(
     val staleCardsCount: Int,
 )
 
+data class PendingStudentImportConfirmation(
+    val archiveUri: String,
+    val importedStudentName: String,
+    val existingStudentName: String,
+    val matchedDecksCount: Int,
+    val missingDecksCount: Int,
+    val matchedCardsCount: Int,
+    val missingCardsCount: Int,
+)
+
 data class ActiveStudentUiState(
     val isLoading: Boolean = true,
     val studentId: String? = null,
@@ -66,6 +79,7 @@ data class ActiveStudentUiState(
     val isEditStudentPhotoSourceDialogVisible: Boolean = false,
     val isDeleteStudentDialogVisible: Boolean = false,
     val pendingDeckImportConfirmation: PendingStudentDeckImportConfirmation? = null,
+    val pendingStudentImportConfirmation: PendingStudentImportConfirmation? = null,
     val editStudentName: String = "",
     val editStudentAvatarUri: String? = null,
     val pendingPickerRequest: StudentPickerRequest? = null,
@@ -87,6 +101,11 @@ sealed interface ActiveStudentAction {
     data object OnConfirmImportDeckReplacement : ActiveStudentAction
     data object OnConfirmImportDeckAddMissingCards : ActiveStudentAction
     data object OnDismissImportDeckReplacement : ActiveStudentAction
+    data object OnImportStudentClick : ActiveStudentAction
+    data class OnImportStudentFilePicked(val uri: String) : ActiveStudentAction
+    data object OnConfirmImportStudentUpdate : ActiveStudentAction
+    data object OnDismissImportStudentUpdate : ActiveStudentAction
+    data object OnExportStudentClick : ActiveStudentAction
     data class OnDeckClick(val deckId: String) : ActiveStudentAction
     data object OnEditStudentClick : ActiveStudentAction
     data object OnDismissEditStudentDialog : ActiveStudentAction
@@ -112,9 +131,13 @@ sealed interface ActiveStudentEffect {
     data class OpenDeckList(val openCreateDialog: Boolean) : ActiveStudentEffect
     data class OpenDeckGallery(val deckId: String) : ActiveStudentEffect
     data object OpenImportDeckPicker : ActiveStudentEffect
+    data object OpenImportStudentPicker : ActiveStudentEffect
     data object ShowImportDeckFailed : ActiveStudentEffect
+    data object ShowImportStudentFailed : ActiveStudentEffect
+    data object ShowExportStudentFailed : ActiveStudentEffect
     data object ShowStudentUpdateFailed : ActiveStudentEffect
     data object ShowDeleteStudentFailed : ActiveStudentEffect
+    data class ShareStudentArchive(val file: StudentPackageExportFile) : ActiveStudentEffect
     data object OpenChangeStudent : ActiveStudentEffect
 }
 
@@ -127,6 +150,7 @@ class ActiveStudentViewModel(
     private val reviewLogRepository: ReviewLogRepository,
     private val preferencesRepository: PreferencesRepository,
     private val deckPackageService: DeckPackageService,
+    private val studentPackageService: StudentPackageService,
     private val studentRepository: StudentRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ActiveStudentUiState())
@@ -271,6 +295,15 @@ class ActiveStudentViewModel(
             ActiveStudentAction.OnDismissImportDeckReplacement -> {
                 _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
             }
+            ActiveStudentAction.OnImportStudentClick -> {
+                _effects.value = ActiveStudentEffect.OpenImportStudentPicker
+            }
+            is ActiveStudentAction.OnImportStudentFilePicked -> importStudentArchive(action.uri)
+            ActiveStudentAction.OnConfirmImportStudentUpdate -> confirmImportStudentUpdate()
+            ActiveStudentAction.OnDismissImportStudentUpdate -> {
+                _uiState.update { it.copy(pendingStudentImportConfirmation = null) }
+            }
+            ActiveStudentAction.OnExportStudentClick -> exportCurrentStudent()
 
             is ActiveStudentAction.OnDeckClick -> {
                 openDeck(action.deckId)
@@ -318,6 +351,21 @@ class ActiveStudentViewModel(
         }
     }
 
+    private fun importStudentArchive(uri: String) {
+        if (uri.isBlank()) return
+        viewModelScope.launch {
+            when (val preview = studentPackageService.inspectStudentImport(uri)) {
+                is CustomResult.Success -> handleStudentImportPreview(
+                    archiveUri = uri,
+                    preview = preview.data,
+                )
+                is CustomResult.Failure -> {
+                    _effects.value = ActiveStudentEffect.ShowImportStudentFailed
+                }
+            }
+        }
+    }
+
     private fun confirmImportDeckReplacement() {
         val archiveUri = _uiState.value.pendingDeckImportConfirmation?.archiveUri ?: return
         _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
@@ -337,6 +385,14 @@ class ActiveStudentViewModel(
                 uri = archiveUri,
                 mode = DeckImportMode.ADD_MISSING_CARDS,
             )
+        }
+    }
+
+    private fun confirmImportStudentUpdate() {
+        val archiveUri = _uiState.value.pendingStudentImportConfirmation?.archiveUri ?: return
+        _uiState.update { it.copy(pendingStudentImportConfirmation = null) }
+        viewModelScope.launch {
+            executeStudentImport(archiveUri)
         }
     }
 
@@ -364,6 +420,31 @@ class ActiveStudentViewModel(
         executeDeckImport(archiveUri)
     }
 
+    private suspend fun handleStudentImportPreview(
+        archiveUri: String,
+        preview: StudentPackageImportPreview,
+    ) {
+        val existingStudentName = preview.existingStudentName
+        if (!existingStudentName.isNullOrBlank()) {
+            _uiState.update {
+                it.copy(
+                    pendingStudentImportConfirmation = PendingStudentImportConfirmation(
+                        archiveUri = archiveUri,
+                        importedStudentName = preview.studentName,
+                        existingStudentName = existingStudentName,
+                        matchedDecksCount = preview.matchedDecksCount,
+                        missingDecksCount = preview.missingDecksCount,
+                        matchedCardsCount = preview.matchedCardsCount,
+                        missingCardsCount = preview.missingCardsCount,
+                    )
+                )
+            }
+            return
+        }
+
+        executeStudentImport(archiveUri)
+    }
+
     private suspend fun executeDeckImport(
         uri: String,
         mode: DeckImportMode = DeckImportMode.REPLACE_EXISTING,
@@ -382,6 +463,37 @@ class ActiveStudentViewModel(
                 is CustomResult.Failure -> {
                     _effects.value = ActiveStudentEffect.ShowImportDeckFailed
                 }
+        }
+    }
+
+    private fun exportCurrentStudent() {
+        val studentId = _uiState.value.studentId ?: return
+        viewModelScope.launch {
+            when (val result = studentPackageService.exportStudent(studentId)) {
+                is CustomResult.Success -> {
+                    _effects.value = ActiveStudentEffect.ShareStudentArchive(result.data)
+                }
+                is CustomResult.Failure -> {
+                    _effects.value = ActiveStudentEffect.ShowExportStudentFailed
+                }
+            }
+        }
+    }
+
+    private suspend fun executeStudentImport(uri: String) {
+        when (val result = studentPackageService.importStudent(uri)) {
+            is CustomResult.Success -> {
+                val importedStudentId = result.data.studentId
+                if (preferredStudentId.value != importedStudentId) {
+                    preferredStudentId.value = importedStudentId
+                }
+                if (preferencesRepository.getLastActiveStudentId() != importedStudentId) {
+                    preferencesRepository.setLastActiveStudentId(importedStudentId)
+                }
+            }
+            is CustomResult.Failure -> {
+                _effects.value = ActiveStudentEffect.ShowImportStudentFailed
+            }
         }
     }
 

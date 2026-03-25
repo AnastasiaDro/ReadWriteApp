@@ -7,7 +7,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        IncomingDeckArchiveBridgeKt.handleIncomingDeckArchiveUrl(url: url.absoluteString)
+        IncomingDeckArchiveBridgeKt.handleIncomingArchiveUrl(url: url.absoluteString)
         return true
     }
 }

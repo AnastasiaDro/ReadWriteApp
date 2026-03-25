@@ -1,26 +1,45 @@
 package com.cerebus.readwrite
 
 import com.cerebus.create_screen.navigation.CreateNavigationState
+import com.cerebus.readwrite.navigation.StudentImportNavigationState
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
 import platform.Foundation.NSUUID
 
-fun handleIncomingDeckArchiveUrl(url: String) {
-    val preparedArchiveUrl = prepareIncomingDeckArchiveUrl(url) ?: return
-    CreateNavigationState.requestImportDeckArchive(preparedArchiveUrl)
+fun handleIncomingArchiveUrl(url: String) {
+    val sourceUrl = NSURL.URLWithString(url) ?: return
+    when (sourceUrl.pathExtension?.lowercase().orEmpty()) {
+        "rwdeck" -> {
+            val preparedArchiveUrl = prepareIncomingArchiveUrl(
+                url = url,
+                targetExtension = "rwdeck",
+            ) ?: return
+            CreateNavigationState.requestImportDeckArchive(preparedArchiveUrl)
+        }
+        "rwstudent" -> {
+            val preparedArchiveUrl = prepareIncomingArchiveUrl(
+                url = url,
+                targetExtension = "rwstudent",
+            ) ?: return
+            StudentImportNavigationState.requestImportStudentArchive(preparedArchiveUrl)
+        }
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun prepareIncomingDeckArchiveUrl(url: String): String? {
+private fun prepareIncomingArchiveUrl(
+    url: String,
+    targetExtension: String,
+): String? {
     val sourceUrl = NSURL.URLWithString(url) ?: return null
     val extension = sourceUrl.pathExtension?.lowercase().orEmpty()
-    if (extension != "rwdeck") return null
+    if (extension != targetExtension) return null
 
     val hasSecurityScope = sourceUrl.startAccessingSecurityScopedResource()
     try {
-        val tempPath = normalizePath("${NSTemporaryDirectory()}/rwdeck_open_${NSUUID().UUIDString}.rwdeck")
+        val tempPath = normalizePath("${NSTemporaryDirectory()}/${targetExtension}_open_${NSUUID().UUIDString}.$targetExtension")
         val tempUrl = NSURL.fileURLWithPath(tempPath)
         NSFileManager.defaultManager.removeItemAtURL(tempUrl, error = null)
         val copied = NSFileManager.defaultManager.copyItemAtURL(

@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.cerebus.create_screen.navigation.CreateNavigationState
+import com.cerebus.readwrite.navigation.StudentImportNavigationState
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
-        if (rerouteExternalDeckArchiveIfNeeded(intent)) {
+        if (rerouteExternalArchiveIfNeeded(intent)) {
             finish()
             return
         }
@@ -50,8 +51,8 @@ class MainActivity : ComponentActivity() {
         handleIncomingDeckArchiveIntent(intent)
     }
 
-    private fun rerouteExternalDeckArchiveIfNeeded(intent: Intent?): Boolean {
-        val archiveUri = extractDeckArchiveUri(intent) ?: return false
+    private fun rerouteExternalArchiveIfNeeded(intent: Intent?): Boolean {
+        val archiveUri = extractSupportedArchiveUri(intent) ?: return false
         if (isTaskRoot) return false
 
         val reroutedIntent = Intent(intent).apply {
@@ -68,34 +69,48 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingDeckArchiveIntent(intent: Intent?) {
-        val archiveUri = extractDeckArchiveUri(intent) ?: return
-        CreateNavigationState.requestImportDeckArchive(archiveUri.toString())
+        val archiveUri = extractSupportedArchiveUri(intent) ?: return
+        when (detectArchiveKind(archiveUri, intent?.type)) {
+            ArchiveKind.DECK -> CreateNavigationState.requestImportDeckArchive(archiveUri.toString())
+            ArchiveKind.STUDENT -> StudentImportNavigationState.requestImportStudentArchive(archiveUri.toString())
+            null -> Unit
+        }
     }
 
-    private fun extractDeckArchiveUri(intent: Intent?): Uri? {
+    private fun extractSupportedArchiveUri(intent: Intent?): Uri? {
         if (intent == null) return null
         return when (intent.action) {
             Intent.ACTION_VIEW -> intent.data
             Intent.ACTION_SEND -> intent.getStreamUri()
             else -> null
-        }?.takeIf { isDeckArchiveUri(it, intent.type) }
+        }?.takeIf { detectArchiveKind(it, intent.type) != null }
     }
 
-    private fun isDeckArchiveUri(
+    private fun detectArchiveKind(
         uri: Uri,
         mimeType: String?,
-    ): Boolean {
+    ): ArchiveKind? {
         val normalizedMime = mimeType?.lowercase(Locale.US)
         if (
             normalizedMime == "application/x-rwdeck" ||
             normalizedMime == "application/vnd.readwrite.deck+zip"
         ) {
-            return true
+            return ArchiveKind.DECK
+        }
+        if (
+            normalizedMime == "application/x-rwstudent" ||
+            normalizedMime == "application/vnd.readwrite.student+zip"
+        ) {
+            return ArchiveKind.STUDENT
         }
 
         val candidatePath = (uri.lastPathSegment ?: uri.path ?: uri.toString())
             .lowercase(Locale.US)
-        return candidatePath.endsWith(".rwdeck")
+        return when {
+            candidatePath.endsWith(".rwdeck") -> ArchiveKind.DECK
+            candidatePath.endsWith(".rwstudent") -> ArchiveKind.STUDENT
+            else -> null
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -106,6 +121,11 @@ class MainActivity : ComponentActivity() {
             getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
         }
     }
+}
+
+private enum class ArchiveKind {
+    DECK,
+    STUDENT,
 }
 
 @Preview

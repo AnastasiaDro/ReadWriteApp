@@ -40,6 +40,15 @@ interface StudyProgressDao {
 
     @Query(
         """
+        SELECT * FROM review_log
+        WHERE student_id = :studentId
+        ORDER BY submitted_at_epoch_millis ASC, id ASC
+        """
+    )
+    suspend fun getReviewLogsByStudent(studentId: String): List<ReviewLogEntity>
+
+    @Query(
+        """
         SELECT DISTINCT rl.card_id
         FROM review_log AS rl
         WHERE rl.student_id = :studentId
