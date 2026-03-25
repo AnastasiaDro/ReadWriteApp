@@ -18,7 +18,13 @@
     <string name="delete_deck_message">Удалить "%s"?</string>
     <string name="confirm_delete_decks_title">Удалить выбранные колоды?</string>
     <string name="confirm_delete_decks_message">Выбранные колоды будут удалены без возможности восстановления.</string>
+    <string name="confirm_import_deck_replacement_title">Обновить существующую колоду?</string>
+    <string name="confirm_import_deck_replacement_message">Архив «%1$s» соответствует существующей колоде «%2$s». Заменить её карточки и обложку импортированной версией?</string>
+    <string name="import_deck_replace_summary">Обновить полностью: заменить %1$d совпадающих карточек, добавить %2$d новых и удалить %3$d карточек, которые есть только на этом устройстве.</string>
+    <string name="import_deck_add_missing_summary">Добавить недостающие: добавить %1$d новых карточек и оставить текущие локальные карточки и обложку без изменений.</string>
     <string name="delete">Удалить</string>
+    <string name="replace_deck">Обновить</string>
+    <string name="add_missing_cards">Добавить недостающие</string>
     <string name="deck_created_message">Колода "%s" создана!</string>
     <string name="add_cards">Добавить карточки</string>
     <string name="no_cover">Нет обложки</string>

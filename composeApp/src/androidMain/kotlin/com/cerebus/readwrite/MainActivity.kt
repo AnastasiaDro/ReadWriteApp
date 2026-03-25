@@ -31,6 +31,10 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
+        if (rerouteExternalDeckArchiveIfNeeded(intent)) {
+            finish()
+            return
+        }
         if (savedInstanceState == null) {
             handleIncomingDeckArchiveIntent(intent)
         }
@@ -44,6 +48,23 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIncomingDeckArchiveIntent(intent)
+    }
+
+    private fun rerouteExternalDeckArchiveIfNeeded(intent: Intent?): Boolean {
+        val archiveUri = extractDeckArchiveUri(intent) ?: return false
+        if (isTaskRoot) return false
+
+        val reroutedIntent = Intent(intent).apply {
+            setClass(this@MainActivity, MainActivity::class.java)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
+            data = archiveUri
+        }
+        startActivity(reroutedIntent)
+        return true
     }
 
     private fun handleIncomingDeckArchiveIntent(intent: Intent?) {

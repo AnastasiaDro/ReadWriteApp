@@ -31,6 +31,8 @@ import readwriteapp.composeapp.generated.resources.choose_source
 import readwriteapp.composeapp.generated.resources.close
 import readwriteapp.composeapp.generated.resources.confirm_delete_decks_message
 import readwriteapp.composeapp.generated.resources.confirm_delete_decks_title
+import readwriteapp.composeapp.generated.resources.confirm_import_deck_replacement_message
+import readwriteapp.composeapp.generated.resources.confirm_import_deck_replacement_title
 import readwriteapp.composeapp.generated.resources.create
 import readwriteapp.composeapp.generated.resources.create_deck
 import readwriteapp.composeapp.generated.resources.deck_created_message
@@ -38,6 +40,8 @@ import readwriteapp.composeapp.generated.resources.deck_name_label
 import readwriteapp.composeapp.generated.resources.delete
 import readwriteapp.composeapp.generated.resources.edit_cover
 import readwriteapp.composeapp.generated.resources.import_deck
+import readwriteapp.composeapp.generated.resources.import_deck_add_missing_summary
+import readwriteapp.composeapp.generated.resources.import_deck_replace_summary
 import readwriteapp.composeapp.generated.resources.error_create_deck_failed
 import readwriteapp.composeapp.generated.resources.error_delete_decks_failed
 import readwriteapp.composeapp.generated.resources.error_empty_deck_name
@@ -51,6 +55,8 @@ import readwriteapp.composeapp.generated.resources.export_deck
 import readwriteapp.composeapp.generated.resources.my_decks
 import readwriteapp.composeapp.generated.resources.no_cover
 import readwriteapp.composeapp.generated.resources.no_decks_yet
+import readwriteapp.composeapp.generated.resources.add_missing_cards
+import readwriteapp.composeapp.generated.resources.replace_deck
 import readwriteapp.composeapp.generated.resources.selected_count
 import readwriteapp.composeapp.generated.resources.take_photo
 
@@ -172,6 +178,12 @@ fun CreateScreenRoute(
         exportLimitHint = stringResource(Res.string.export_decks_limit_hint),
         confirmDeleteDecksTitle = stringResource(Res.string.confirm_delete_decks_title),
         confirmDeleteDecksMessage = stringResource(Res.string.confirm_delete_decks_message),
+        confirmImportDeckReplacementTitle = stringResource(Res.string.confirm_import_deck_replacement_title),
+        confirmImportDeckReplacementMessage = stringResource(Res.string.confirm_import_deck_replacement_message),
+        importDeckReplaceSummary = stringResource(Res.string.import_deck_replace_summary),
+        importDeckAddMissingSummary = stringResource(Res.string.import_deck_add_missing_summary),
+        replaceDeck = stringResource(Res.string.replace_deck),
+        addMissingCards = stringResource(Res.string.add_missing_cards),
         deckCreatedTemplate = stringResource(Res.string.deck_created_message),
         addCards = stringResource(Res.string.add_cards),
         noCover = stringResource(Res.string.no_cover),

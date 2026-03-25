@@ -65,9 +65,15 @@
     <string name="active_student_create_in_other">Создать</string>
     <string name="active_student_error_open_archive_picker_failed">Не удалось открыть выбор файла колоды</string>
     <string name="active_student_error_import_deck_failed">Не удалось импортировать колоду</string>
+    <string name="active_student_confirm_import_deck_replacement_title">Обновить существующую колоду?</string>
+    <string name="active_student_confirm_import_deck_replacement_message">Архив «%1$s» соответствует существующей колоде «%2$s». Заменить её карточки и обложку импортированной версией?</string>
+    <string name="active_student_import_deck_replace_summary">Обновить полностью: заменить %1$d совпадающих карточек, добавить %2$d новых и удалить %3$d карточек, которые есть только на этом устройстве.</string>
+    <string name="active_student_import_deck_add_missing_summary">Добавить недостающие: добавить %1$d новых карточек и оставить текущие локальные карточки и обложку без изменений.</string>
     <string name="active_student_error_open_photo_picker_failed">Не удалось открыть выбор фото</string>
     <string name="active_student_error_update_student_failed">Не удалось обновить ученика</string>
     <string name="active_student_error_delete_student_failed">Не удалось удалить ученика</string>
+    <string name="replace_deck">Обновить</string>
+    <string name="add_missing_cards">Добавить недостающие</string>
     <string name="change_student_back">Назад</string>
     <string name="change_student_title">Сменить ученика</string>
     <string name="change_student_last_deck">Последняя колода:</string>

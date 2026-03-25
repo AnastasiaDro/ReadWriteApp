@@ -13,6 +13,8 @@ import com.cerebus.core.deck_package.domain.model.DeckPackageMediaRef
 import com.cerebus.core.deck_package.domain.model.RW_DECK_FORMAT
 import com.cerebus.core.deck_package.domain.model.RW_DECK_SCHEMA_VERSION
 import com.cerebus.core.deck_package.domain.service.DeckPackageExportFile
+import com.cerebus.core.deck_package.domain.service.DeckImportMode
+import com.cerebus.core.deck_package.domain.service.DeckPackageImportPreview
 import com.cerebus.core.deck_package.domain.service.DeckPackageImportResult
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
 import com.cerebus.core.utils.CustomResult
@@ -131,9 +133,62 @@ class AndroidDeckPackageService(
         )
     }
 
+    override suspend fun inspectDeckImport(
+        archiveUri: String,
+    ): CustomResult<DeckPackageImportPreview> = withContext(Dispatchers.IO) {
+        runCatching {
+            val sourceArchive = copyArchiveToTemp(archiveUri)
+            val unzipDir = createWorkDir(prefix = "rwdeck_inspect_")
+
+            try {
+                unzipArchive(sourceArchive, unzipDir)
+
+                val manifestFile = File(unzipDir, MANIFEST_FILE_NAME)
+                if (!manifestFile.exists()) {
+                    error("manifest.json is missing in archive")
+                }
+                val manifest = json.decodeFromString(
+                    DeckPackageManifest.serializer(),
+                    manifestFile.readText(),
+                )
+                validateManifest(manifest)
+
+                val existingDeck = manifest.deck.sourceDeckId
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { deckId -> deckRepository.getDeckById(deckId) }
+                val existingCardsById = existingDeck
+                    ?.let { flashcardRepository.getFlashcardsByDeckId(it.id).associateBy { card -> card.id } }
+                    .orEmpty()
+                val importedCardIds = manifest.cards.mapNotNull { card ->
+                    card.sourceCardId?.takeIf { it.isNotBlank() }
+                }.toSet()
+                val matchingCardsCount = importedCardIds.count { cardId -> existingCardsById.containsKey(cardId) }
+                val newCardsCount = importedCardIds.count { cardId -> !existingCardsById.containsKey(cardId) } +
+                    manifest.cards.count { card -> card.sourceCardId.isNullOrBlank() }
+                val staleCardsCount = existingCardsById.keys.count { cardId -> cardId !in importedCardIds }
+
+                DeckPackageImportPreview(
+                    deckName = manifest.deck.name,
+                    existingDeckId = existingDeck?.id,
+                    existingDeckName = existingDeck?.name,
+                    matchingCardsCount = matchingCardsCount,
+                    newCardsCount = newCardsCount,
+                    staleCardsCount = staleCardsCount,
+                )
+            } finally {
+                sourceArchive.delete()
+                unzipDir.deleteRecursively()
+            }
+        }.fold(
+            onSuccess = { CustomResult.Success(it) },
+            onFailure = { CustomResult.Failure(it) },
+        )
+    }
+
     override suspend fun importDeck(
         archiveUri: String,
         assignToStudentId: String?,
+        mode: DeckImportMode,
     ): CustomResult<DeckPackageImportResult> = withContext(Dispatchers.IO) {
         runCatching {
             val sourceArchive = copyArchiveToTemp(archiveUri)
@@ -152,7 +207,15 @@ class AndroidDeckPackageService(
                 )
                 validateManifest(manifest)
 
-                val newDeckId = UniqueIdGenerator.randomAlphanumeric(prefix = "deck")
+                val sourceDeckId = manifest.deck.sourceDeckId?.takeIf { it.isNotBlank() }
+                val existingDeck = if (sourceDeckId != null) {
+                    deckRepository.getDeckById(sourceDeckId)
+                } else {
+                    null
+                }
+                val targetDeckId = existingDeck?.id
+                    ?: sourceDeckId
+                    ?: UniqueIdGenerator.randomAlphanumeric(prefix = "deck")
                 var createdDeckIdForRollback: String? = null
 
                 try {
@@ -163,53 +226,104 @@ class AndroidDeckPackageService(
                         )
                     }
 
-                    val createdDeck = deckRepository.addDeck(
-                        Deck(
-                            id = newDeckId,
+                    if (existingDeck == null) {
+                        val createdDeck = deckRepository.addDeck(
+                            Deck(
+                                id = targetDeckId,
+                                name = manifest.deck.name,
+                                coverUri = coverUri,
+                            )
+                        )
+                        if (!createdDeck) {
+                            error("Failed to create deck from archive")
+                        }
+                        createdDeckIdForRollback = targetDeckId
+                    } else if (mode == DeckImportMode.REPLACE_EXISTING) {
+                        val updatedName = deckRepository.updateDeckName(
+                            id = targetDeckId,
                             name = manifest.deck.name,
+                        )
+                        val updatedCover = deckRepository.updateDeckCoverUri(
+                            id = targetDeckId,
                             coverUri = coverUri,
                         )
-                    )
-                    if (!createdDeck) {
-                        error("Failed to create deck from archive")
+                        if (!updatedName || !updatedCover) {
+                            error("Failed to update imported deck")
+                        }
                     }
-                    createdDeckIdForRollback = newDeckId
+
+                    val existingCardsById = flashcardRepository.getFlashcardsByDeckId(targetDeckId)
+                        .associateBy { it.id }
+                    val importedCardIds = mutableSetOf<String>()
 
                     var importedCardsCount = 0
                     manifest.cards.forEach { card ->
+                        val targetCardId = card.sourceCardId?.takeIf { it.isNotBlank() }
+                            ?: UniqueIdGenerator.randomAlphanumeric(prefix = "card")
+                        val existingCard = existingCardsById[targetCardId]
+                        val shouldReplaceExisting = mode == DeckImportMode.REPLACE_EXISTING
+                        if (shouldReplaceExisting) {
+                            importedCardIds += targetCardId
+                        }
+                        if (existingCard != null && !shouldReplaceExisting) {
+                            return@forEach
+                        }
+
                         val cardMediaUri = card.media?.let { media ->
                             importMediaAndGetLocalUri(
                                 unzipDir = unzipDir,
                                 mediaFile = media.file,
                             )
                         }
-                        val createdCard = flashcardRepository.addFlashcard(
-                            Flashcard(
-                                id = UniqueIdGenerator.randomAlphanumeric(prefix = "card"),
-                                imageUrl = cardMediaUri.orEmpty(),
-                                name = card.text,
-                                deckId = newDeckId,
-                            )
+                        val importedCard = Flashcard(
+                            id = targetCardId,
+                            imageUrl = cardMediaUri.orEmpty(),
+                            name = card.text,
+                            deckId = targetDeckId,
                         )
-                        if (!createdCard) {
-                            error("Failed to create card from archive")
+                        val syncedCard = if (existingCard != null) {
+                            flashcardRepository.updateFlashcard(
+                                id = targetCardId,
+                                newData = importedCard,
+                            )
+                        } else {
+                            flashcardRepository.addFlashcard(importedCard)
+                        }
+                        if (!syncedCard) {
+                            error("Failed to sync card from archive")
                         }
                         importedCardsCount++
                     }
 
+                    if (mode == DeckImportMode.REPLACE_EXISTING) {
+                        existingCardsById.keys
+                            .filterNot { it in importedCardIds }
+                            .forEach { cardId ->
+                                val deleted = flashcardRepository.deleteFlashcard(cardId)
+                                if (!deleted) {
+                                    error("Failed to delete stale card during deck import")
+                                }
+                            }
+                    }
+
                     val targetStudentId = assignToStudentId?.takeIf { it.isNotBlank() }
                     if (targetStudentId != null) {
-                        val assigned = studentDeckRepository.assignDeckToStudent(
-                            studentId = targetStudentId,
-                            deckId = newDeckId,
-                        )
-                        if (!assigned) {
-                            error("Failed to assign imported deck to student")
+                        val alreadyAssigned = studentDeckRepository.getStudentWithDecks(targetStudentId)
+                            ?.decks
+                            ?.any { deck -> deck.id == targetDeckId } == true
+                        if (!alreadyAssigned) {
+                            val assigned = studentDeckRepository.assignDeckToStudent(
+                                studentId = targetStudentId,
+                                deckId = targetDeckId,
+                            )
+                            if (!assigned) {
+                                error("Failed to assign imported deck to student")
+                            }
                         }
                     }
 
                     DeckPackageImportResult(
-                        deckId = newDeckId,
+                        deckId = targetDeckId,
                         deckName = manifest.deck.name,
                         importedCardsCount = importedCardsCount,
                     )

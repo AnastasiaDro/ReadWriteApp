@@ -9,6 +9,15 @@ enum class CreateValidationError {
     DELETE_DECKS_FAILED,
 }
 
+data class PendingDeckImportConfirmation(
+    val archiveUri: String,
+    val importedDeckName: String,
+    val existingDeckName: String,
+    val matchingCardsCount: Int,
+    val newCardsCount: Int,
+    val staleCardsCount: Int,
+)
+
 data class CreateUiState(
     val decks: List<Deck> = emptyList(),
     val isCreateDialogVisible: Boolean = false,
@@ -25,4 +34,5 @@ data class CreateUiState(
     val coverUri: String? = null,
     val isSaving: Boolean = false,
     val validationError: CreateValidationError? = null,
+    val pendingDeckImportConfirmation: PendingDeckImportConfirmation? = null,
 )

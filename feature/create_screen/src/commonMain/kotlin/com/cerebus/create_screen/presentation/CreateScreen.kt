@@ -41,8 +41,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -247,6 +251,56 @@ fun CreateScreen(
         onDismiss = { onAction(CreateScreenAction.OnDismissDeleteSelectedDialog) },
     )
 
+    val pendingImportConfirmation = state.pendingDeckImportConfirmation
+    if (pendingImportConfirmation != null) {
+        AppAnimatedDialog(visible = true) {
+            AlertDialog(
+                onDismissRequest = { onAction(CreateScreenAction.OnDismissImportDeckReplacement) },
+                title = { Text(strings.confirmImportDeckReplacementTitle) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = strings.confirmImportDeckReplacementMessage
+                                .replace("%1\$s", pendingImportConfirmation.importedDeckName)
+                                .replace("%2\$s", pendingImportConfirmation.existingDeckName),
+                        )
+                        Text(
+                            text = buildImportSummaryText(
+                                strings.importDeckAddMissingSummary
+                                    .replace("%1\$d", pendingImportConfirmation.newCardsCount.toString())
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = buildImportSummaryText(
+                                strings.importDeckReplaceSummary
+                                    .replace("%1\$d", pendingImportConfirmation.matchingCardsCount.toString())
+                                    .replace("%2\$d", pendingImportConfirmation.newCardsCount.toString())
+                                    .replace("%3\$d", pendingImportConfirmation.staleCardsCount.toString())
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                },
+                confirmButton = {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Button(onClick = { onAction(CreateScreenAction.OnConfirmImportDeckAddMissingCards) }) {
+                            Text(strings.addMissingCards)
+                        }
+                        TextButton(onClick = { onAction(CreateScreenAction.OnConfirmImportDeckReplacement) }) {
+                            Text(strings.replaceDeck)
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { onAction(CreateScreenAction.OnDismissImportDeckReplacement) }) {
+                        Text(strings.cancel)
+                    }
+                },
+            )
+        }
+    }
+
     AppAnimatedDialog(visible = state.isSuccessDialogVisible) {
         AlertDialog(
             onDismissRequest = { onAction(CreateScreenAction.OnCloseSuccessDialog) },
@@ -284,6 +338,19 @@ fun CreateScreen(
             },
         )
     }
+}
+
+private fun buildImportSummaryText(summary: String) = buildAnnotatedString {
+    val separatorIndex = summary.indexOf(':')
+    if (separatorIndex < 0) {
+        append(summary)
+        return@buildAnnotatedString
+    }
+
+    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+        append(summary.substring(0, separatorIndex + 1))
+    }
+    append(summary.substring(separatorIndex + 1))
 }
 
 @Composable

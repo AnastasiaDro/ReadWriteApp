@@ -36,8 +36,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.core.ui.insets.topSystemBarPadding
@@ -63,6 +66,8 @@ import readwriteapp.feature.student.generated.resources.active_student_error_upd
 import readwriteapp.feature.student.generated.resources.active_student_fallback_name
 import readwriteapp.feature.student.generated.resources.active_student_gallery_choose_deck_title
 import readwriteapp.feature.student.generated.resources.active_student_edit_student_title
+import readwriteapp.feature.student.generated.resources.active_student_import_deck_add_missing_summary
+import readwriteapp.feature.student.generated.resources.active_student_import_deck_replace_summary
 import readwriteapp.feature.student.generated.resources.active_student_import
 import readwriteapp.feature.student.generated.resources.active_student_keyboard_settings
 import readwriteapp.feature.student.generated.resources.active_student_learning_settings
@@ -95,6 +100,8 @@ import readwriteapp.feature.student.generated.resources.active_student_delete
 import readwriteapp.feature.student.generated.resources.active_student_delete_student_message
 import readwriteapp.feature.student.generated.resources.active_student_delete_student_secondary_message
 import readwriteapp.feature.student.generated.resources.active_student_delete_student_title
+import readwriteapp.feature.student.generated.resources.active_student_confirm_import_deck_replacement_message
+import readwriteapp.feature.student.generated.resources.active_student_confirm_import_deck_replacement_title
 import readwriteapp.feature.student.generated.resources.active_student_start
 import readwriteapp.feature.student.generated.resources.active_student_studied_digits
 import readwriteapp.feature.student.generated.resources.active_student_studied_english_letters
@@ -106,6 +113,8 @@ import readwriteapp.feature.student.generated.resources.create_student_name_subt
 import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
 import readwriteapp.feature.student.generated.resources.choose_source
 import readwriteapp.feature.student.generated.resources.choose_from_gallery
+import readwriteapp.feature.student.generated.resources.add_missing_cards
+import readwriteapp.feature.student.generated.resources.replace_deck
 import readwriteapp.feature.student.generated.resources.take_photo
 import readwriteapp.feature.student.generated.resources.close
 import readwriteapp.feature.student.generated.resources.save
@@ -748,6 +757,73 @@ private fun ActiveStudentScreen(
             },
         )
     }
+
+    val pendingDeckImportConfirmation = state.pendingDeckImportConfirmation
+    if (pendingDeckImportConfirmation != null) {
+        AlertDialog(
+            onDismissRequest = { onAction(ActiveStudentAction.OnDismissImportDeckReplacement) },
+            title = {
+                Text(stringResource(Res.string.active_student_confirm_import_deck_replacement_title))
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = stringResource(
+                            Res.string.active_student_confirm_import_deck_replacement_message,
+                            pendingDeckImportConfirmation.importedDeckName,
+                            pendingDeckImportConfirmation.existingDeckName,
+                        ),
+                    )
+                    Text(
+                        text = buildImportSummaryText(
+                            stringResource(
+                                Res.string.active_student_import_deck_add_missing_summary,
+                                pendingDeckImportConfirmation.newCardsCount,
+                            ),
+                        ),
+                    )
+                    Text(
+                        text = buildImportSummaryText(
+                            stringResource(
+                                Res.string.active_student_import_deck_replace_summary,
+                                pendingDeckImportConfirmation.matchingCardsCount,
+                                pendingDeckImportConfirmation.newCardsCount,
+                                pendingDeckImportConfirmation.staleCardsCount,
+                            ),
+                        ),
+                    )
+                }
+            },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    Button(onClick = { onAction(ActiveStudentAction.OnConfirmImportDeckAddMissingCards) }) {
+                        Text(stringResource(Res.string.add_missing_cards))
+                    }
+                    TextButton(onClick = { onAction(ActiveStudentAction.OnConfirmImportDeckReplacement) }) {
+                        Text(stringResource(Res.string.replace_deck))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onAction(ActiveStudentAction.OnDismissImportDeckReplacement) }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            },
+        )
+    }
+}
+
+private fun buildImportSummaryText(summary: String) = buildAnnotatedString {
+    val separatorIndex = summary.indexOf(':')
+    if (separatorIndex < 0) {
+        append(summary)
+        return@buildAnnotatedString
+    }
+
+    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+        append(summary.substring(0, separatorIndex + 1))
+    }
+    append(summary.substring(separatorIndex + 1))
 }
 
 @Composable

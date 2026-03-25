@@ -101,9 +101,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
         if (pendingImportDeckArchiveUri.isNullOrBlank()) return@LaunchedEffect
         if (currentRoute == null || currentRoute == Screens.SPLASH.route) return@LaunchedEffect
         if (currentRoute == Screens.CREATE.route) return@LaunchedEffect
-        navController.navigate(Screens.CREATE.route) {
-            launchSingleTop = true
-        }
+        navController.openDeckImportScreen()
     }
 
     Scaffold(
@@ -428,6 +426,19 @@ private fun androidx.navigation.NavHostController.closeDeck() {
     if (popped) return
 
     navigateToTopLevelTab(TopLevelGraphs.DECKS)
+}
+
+private fun androidx.navigation.NavHostController.openDeckImportScreen() {
+    val openedCreate = popBackStack(Screens.CREATE.route, inclusive = false)
+    if (openedCreate) return
+
+    navigate(TopLevelGraphs.DECKS) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = false
+    }
 }
 
 private fun androidx.navigation.NavHostController.closeDeckGallery() {

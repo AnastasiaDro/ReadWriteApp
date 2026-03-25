@@ -2,6 +2,8 @@ package com.cerebus.readwrite.view
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.deck_package.domain.service.DeckImportMode
+import com.cerebus.core.deck_package.domain.service.DeckPackageImportPreview
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
 import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.core.game_engine.domain.logic.SrsSessionCandidate
@@ -40,6 +42,15 @@ import kotlinx.coroutines.launch
 private val learnedLevelThreshold = SrsConfig().learnedLevelThreshold
 private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
 
+data class PendingStudentDeckImportConfirmation(
+    val archiveUri: String,
+    val importedDeckName: String,
+    val existingDeckName: String,
+    val matchingCardsCount: Int,
+    val newCardsCount: Int,
+    val staleCardsCount: Int,
+)
+
 data class ActiveStudentUiState(
     val isLoading: Boolean = true,
     val studentId: String? = null,
@@ -54,6 +65,7 @@ data class ActiveStudentUiState(
     val isEditStudentDialogVisible: Boolean = false,
     val isEditStudentPhotoSourceDialogVisible: Boolean = false,
     val isDeleteStudentDialogVisible: Boolean = false,
+    val pendingDeckImportConfirmation: PendingStudentDeckImportConfirmation? = null,
     val editStudentName: String = "",
     val editStudentAvatarUri: String? = null,
     val pendingPickerRequest: StudentPickerRequest? = null,
@@ -72,6 +84,9 @@ sealed interface ActiveStudentAction {
     data object OnCreateDeckClick : ActiveStudentAction
     data object OnImportDeckClick : ActiveStudentAction
     data class OnImportDeckFilePicked(val uri: String) : ActiveStudentAction
+    data object OnConfirmImportDeckReplacement : ActiveStudentAction
+    data object OnConfirmImportDeckAddMissingCards : ActiveStudentAction
+    data object OnDismissImportDeckReplacement : ActiveStudentAction
     data class OnDeckClick(val deckId: String) : ActiveStudentAction
     data object OnEditStudentClick : ActiveStudentAction
     data object OnDismissEditStudentDialog : ActiveStudentAction
@@ -251,6 +266,11 @@ class ActiveStudentViewModel(
                 _effects.value = ActiveStudentEffect.OpenImportDeckPicker
             }
             is ActiveStudentAction.OnImportDeckFilePicked -> importDeckArchive(action.uri)
+            ActiveStudentAction.OnConfirmImportDeckReplacement -> confirmImportDeckReplacement()
+            ActiveStudentAction.OnConfirmImportDeckAddMissingCards -> confirmImportDeckAddMissingCards()
+            ActiveStudentAction.OnDismissImportDeckReplacement -> {
+                _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
+            }
 
             is ActiveStudentAction.OnDeckClick -> {
                 openDeck(action.deckId)
@@ -286,20 +306,82 @@ class ActiveStudentViewModel(
     private fun importDeckArchive(uri: String) {
         if (uri.isBlank()) return
         viewModelScope.launch {
-            val studentId = _uiState.value.studentId
-            when (
-                val result = deckPackageService.importDeck(
+            when (val preview = deckPackageService.inspectDeckImport(uri)) {
+                is CustomResult.Success -> handleDeckImportPreview(
                     archiveUri = uri,
-                    assignToStudentId = studentId,
+                    preview = preview.data,
                 )
-            ) {
+                is CustomResult.Failure -> {
+                    _effects.value = ActiveStudentEffect.ShowImportDeckFailed
+                }
+            }
+        }
+    }
+
+    private fun confirmImportDeckReplacement() {
+        val archiveUri = _uiState.value.pendingDeckImportConfirmation?.archiveUri ?: return
+        _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
+        viewModelScope.launch {
+            executeDeckImport(
+                uri = archiveUri,
+                mode = DeckImportMode.REPLACE_EXISTING,
+            )
+        }
+    }
+
+    private fun confirmImportDeckAddMissingCards() {
+        val archiveUri = _uiState.value.pendingDeckImportConfirmation?.archiveUri ?: return
+        _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
+        viewModelScope.launch {
+            executeDeckImport(
+                uri = archiveUri,
+                mode = DeckImportMode.ADD_MISSING_CARDS,
+            )
+        }
+    }
+
+    private suspend fun handleDeckImportPreview(
+        archiveUri: String,
+        preview: DeckPackageImportPreview,
+    ) {
+        val existingDeckName = preview.existingDeckName
+        if (!existingDeckName.isNullOrBlank()) {
+            _uiState.update {
+                it.copy(
+                    pendingDeckImportConfirmation = PendingStudentDeckImportConfirmation(
+                        archiveUri = archiveUri,
+                        importedDeckName = preview.deckName,
+                        existingDeckName = existingDeckName,
+                        matchingCardsCount = preview.matchingCardsCount,
+                        newCardsCount = preview.newCardsCount,
+                        staleCardsCount = preview.staleCardsCount,
+                    )
+                )
+            }
+            return
+        }
+
+        executeDeckImport(archiveUri)
+    }
+
+    private suspend fun executeDeckImport(
+        uri: String,
+        mode: DeckImportMode = DeckImportMode.REPLACE_EXISTING,
+    ) {
+        val studentId = _uiState.value.studentId
+        when (
+            val result = deckPackageService.importDeck(
+                archiveUri = uri,
+                assignToStudentId = studentId,
+                mode = mode,
+            )
+        ) {
                 is CustomResult.Success -> {
                     // Active decks list updates automatically from repository observers.
                 }
                 is CustomResult.Failure -> {
                     _effects.value = ActiveStudentEffect.ShowImportDeckFailed
                 }
-            }
         }
     }
 

@@ -2,6 +2,8 @@ package com.cerebus.create_screen.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.deck_package.domain.service.DeckImportMode
+import com.cerebus.core.deck_package.domain.service.DeckPackageImportPreview
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
 import com.cerebus.core.utils.CustomResult
 import com.cerebus.core.utils.UniqueIdGenerator
@@ -56,6 +58,11 @@ class CreateScreenViewModel(
                 }
             }
             is CreateScreenAction.OnImportDeckFilePicked -> importDeckArchive(action.uri)
+            CreateScreenAction.OnConfirmImportDeckReplacement -> confirmImportDeckReplacement()
+            CreateScreenAction.OnConfirmImportDeckAddMissingCards -> confirmImportDeckAddMissingCards()
+            CreateScreenAction.OnDismissImportDeckReplacement -> {
+                _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
+            }
             CreateScreenAction.OnDismissCreateDialog -> {
                 _uiState.update {
                     it.copy(
@@ -159,20 +166,82 @@ class CreateScreenViewModel(
     private fun importDeckArchive(uri: String) {
         if (uri.isBlank()) return
         viewModelScope.launch {
-            val studentId = preferencesRepository.getLastActiveStudentId()
-            when (
-                val result = deckPackageService.importDeck(
+            when (val preview = deckPackageService.inspectDeckImport(uri)) {
+                is CustomResult.Success -> handleDeckImportPreview(
                     archiveUri = uri,
-                    assignToStudentId = studentId,
+                    preview = preview.data,
                 )
-            ) {
+                is CustomResult.Failure -> {
+                    _effects.emit(CreateScreenEffect.ShowImportDeckFailed)
+                }
+            }
+        }
+    }
+
+    private suspend fun handleDeckImportPreview(
+        archiveUri: String,
+        preview: DeckPackageImportPreview,
+    ) {
+        val existingDeckName = preview.existingDeckName
+        if (!existingDeckName.isNullOrBlank()) {
+            _uiState.update {
+                it.copy(
+                    pendingDeckImportConfirmation = PendingDeckImportConfirmation(
+                        archiveUri = archiveUri,
+                        importedDeckName = preview.deckName,
+                        existingDeckName = existingDeckName,
+                        matchingCardsCount = preview.matchingCardsCount,
+                        newCardsCount = preview.newCardsCount,
+                        staleCardsCount = preview.staleCardsCount,
+                    )
+                )
+            }
+            return
+        }
+
+        executeDeckImport(archiveUri)
+    }
+
+    private fun confirmImportDeckReplacement() {
+        val archiveUri = _uiState.value.pendingDeckImportConfirmation?.archiveUri ?: return
+        _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
+        viewModelScope.launch {
+            executeDeckImport(
+                uri = archiveUri,
+                mode = DeckImportMode.REPLACE_EXISTING,
+            )
+        }
+    }
+
+    private fun confirmImportDeckAddMissingCards() {
+        val archiveUri = _uiState.value.pendingDeckImportConfirmation?.archiveUri ?: return
+        _uiState.update { it.copy(pendingDeckImportConfirmation = null) }
+        viewModelScope.launch {
+            executeDeckImport(
+                uri = archiveUri,
+                mode = DeckImportMode.ADD_MISSING_CARDS,
+            )
+        }
+    }
+
+    private suspend fun executeDeckImport(
+        uri: String,
+        mode: DeckImportMode = DeckImportMode.REPLACE_EXISTING,
+    ) {
+        val studentId = preferencesRepository.getLastActiveStudentId()
+        when (
+            val result = deckPackageService.importDeck(
+                archiveUri = uri,
+                assignToStudentId = studentId,
+                mode = mode,
+            )
+        ) {
                 is CustomResult.Success -> {
                     // Deck list is observed from repository and updates automatically.
                 }
                 is CustomResult.Failure -> {
                     _effects.emit(CreateScreenEffect.ShowImportDeckFailed)
                 }
-            }
         }
     }
 

@@ -6,6 +6,9 @@ sealed interface CreateScreenAction {
     data object OnCreateDeckClick : CreateScreenAction
     data object OnImportDeckClick : CreateScreenAction
     data class OnImportDeckFilePicked(val uri: String) : CreateScreenAction
+    data object OnConfirmImportDeckReplacement : CreateScreenAction
+    data object OnConfirmImportDeckAddMissingCards : CreateScreenAction
+    data object OnDismissImportDeckReplacement : CreateScreenAction
     data object OnDismissCreateDialog : CreateScreenAction
 
     data class OnDeckNameChanged(val value: String) : CreateScreenAction

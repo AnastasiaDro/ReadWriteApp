@@ -18,7 +18,13 @@
     <string name="delete_deck_message">Delete "%s"?</string>
     <string name="confirm_delete_decks_title">Delete selected decks?</string>
     <string name="confirm_delete_decks_message">Selected decks will be permanently deleted.</string>
+    <string name="confirm_import_deck_replacement_title">Replace existing deck?</string>
+    <string name="confirm_import_deck_replacement_message">The archive for "%1$s" matches an existing deck "%2$s". Replace its cards and cover with the imported version?</string>
+    <string name="import_deck_replace_summary">Replace: update %1$d matching cards, add %2$d new cards, remove %3$d cards that exist only on this device.</string>
+    <string name="import_deck_add_missing_summary">Add missing only: add %1$d new cards and keep existing local cards and cover unchanged.</string>
     <string name="delete">Delete</string>
+    <string name="replace_deck">Replace</string>
+    <string name="add_missing_cards">Add missing cards</string>
     <string name="deck_created_message">Deck "%s" created!</string>
     <string name="add_cards">Add cards</string>
     <string name="no_cover">No cover</string>
