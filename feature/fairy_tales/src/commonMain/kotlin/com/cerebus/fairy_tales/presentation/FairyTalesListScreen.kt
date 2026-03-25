@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,10 +61,10 @@ fun FairyTalesListScreen(
     val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
     val isLandscape = windowWidthDp > windowHeightDp
     val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
-    val listHorizontalPadding = when {
+    val sharedHorizontalPadding = when {
         isLandscape && isTablet -> 60.dp
         isLandscape -> 32.dp
-        else -> 0.dp
+        else -> 16.dp
     }
 
     Column(
@@ -73,8 +72,8 @@ fun FairyTalesListScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
             .padding(
-                start = 16.dp,
-                end = 16.dp,
+                start = sharedHorizontalPadding,
+                end = sharedHorizontalPadding,
                 top = 10.dp,
                 bottom = 10.dp,
             ),
@@ -93,7 +92,6 @@ fun FairyTalesListScreen(
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = listHorizontalPadding),
         ) {
             items(fairyTales) { fairyTale ->
                 FairyTaleRow(

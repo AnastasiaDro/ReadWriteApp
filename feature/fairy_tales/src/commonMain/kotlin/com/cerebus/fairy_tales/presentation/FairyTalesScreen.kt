@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleStartEffect
 import com.cerebus.core.sound_player.SoundClip
 import com.cerebus.core.sound_player.SoundSource
 import com.cerebus.core.sound_player.createSoundPlayer
@@ -68,6 +70,9 @@ import io.github.alexzhirkevich.compottie.rememberLottiePainter
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import org.jetbrains.compose.resources.painterResource
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import readwriteapp.feature.fairy_tales.generated.resources.Res
 
 private const val TextFadeDurationMillis = 220
@@ -89,6 +94,7 @@ fun FairyTalesScreenRoute(
     val state = viewModel.state
     val soundPlayer = remember { createSoundPlayer() }
     val resourceFileCache = rememberResourceFileCache()
+    val coroutineScope = rememberCoroutineScope()
 
     DisposableEffect(soundPlayer) {
         onDispose {
@@ -96,53 +102,61 @@ fun FairyTalesScreenRoute(
         }
     }
 
-    LaunchedEffect(viewModel, resourceFileCache, soundPlayer) {
-        viewModel.effects.collect { effect ->
-            when (effect) {
-                is FairyTalesEffect.StartStoryPlayback -> {
-                    val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull()
-                    if (bytes == null) {
+    LifecycleStartEffect(viewModel, resourceFileCache, soundPlayer) {
+        var effectsJob: Job? = null
+        effectsJob = coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            viewModel.effects.collect { effect ->
+                when (effect) {
+                    is FairyTalesEffect.StartStoryPlayback -> {
+                        val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull()
+                        if (bytes == null) {
+                            viewModel.onStoryPlaybackStarted(
+                                playbackToken = effect.playbackToken,
+                                audioDurationMillis = null,
+                            )
+                            return@collect
+                        }
+                        val fileUri = resourceFileCache.cacheBytes(
+                            fileName = effect.cue.fileName,
+                            bytes = bytes,
+                        )
+                        if (fileUri == null) {
+                            viewModel.onStoryPlaybackStarted(
+                                playbackToken = effect.playbackToken,
+                                audioDurationMillis = null,
+                            )
+                            return@collect
+                        }
+                        val clip = SoundClip(
+                            id = effect.cue.id,
+                            source = SoundSource.FileUri(fileUri),
+                        )
                         viewModel.onStoryPlaybackStarted(
                             playbackToken = effect.playbackToken,
-                            audioDurationMillis = null,
+                            audioDurationMillis = soundPlayer.durationMillis(clip),
                         )
-                        return@collect
+                        soundPlayer.play(clip = clip)
                     }
-                    val fileUri = resourceFileCache.cacheBytes(
-                        fileName = effect.cue.fileName,
-                        bytes = bytes,
-                    )
-                    if (fileUri == null) {
-                        viewModel.onStoryPlaybackStarted(
-                            playbackToken = effect.playbackToken,
-                            audioDurationMillis = null,
+                    is FairyTalesEffect.PlayOneShotSound -> {
+                        val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull()
+                            ?: return@collect
+                        val fileUri = resourceFileCache.cacheBytes(
+                            fileName = effect.cue.fileName,
+                            bytes = bytes,
+                        ) ?: return@collect
+                        val clip = SoundClip(
+                            id = effect.cue.id,
+                            source = SoundSource.FileUri(fileUri),
                         )
-                        return@collect
+                        soundPlayer.play(clip = clip)
                     }
-                    val clip = SoundClip(
-                        id = effect.cue.id,
-                        source = SoundSource.FileUri(fileUri),
-                    )
-                    viewModel.onStoryPlaybackStarted(
-                        playbackToken = effect.playbackToken,
-                        audioDurationMillis = soundPlayer.durationMillis(clip),
-                    )
-                    soundPlayer.play(clip = clip)
-                }
-                is FairyTalesEffect.PlayOneShotSound -> {
-                    val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull()
-                        ?: return@collect
-                    val fileUri = resourceFileCache.cacheBytes(
-                        fileName = effect.cue.fileName,
-                        bytes = bytes,
-                    ) ?: return@collect
-                    val clip = SoundClip(
-                        id = effect.cue.id,
-                        source = SoundSource.FileUri(fileUri),
-                    )
-                    soundPlayer.play(clip = clip)
                 }
             }
+        }
+        viewModel.onScreenReady()
+
+        onStopOrDispose {
+            effectsJob?.cancel()
         }
     }
 

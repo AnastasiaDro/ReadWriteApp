@@ -55,6 +55,7 @@ class FairyTalesViewModel(
     private var playbackCompletionJob: Job? = null
     private var animationTransitionJob: Job? = null
     private var animationCycleStartedAtEpochMillis: Long = nowMillis()
+    private var hasHandledScreenReady = false
 
     init {
         viewModelScope.launch {
@@ -77,8 +78,13 @@ class FairyTalesViewModel(
                 )
             )
             refreshActiveSymbols()
-            startCurrentLinePlaybackIfNeeded()
         }
+    }
+
+    fun onScreenReady() {
+        if (hasHandledScreenReady) return
+        hasHandledScreenReady = true
+        startCurrentLinePlaybackIfNeeded()
     }
 
     fun onStoryPlaybackStarted(
