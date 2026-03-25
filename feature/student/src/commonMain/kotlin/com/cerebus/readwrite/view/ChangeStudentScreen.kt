@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -157,10 +156,10 @@ private fun ChangeStudentScreen(
     val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
     val isLandscape = windowWidthDp > windowHeightDp
     val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
-    val listHorizontalPadding = when {
+    val sharedHorizontalPadding = when {
         isLandscape && isTablet -> 60.dp
         isLandscape -> 32.dp
-        else -> 0.dp
+        else -> 16.dp
     }
 
     if (state.isLoading) {
@@ -180,8 +179,8 @@ private fun ChangeStudentScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
             .padding(
-                start = 16.dp,
-                end = 16.dp,
+                start = sharedHorizontalPadding,
+                end = sharedHorizontalPadding,
                 top = 10.dp,
                 bottom = 10.dp,
             ),
@@ -201,7 +200,6 @@ private fun ChangeStudentScreen(
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = listHorizontalPadding),
         ) {
             items(state.students) { student ->
                 StudentRow(

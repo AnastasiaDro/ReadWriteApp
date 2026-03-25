@@ -300,7 +300,7 @@ private fun ActiveStudentScreen(
                         verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         Text(
-                            text = "$displayName 👧",
+                            text = displayName,
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center,
