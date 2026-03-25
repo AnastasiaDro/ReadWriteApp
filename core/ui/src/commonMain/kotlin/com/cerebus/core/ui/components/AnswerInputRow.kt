@@ -38,6 +38,7 @@ fun AnswerInputRow(
     textScaleOverride: Float? = null,
     multilineMaxLines: Int = 2,
     revealExpectedAnswer: Boolean = false,
+    separateLetters: Boolean = true,
     isShiftEnabled: Boolean = false,
     submitEnabled: Boolean = true,
     onFieldClick: () -> Unit,
@@ -62,6 +63,7 @@ fun AnswerInputRow(
             adaptiveWidth = adaptiveFieldWidth,
             multilineMaxLines = multilineMaxLines,
             revealExpectedAnswer = revealExpectedAnswer,
+            separateLetters = separateLetters,
             isShiftEnabled = isShiftEnabled,
             onClick = onFieldClick,
         )

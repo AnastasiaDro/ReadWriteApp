@@ -9,7 +9,6 @@ data class FairyTaleSoundCue(
 sealed interface FairyTalesEffect {
     data class StartStoryPlayback(
         val playbackToken: Long,
-        val animationKind: FairyTaleAnimationKind,
         val cue: FairyTaleSoundCue,
     ) : FairyTalesEffect
 }

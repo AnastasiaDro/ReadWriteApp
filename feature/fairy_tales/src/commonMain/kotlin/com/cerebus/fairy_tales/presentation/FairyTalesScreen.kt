@@ -39,6 +39,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -67,6 +68,7 @@ import io.github.alexzhirkevich.compottie.rememberLottieComposition
 import io.github.alexzhirkevich.compottie.rememberLottiePainter
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import org.jetbrains.compose.resources.painterResource
 import readwriteapp.feature.fairy_tales.generated.resources.Res
 
 private const val TextFadeDurationMillis = 220
@@ -188,14 +190,14 @@ fun FairyTalesScreen(
             showDigitsRow = showDigitsRow,
         )
     }
-    val animationAssetPaths = remember(state.fairyTaleId, state.storyLines, state.animationState.assetPath) {
+    val animationAssetPaths = remember(state.visualScheme, state.storyLines, state.visualState) {
         buildList {
-            if (state.fairyTaleId == KOZA_FAIRY_TALE_ID) {
-                add(KOZA_IDLE_ASSET)
-            }
-            state.animationState.assetPath?.let(::add)
+            state.visualScheme.initial.lottieAssetPath?.let(::add)
+            state.visualScheme.betweenLines.lottieAssetPath?.let(::add)
+            state.visualScheme.completed.lottieAssetPath?.let(::add)
+            state.visualState.content.lottieAssetPath?.let(::add)
             state.storyLines.forEach { line ->
-                line.contentKind.assetPath?.let(::add)
+                line.playbackVisual.lottieAssetPath?.let(::add)
             }
         }.distinct()
     }
@@ -444,7 +446,7 @@ private fun FairyTaleAnimationPanel(
             verticalArrangement = Arrangement.Top,
         ) {
             FairyTaleAnimationSlot(
-                animationState = state.animationState,
+                visualState = state.visualState,
                 compositionCache = compositionCache,
                 modifier = Modifier.size(animationSize),
             )
@@ -644,18 +646,14 @@ private fun fairyTaleCompletedLinesTextStyle(
 
 @Composable
 private fun FairyTaleAnimationSlot(
-    animationState: FairyTaleAnimationState,
+    visualState: FairyTaleVisualState,
     compositionCache: Map<String, FairyTaleCompositionCacheEntry>,
     modifier: Modifier = Modifier,
 ) {
-    val animationAssetPath = animationState.assetPath
+    val visualContent = visualState.content
+    val animationAssetPath = visualContent.lottieAssetPath
     val cachedEntry = animationAssetPath?.let(compositionCache::get)
-    val animationRenderKey = when (animationState) {
-        FairyTaleAnimationState.None -> "none"
-        FairyTaleAnimationState.Idle -> "idle"
-        FairyTaleAnimationState.Walk -> "walk"
-        is FairyTaleAnimationState.Playback -> "playback:${animationState.playbackToken}:${animationState.kind.assetPath}"
-    }
+    val animationRenderKey = visualState.renderKey
     val compositionSpecResult by produceState<Result<LottieCompositionSpec>?>(initialValue = null, key1 = animationAssetPath) {
         value = if (cachedEntry?.composition != null || cachedEntry?.loadFailed == true) {
             null
@@ -676,6 +674,7 @@ private fun FairyTaleAnimationSlot(
         androidx.compose.runtime.mutableStateOf(null)
     })
     val compositionToShow = cachedEntry?.composition ?: composition
+    val contentShape = MaterialTheme.shapes.extraLarge
 
     Box(
         modifier = modifier
@@ -691,43 +690,56 @@ private fun FairyTaleAnimationSlot(
             .padding(20.dp),
         contentAlignment = Alignment.Center,
     ) {
-        when {
-            animationAssetPath.isNullOrBlank() -> {
-                Text(
-                    text = "Здесь будет Lottie-анимация",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+        Crossfade(
+            targetState = visualContent,
+            animationSpec = tween(durationMillis = TextFadeDurationMillis),
+            label = "fairy_tale_visual_content",
+        ) { contentToShow ->
+            when (contentToShow) {
+                FairyTaleVisualContent.None -> {
+                    Box(modifier = Modifier.fillMaxSize())
+                }
 
-            compositionToShow != null -> androidx.compose.runtime.key(animationRenderKey) {
-                Image(
-                    painter = rememberLottiePainter(
-                        composition = compositionToShow,
-                        iterations = when (animationState) {
-                            FairyTaleAnimationState.None,
-                            FairyTaleAnimationState.Idle,
-                            FairyTaleAnimationState.Walk,
-                            is FairyTaleAnimationState.Playback -> Compottie.IterateForever
-                        },
-                    ),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+                is FairyTaleVisualContent.Image -> {
+                    Image(
+                        painter = painterResource(contentToShow.resource),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(contentShape),
+                    )
+                }
 
-            cachedEntry?.loadFailed == true || compositionSpecResult?.isFailure == true -> {
-                Text(
-                    text = "Не удалось загрузить анимацию",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+                is FairyTaleVisualContent.Lottie -> when {
+                    compositionToShow != null -> androidx.compose.runtime.key(animationRenderKey) {
+                        Image(
+                            painter = rememberLottiePainter(
+                                composition = compositionToShow,
+                                iterations = when (visualState) {
+                                    is FairyTaleVisualState.Playback,
+                                    is FairyTaleVisualState.Waiting -> Compottie.IterateForever
+                                },
+                            ),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(contentShape),
+                        )
+                    }
 
-            else -> {
-                CircularProgressIndicator()
+                    cachedEntry?.loadFailed == true || compositionSpecResult?.isFailure == true -> {
+                        Text(
+                            text = "Не удалось загрузить анимацию",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    else -> {
+                        CircularProgressIndicator()
+                    }
+                }
             }
         }
     }

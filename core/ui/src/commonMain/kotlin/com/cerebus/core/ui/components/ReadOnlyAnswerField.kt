@@ -41,6 +41,7 @@ fun ReadOnlyAnswerField(
     adaptiveWidth: Boolean = false,
     multilineMaxLines: Int = 2,
     revealExpectedAnswer: Boolean = false,
+    separateLetters: Boolean = true,
     isShiftEnabled: Boolean = false,
     onClick: () -> Unit,
 ) {
@@ -64,6 +65,7 @@ fun ReadOnlyAnswerField(
         currentSlotTextColor,
         hintTextColor,
         revealExpectedAnswer,
+        separateLetters,
         isShiftEnabled,
     ) {
         buildAnswerProgressMask(
@@ -73,6 +75,7 @@ fun ReadOnlyAnswerField(
             currentSlotTextColor = currentSlotTextColor,
             hintTextColor = hintTextColor,
             revealExpectedAnswer = revealExpectedAnswer,
+            separateLetters = separateLetters,
         )
     }
     val resolvedFeedbackBorderColor = if (feedbackBorderColor == Color.Unspecified) {
@@ -122,6 +125,7 @@ private fun buildAnswerProgressMask(
     currentSlotTextColor: Color,
     hintTextColor: Color,
     revealExpectedAnswer: Boolean,
+    separateLetters: Boolean,
 ): AnnotatedString {
     if (expectedAnswer.isEmpty()) return AnnotatedString(answerInput)
     return buildAnnotatedString {
@@ -134,14 +138,14 @@ private fun buildAnswerProgressMask(
             val previousExpectedChar = expectedAnswer.getOrNull(index - 1)
             if (expectedChar.isWhitespace()) {
                 if (previousExpectedChar?.isWhitespace() != true) {
-                    append(WordSeparator)
+                    append(if (separateLetters) WordSeparator else " ")
                 }
                 if (answerInput.getOrNull(inputIndex)?.isWhitespace() == true) {
                     inputIndex++
                 }
                 return@forEachIndexed
             }
-            if (index > 0 && previousExpectedChar?.isWhitespace() != true) {
+            if (separateLetters && index > 0 && previousExpectedChar?.isWhitespace() != true) {
                 append(NonBreakingSpace)
             }
             val isCurrentSlot = index == currentSlotIndex

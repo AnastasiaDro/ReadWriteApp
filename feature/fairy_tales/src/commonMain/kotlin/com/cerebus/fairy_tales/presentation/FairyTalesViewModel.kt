@@ -81,22 +81,15 @@ class FairyTalesViewModel(
     ) {
         if (activePlaybackToken != playbackToken) return
         val currentLine = state.currentStoryLine ?: return
-        val animationKind = currentLine.contentKind
+        val playbackVisual = currentLine.playbackVisual
         val playbackDurationMillis = (audioDurationMillis ?: 0L).coerceAtLeast(0L)
 
         applyState(
             state.copy(
-            animationState = when (animationKind) {
-                FairyTaleAnimationKind.None -> FairyTaleAnimationState.None
-                FairyTaleAnimationKind.Idle,
-                FairyTaleAnimationKind.Walk,
-                FairyTaleAnimationKind.TopTop,
-                FairyTaleAnimationKind.Hlop,
-                FairyTaleAnimationKind.Bodaet -> FairyTaleAnimationState.Playback(
-                    kind = animationKind,
+                visualState = FairyTaleVisualState.Playback(
+                    content = playbackVisual,
                     playbackToken = playbackToken,
-                )
-            },
+                ),
             )
         )
 
@@ -113,8 +106,8 @@ class FairyTalesViewModel(
     }
 
     fun onAnimationCompleted(playbackToken: Long) {
-        val currentAnimation = state.animationState as? FairyTaleAnimationState.Playback ?: return
-        if (currentAnimation.playbackToken != playbackToken || activePlaybackToken != playbackToken) return
+        val currentVisualState = state.visualState as? FairyTaleVisualState.Playback ?: return
+        if (currentVisualState.playbackToken != playbackToken || activePlaybackToken != playbackToken) return
 
         playbackCompletionJob?.cancel()
         activePlaybackToken = null
@@ -126,12 +119,12 @@ class FairyTalesViewModel(
             return
         }
 
-        transitionAfterCurrentAnimationCycle {
-            applyState(
-                state.copy(
+            transitionAfterCurrentAnimationCycle {
+                applyState(
+                    state.copy(
                     currentLineIndex = state.storyLines.size,
                     isStoryPlaybackInProgress = false,
-                    animationState = defaultAnimationStateFor(state.fairyTaleId),
+                    visualState = FairyTaleVisualState.Waiting(state.visualScheme.completed),
                 )
             )
 
@@ -250,7 +243,6 @@ class FairyTalesViewModel(
         _effects.tryEmit(
             FairyTalesEffect.StartStoryPlayback(
                 playbackToken = playbackToken,
-                animationKind = currentLine.contentKind,
                 cue = FairyTaleSoundCue(
                     id = "fairy-tale-line-$playbackToken",
                     resourcePath = currentLine.soundResourcePath,
@@ -429,9 +421,12 @@ class FairyTalesViewModel(
             expectedAnswer = line.text,
             answerInput = "",
             isStoryPlaybackInProgress = false,
-            animationState = waitingAnimationStateFor(
-                fairyTaleId = state.fairyTaleId,
-                lineIndex = index,
+            visualState = FairyTaleVisualState.Waiting(
+                waitingVisualFor(
+                    visualScheme = state.visualScheme,
+                    lineIndex = index,
+                    previousVisual = state.visualState.content,
+                )
             ),
             keyboardFeedbackKey = null,
             keyboardFeedbackType = null,
@@ -457,7 +452,7 @@ class FairyTalesViewModel(
                 state.copy(
                 answerInput = "",
                 isStoryPlaybackInProgress = false,
-                animationState = defaultAnimationStateFor(state.fairyTaleId),
+                visualState = FairyTaleVisualState.Waiting(state.visualScheme.initial),
                 feedback = null,
                 )
             )
@@ -466,9 +461,9 @@ class FairyTalesViewModel(
     }
 
     private fun applyState(newState: FairyTalesUiState) {
-        val previousAssetPath = state.animationState.assetPath
+        val previousRenderKey = state.visualState.renderKey
         state = newState
-        if (previousAssetPath != newState.animationState.assetPath) {
+        if (previousRenderKey != newState.visualState.renderKey) {
             animationCycleStartedAtEpochMillis = nowMillis()
         }
     }
@@ -477,12 +472,7 @@ class FairyTalesViewModel(
         onTransition: () -> Unit,
     ) {
         animationTransitionJob?.cancel()
-        val loopDurationMillis = when (val animationState = state.animationState) {
-            FairyTaleAnimationState.None -> null
-            FairyTaleAnimationState.Idle -> FairyTaleAnimationKind.Idle.loopDurationMillis
-            FairyTaleAnimationState.Walk -> FairyTaleAnimationKind.Walk.loopDurationMillis
-            is FairyTaleAnimationState.Playback -> animationState.kind.loopDurationMillis
-        } ?: 0L
+        val loopDurationMillis = state.visualState.content.loopDurationMillis ?: 0L
         if (loopDurationMillis <= 0L) {
             onTransition()
             return
@@ -520,7 +510,8 @@ private fun FairyTaleContent.toUiState(): FairyTalesUiState {
         description = description,
         coverColor = coverColor,
         coverRes = coverRes,
-        animationState = defaultAnimationStateFor(id),
+        visualScheme = visualScheme,
+        visualState = FairyTaleVisualState.Waiting(visualScheme.initial),
         storyLines = storyLines,
         currentLineIndex = 0,
         storyText = initialLine?.text ?: title,
@@ -528,22 +519,18 @@ private fun FairyTaleContent.toUiState(): FairyTalesUiState {
     )
 }
 
-private fun waitingAnimationStateFor(
-    fairyTaleId: String,
+private fun waitingVisualFor(
+    visualScheme: FairyTaleVisualScheme,
     lineIndex: Int,
-): FairyTaleAnimationState =
-    if (fairyTaleId == KOZA_FAIRY_TALE_ID) {
-        if (lineIndex == 0) {
-            FairyTaleAnimationState.Idle
-        } else {
-            FairyTaleAnimationState.Walk
-        }
+    previousVisual: FairyTaleVisualContent,
+): FairyTaleVisualContent =
+    if (lineIndex == 0) {
+        visualScheme.initial
+    } else if (
+        visualScheme.betweenLines == FairyTaleVisualContent.None &&
+        previousVisual is FairyTaleVisualContent.Image
+    ) {
+        previousVisual
     } else {
-        FairyTaleAnimationState.None
+        visualScheme.betweenLines
     }
-
-private fun defaultAnimationStateFor(fairyTaleId: String): FairyTaleAnimationState =
-    waitingAnimationStateFor(
-        fairyTaleId = fairyTaleId,
-        lineIndex = 0,
-    )
