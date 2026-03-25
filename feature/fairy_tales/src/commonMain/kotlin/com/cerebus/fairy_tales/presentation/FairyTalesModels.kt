@@ -41,6 +41,16 @@ data class FairyTaleVisualScheme(
     val completed: FairyTaleVisualContent = FairyTaleVisualContent.None,
 )
 
+enum class FairyTaleWaitingVisualMode {
+    VisualScheme,
+    CurrentLinePlaybackVisual,
+}
+
+enum class FairyTaleLineProgressMode {
+    InputThenPlayback,
+    PlaybackThenInput,
+}
+
 data class FairyTaleStoryLine(
     val text: String,
     val soundResourcePath: String,
@@ -55,6 +65,8 @@ data class FairyTaleContent(
     val coverColor: Color,
     val coverRes: DrawableResource? = null,
     val visualScheme: FairyTaleVisualScheme = FairyTaleVisualScheme(),
+    val waitingVisualMode: FairyTaleWaitingVisualMode = FairyTaleWaitingVisualMode.VisualScheme,
+    val lineProgressMode: FairyTaleLineProgressMode = FairyTaleLineProgressMode.InputThenPlayback,
     val storyLines: List<FairyTaleStoryLine> = emptyList(),
 )
 
@@ -97,6 +109,8 @@ internal object FairyTalesCatalog {
                 betweenLines = goatWalkVisual,
                 completed = goatIdleVisual,
             ),
+            waitingVisualMode = FairyTaleWaitingVisualMode.VisualScheme,
+            lineProgressMode = FairyTaleLineProgressMode.InputThenPlayback,
             storyLines = listOf(
                 FairyTaleStoryLine(
                     text = "Идёт коза рогатая",
@@ -151,26 +165,28 @@ internal object FairyTalesCatalog {
             visualScheme = FairyTaleVisualScheme(
                 initial = horseLoveVisual,
                 betweenLines = FairyTaleVisualContent.None,
-                completed = horseLoveVisual,
+                completed = horseStillVisual,
             ),
+            waitingVisualMode = FairyTaleWaitingVisualMode.CurrentLinePlaybackVisual,
+            lineProgressMode = FairyTaleLineProgressMode.PlaybackThenInput,
             storyLines = listOf(
                 FairyTaleStoryLine(
                     text = "Я люблю свою лошадку",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    playbackVisual = horseFureVisual,
+                    playbackVisual = horseLoveVisual,
                 ),
                 FairyTaleStoryLine(
                     text = "Причешу ей шёрстку гладко",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    playbackVisual = horseTailVisual,
+                    playbackVisual = horseFureVisual,
                 ),
                 FairyTaleStoryLine(
                     text = "Гребешком приглажу хвостик",
                     soundResourcePath = "files/koza_story/1_walk.m4a",
                     soundFileName = "1_walk.m4a",
-                    playbackVisual = horseRidingVisual,
+                    playbackVisual = horseTailVisual,
                 ),
                 FairyTaleStoryLine(
                     text = "И верхом поеду в гости",
@@ -206,6 +222,8 @@ data class FairyTalesUiState(
     val coverColor: Color,
     val coverRes: DrawableResource? = null,
     val visualScheme: FairyTaleVisualScheme = FairyTaleVisualScheme(),
+    val waitingVisualMode: FairyTaleWaitingVisualMode = FairyTaleWaitingVisualMode.VisualScheme,
+    val lineProgressMode: FairyTaleLineProgressMode = FairyTaleLineProgressMode.InputThenPlayback,
     val visualState: FairyTaleVisualState = FairyTaleVisualState.Waiting(FairyTaleVisualContent.None),
     val storyLines: List<FairyTaleStoryLine> = emptyList(),
     val currentLineIndex: Int = 0,

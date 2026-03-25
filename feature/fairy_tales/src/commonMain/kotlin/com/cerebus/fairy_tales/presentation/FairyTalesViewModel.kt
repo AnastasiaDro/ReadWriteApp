@@ -72,6 +72,7 @@ class FairyTalesViewModel(
                 )
             )
             refreshActiveSymbols()
+            startCurrentLinePlaybackIfNeeded()
         }
     }
 
@@ -111,6 +112,26 @@ class FairyTalesViewModel(
 
         playbackCompletionJob?.cancel()
         activePlaybackToken = null
+        if (state.lineProgressMode == FairyTaleLineProgressMode.PlaybackThenInput) {
+            transitionAfterCurrentAnimationCycle {
+                applyState(
+                    state.copy(
+                        isStoryPlaybackInProgress = false,
+                        visualState = FairyTaleVisualState.Waiting(
+                            waitingVisualFor(
+                                visualScheme = state.visualScheme,
+                                waitingVisualMode = state.waitingVisualMode,
+                                lineIndex = state.currentLineIndex,
+                                linePlaybackVisual = state.currentStoryLine?.playbackVisual
+                                    ?: FairyTaleVisualContent.None,
+                            )
+                        ),
+                    )
+                )
+            }
+            return
+        }
+
         val nextLineIndex = state.currentLineIndex + 1
         if (nextLineIndex < state.storyLines.size) {
             transitionAfterCurrentAnimationCycle {
@@ -230,6 +251,18 @@ class FairyTalesViewModel(
         }
 
         markCurrentLineSymbolsAsStudied()
+
+        if (state.lineProgressMode == FairyTaleLineProgressMode.PlaybackThenInput) {
+            val nextLineIndex = state.currentLineIndex + 1
+            if (nextLineIndex < state.storyLines.size) {
+                transitionAfterCurrentAnimationCycle {
+                    openStoryLine(nextLineIndex)
+                }
+            } else {
+                completeStory()
+            }
+            return
+        }
 
         val playbackToken = nextPlaybackToken()
         activePlaybackToken = playbackToken
@@ -424,8 +457,9 @@ class FairyTalesViewModel(
             visualState = FairyTaleVisualState.Waiting(
                 waitingVisualFor(
                     visualScheme = state.visualScheme,
+                    waitingVisualMode = state.waitingVisualMode,
                     lineIndex = index,
-                    previousVisual = state.visualState.content,
+                    linePlaybackVisual = line.playbackVisual,
                 )
             ),
             keyboardFeedbackKey = null,
@@ -439,6 +473,7 @@ class FairyTalesViewModel(
             )
         )
         refreshActiveSymbols()
+        startCurrentLinePlaybackIfNeeded()
     }
 
     private fun resetStoryProgress() {
@@ -466,6 +501,52 @@ class FairyTalesViewModel(
         if (previousRenderKey != newState.visualState.renderKey) {
             animationCycleStartedAtEpochMillis = nowMillis()
         }
+    }
+
+    private fun startCurrentLinePlaybackIfNeeded() {
+        if (state.lineProgressMode != FairyTaleLineProgressMode.PlaybackThenInput) return
+        val currentLine = state.currentStoryLine ?: return
+        val playbackToken = nextPlaybackToken()
+        activePlaybackToken = playbackToken
+        applyState(
+            state.copy(
+                isStoryPlaybackInProgress = true,
+                keyboardFeedbackKey = null,
+                keyboardFeedbackType = null,
+                inputFeedbackType = null,
+                feedback = null,
+            )
+        )
+        _effects.tryEmit(
+            FairyTalesEffect.StartStoryPlayback(
+                playbackToken = playbackToken,
+                cue = FairyTaleSoundCue(
+                    id = "fairy-tale-line-$playbackToken",
+                    resourcePath = currentLine.soundResourcePath,
+                    fileName = currentLine.soundFileName,
+                ),
+            ),
+        )
+    }
+
+    private fun completeStory() {
+        applyState(
+            state.copy(
+                currentLineIndex = state.storyLines.size,
+                isStoryPlaybackInProgress = false,
+                visualState = FairyTaleVisualState.Waiting(state.visualScheme.completed),
+            )
+        )
+
+        showAttemptFeedback(
+            feedback = FairyTalesFeedbackUi(
+                message = "Ура!",
+                emoji = "🥳",
+            ),
+            afterDelay = {
+                resetStoryProgress()
+            },
+        )
     }
 
     private fun transitionAfterCurrentAnimationCycle(
@@ -511,7 +592,16 @@ private fun FairyTaleContent.toUiState(): FairyTalesUiState {
         coverColor = coverColor,
         coverRes = coverRes,
         visualScheme = visualScheme,
-        visualState = FairyTaleVisualState.Waiting(visualScheme.initial),
+        waitingVisualMode = waitingVisualMode,
+        lineProgressMode = lineProgressMode,
+        visualState = FairyTaleVisualState.Waiting(
+            waitingVisualFor(
+                visualScheme = visualScheme,
+                waitingVisualMode = waitingVisualMode,
+                lineIndex = 0,
+                linePlaybackVisual = initialLine?.playbackVisual ?: FairyTaleVisualContent.None,
+            )
+        ),
         storyLines = storyLines,
         currentLineIndex = 0,
         storyText = initialLine?.text ?: title,
@@ -521,16 +611,14 @@ private fun FairyTaleContent.toUiState(): FairyTalesUiState {
 
 private fun waitingVisualFor(
     visualScheme: FairyTaleVisualScheme,
+    waitingVisualMode: FairyTaleWaitingVisualMode,
     lineIndex: Int,
-    previousVisual: FairyTaleVisualContent,
-): FairyTaleVisualContent =
-    if (lineIndex == 0) {
+    linePlaybackVisual: FairyTaleVisualContent,
+): FairyTaleVisualContent = when (waitingVisualMode) {
+    FairyTaleWaitingVisualMode.CurrentLinePlaybackVisual -> linePlaybackVisual
+    FairyTaleWaitingVisualMode.VisualScheme -> if (lineIndex == 0) {
         visualScheme.initial
-    } else if (
-        visualScheme.betweenLines == FairyTaleVisualContent.None &&
-        previousVisual is FairyTaleVisualContent.Image
-    ) {
-        previousVisual
     } else {
         visualScheme.betweenLines
     }
+}
