@@ -11,4 +11,8 @@ sealed interface FairyTalesEffect {
         val playbackToken: Long,
         val cue: FairyTaleSoundCue,
     ) : FairyTalesEffect
+
+    data class PlayOneShotSound(
+        val cue: FairyTaleSoundCue,
+    ) : FairyTalesEffect
 }

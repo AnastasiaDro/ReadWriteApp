@@ -165,7 +165,7 @@ internal object FairyTalesCatalog {
             visualScheme = FairyTaleVisualScheme(
                 initial = horseLoveVisual,
                 betweenLines = FairyTaleVisualContent.None,
-                completed = horseStillVisual,
+                completed = horseRidingVisual,
             ),
             waitingVisualMode = FairyTaleWaitingVisualMode.CurrentLinePlaybackVisual,
             lineProgressMode = FairyTaleLineProgressMode.PlaybackThenInput,
@@ -227,6 +227,7 @@ data class FairyTalesUiState(
     val visualState: FairyTaleVisualState = FairyTaleVisualState.Waiting(FairyTaleVisualContent.None),
     val storyLines: List<FairyTaleStoryLine> = emptyList(),
     val currentLineIndex: Int = 0,
+    val isStoryCompleted: Boolean = false,
     val storyText: String = "",
     val expectedAnswer: String = "",
     val answerInput: String = "",

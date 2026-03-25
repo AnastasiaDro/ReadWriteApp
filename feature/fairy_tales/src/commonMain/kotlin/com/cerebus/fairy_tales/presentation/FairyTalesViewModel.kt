@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
+private const val DefaultFeedbackDurationMillis = 1_000L
+private const val CompletionFeedbackDurationMillis = 2_000L
+private const val FairyTaleCompletionFanfarePath = "files/fanfare.mp3"
+private const val FairyTaleCompletionFanfareFileName = "fanfare.mp3"
+
 class FairyTalesViewModel(
     fairyTaleId: String,
     private val preferencesRepository: PreferencesRepository,
@@ -144,6 +149,7 @@ class FairyTalesViewModel(
                 applyState(
                     state.copy(
                     currentLineIndex = state.storyLines.size,
+                    isStoryCompleted = true,
                     isStoryPlaybackInProgress = false,
                     visualState = FairyTaleVisualState.Waiting(state.visualScheme.completed),
                 )
@@ -155,7 +161,7 @@ class FairyTalesViewModel(
                     emoji = "🥳",
                 ),
                 afterDelay = {
-                    resetStoryProgress()
+                    applyState(state.copy(feedback = null))
                 },
             )
         }
@@ -171,7 +177,7 @@ class FairyTalesViewModel(
     }
 
     fun onSymbolPressed(symbol: String) {
-        if (state.feedback != null || state.isStoryPlaybackInProgress) return
+        if (state.feedback != null || state.isStoryPlaybackInProgress || state.isStoryCompleted) return
         if (!consumeKeyboardPressThrottle()) return
 
         if (!preventWrongKeyPress) {
@@ -226,13 +232,13 @@ class FairyTalesViewModel(
     }
 
     fun onBackspacePressed() {
-        if (state.feedback != null || state.isStoryPlaybackInProgress) return
+        if (state.feedback != null || state.isStoryPlaybackInProgress || state.isStoryCompleted) return
         if (!consumeKeyboardPressThrottle()) return
         state = state.copy(answerInput = state.answerInput.dropLast(1))
     }
 
     fun onSubmitPressed() {
-        if (state.feedback != null || state.isStoryPlaybackInProgress) return
+        if (state.feedback != null || state.isStoryPlaybackInProgress || state.isStoryCompleted) return
 
         val currentLine = state.currentStoryLine ?: return
         val userInput = state.answerInput.canonicalizeOptionalSpacesForExpected(state.expectedAnswer)
@@ -283,6 +289,11 @@ class FairyTalesViewModel(
                 ),
             ),
         )
+    }
+
+    fun onRestartPressed() {
+        if (state.feedback != null) return
+        resetStoryProgress()
     }
 
     fun onHintToggle(isEnabled: Boolean) {
@@ -435,12 +446,13 @@ class FairyTalesViewModel(
 
     private fun showAttemptFeedback(
         feedback: FairyTalesFeedbackUi,
+        durationMillis: Long = DefaultFeedbackDurationMillis,
         afterDelay: () -> Unit,
     ) {
         feedbackJob?.cancel()
         applyState(state.copy(feedback = feedback))
         feedbackJob = viewModelScope.launch {
-            delay(1_000L)
+            delay(durationMillis)
             afterDelay()
         }
     }
@@ -450,6 +462,7 @@ class FairyTalesViewModel(
         applyState(
             state.copy(
             currentLineIndex = index,
+            isStoryCompleted = false,
             storyText = line.text,
             expectedAnswer = line.text,
             answerInput = "",
@@ -486,6 +499,7 @@ class FairyTalesViewModel(
             applyState(
                 state.copy(
                 answerInput = "",
+                isStoryCompleted = false,
                 isStoryPlaybackInProgress = false,
                 visualState = FairyTaleVisualState.Waiting(state.visualScheme.initial),
                 feedback = null,
@@ -533,8 +547,19 @@ class FairyTalesViewModel(
         applyState(
             state.copy(
                 currentLineIndex = state.storyLines.size,
+                isStoryCompleted = true,
                 isStoryPlaybackInProgress = false,
                 visualState = FairyTaleVisualState.Waiting(state.visualScheme.completed),
+            )
+        )
+
+        _effects.tryEmit(
+            FairyTalesEffect.PlayOneShotSound(
+                cue = FairyTaleSoundCue(
+                    id = "fairy-tale-complete-fanfare",
+                    resourcePath = FairyTaleCompletionFanfarePath,
+                    fileName = FairyTaleCompletionFanfareFileName,
+                ),
             )
         )
 
@@ -543,8 +568,9 @@ class FairyTalesViewModel(
                 message = "Ура!",
                 emoji = "🥳",
             ),
+            durationMillis = CompletionFeedbackDurationMillis,
             afterDelay = {
-                resetStoryProgress()
+                applyState(state.copy(feedback = null))
             },
         )
     }

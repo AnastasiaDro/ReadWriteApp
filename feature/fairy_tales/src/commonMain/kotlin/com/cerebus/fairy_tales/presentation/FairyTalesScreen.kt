@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -130,6 +129,19 @@ fun FairyTalesScreenRoute(
                     )
                     soundPlayer.play(clip = clip)
                 }
+                is FairyTalesEffect.PlayOneShotSound -> {
+                    val bytes = runCatching { Res.readBytes(effect.cue.resourcePath) }.getOrNull()
+                        ?: return@collect
+                    val fileUri = resourceFileCache.cacheBytes(
+                        fileName = effect.cue.fileName,
+                        bytes = bytes,
+                    ) ?: return@collect
+                    val clip = SoundClip(
+                        id = effect.cue.id,
+                        source = SoundSource.FileUri(fileUri),
+                    )
+                    soundPlayer.play(clip = clip)
+                }
             }
         }
     }
@@ -147,6 +159,7 @@ fun FairyTalesScreenRoute(
         onSymbolPressed = viewModel::onSymbolPressed,
         onBackspacePressed = viewModel::onBackspacePressed,
         onSubmitPressed = viewModel::onSubmitPressed,
+        onRestartPressed = viewModel::onRestartPressed,
         onHintToggle = viewModel::onHintToggle,
         onShowWordToggle = viewModel::onShowWordToggle,
         onSimplifyKeyboardToggle = viewModel::onSimplifyKeyboardToggle,
@@ -162,6 +175,7 @@ fun FairyTalesScreen(
     onSymbolPressed: (String) -> Unit,
     onBackspacePressed: () -> Unit,
     onSubmitPressed: () -> Unit,
+    onRestartPressed: () -> Unit,
     onHintToggle: (Boolean) -> Unit,
     onShowWordToggle: (Boolean) -> Unit,
     onSimplifyKeyboardToggle: (Boolean) -> Unit,
@@ -284,6 +298,38 @@ fun FairyTalesScreen(
                 emoji = state.feedback?.emoji,
                 modifier = Modifier.align(Alignment.Center),
             )
+
+            if (state.isStoryCompleted && state.feedback == null) {
+                FairyTaleRestartButton(
+                    modifier = Modifier.align(Alignment.Center),
+                    onRestartPressed = onRestartPressed,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FairyTaleRestartButton(
+    modifier: Modifier = Modifier,
+    onRestartPressed: () -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        tonalElevation = 2.dp,
+        shadowElevation = 2.dp,
+    ) {
+        TextButton(
+            onClick = onRestartPressed,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+            Text(
+                text = "↻ Повторить",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
@@ -342,6 +388,7 @@ private fun FairyTalesPortraitContent(
                     storyLines = state.storyLines,
                     completedCount = state.currentLineIndex.coerceAtMost(state.storyLines.size),
                     isTablet = isTablet,
+                    maxVisibleLines = if (isTablet) 4 else 2,
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentHeight(),
@@ -354,6 +401,7 @@ private fun FairyTalesPortraitContent(
                 maxContainerWidth = contentWidth,
                 minimumFieldWidth = minimumFieldWidth,
                 isCompact = !isTablet,
+                allowCompactMultilineAnswer = !isTablet,
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
@@ -472,6 +520,7 @@ private fun FairyTalePromptAndInput(
     maxContainerWidth: Dp,
     minimumFieldWidth: Dp,
     isCompact: Boolean,
+    allowCompactMultilineAnswer: Boolean = false,
     showCompletedLinesAboveAnswer: Boolean = false,
     isTablet: Boolean = false,
     modifier: Modifier = Modifier,
@@ -542,12 +591,13 @@ private fun FairyTalePromptAndInput(
             inputFeedbackType = state.inputFeedbackType,
             isHintEnabled = state.isInputHintEnabled,
             isShiftEnabled = state.isShiftEnabled,
-            isSubmitEnabled = !state.isStoryPlaybackInProgress,
+            isSubmitEnabled = !state.isStoryPlaybackInProgress && !state.isStoryCompleted,
             availableWidth = availableWidth,
             fieldReferenceWidth = availableWidth,
             isStacked = true,
             minimumFieldWidth = minimumFieldWidth,
             isCompact = isCompact,
+            allowCompactMultilineAnswer = allowCompactMultilineAnswer,
             onFieldClick = {},
             onSubmit = onSubmitPressed,
         )
@@ -559,19 +609,25 @@ private fun FairyTaleCompletedLines(
     storyLines: List<FairyTaleStoryLine>,
     completedCount: Int,
     isTablet: Boolean,
+    maxVisibleLines: Int = 4,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
     val textStyle = fairyTaleCompletedLinesTextStyle(isTablet = isTablet)
-    val maxVisibleLines = 4
-    val maxHeight = fairyTaleCompletedLinesMaxHeight(isTablet = isTablet)
+    val maxHeight = fairyTaleCompletedLinesMaxHeight(
+        isTablet = isTablet,
+        maxVisibleLines = maxVisibleLines,
+    )
     val approxLineHeight = if (textStyle.lineHeight != TextUnit.Unspecified) textStyle.lineHeight else textStyle.fontSize * 1.3f
     val approxLineHeightPx = with(LocalDensity.current) {
         approxLineHeight.toPx()
     }
 
     LaunchedEffect(completedCount, storyLines.size) {
-        if (completedCount <= maxVisibleLines) return@LaunchedEffect
+        if (completedCount <= maxVisibleLines) {
+            scrollState.scrollTo(0)
+            return@LaunchedEffect
+        }
         androidx.compose.runtime.withFrameNanos { }
         val hiddenLinesCount = (completedCount - maxVisibleLines).coerceAtLeast(0)
         val targetScroll = (hiddenLinesCount * approxLineHeightPx)
@@ -611,6 +667,7 @@ private fun FairyTaleCompletedLines(
 @Composable
 private fun fairyTaleCompletedLinesMaxHeight(
     isTablet: Boolean,
+    maxVisibleLines: Int = 4,
 ): Dp {
     val textStyle = fairyTaleCompletedLinesTextStyle(isTablet = isTablet)
     val approxLineHeight = if (textStyle.lineHeight != TextUnit.Unspecified) {
@@ -619,7 +676,7 @@ private fun fairyTaleCompletedLinesMaxHeight(
         textStyle.fontSize * 1.3f
     }
     return with(LocalDensity.current) {
-        (approxLineHeight * 4).toDp() + 4.dp
+        (approxLineHeight * maxVisibleLines).toDp() + 4.dp
     }
 }
 

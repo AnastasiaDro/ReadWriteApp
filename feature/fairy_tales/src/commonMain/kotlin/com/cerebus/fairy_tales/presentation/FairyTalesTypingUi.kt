@@ -72,6 +72,7 @@ internal fun FairyTalesAnswerSection(
     isStacked: Boolean,
     minimumFieldWidth: Dp,
     isCompact: Boolean = false,
+    allowCompactMultilineAnswer: Boolean = false,
     modifier: Modifier = Modifier,
     alignToStart: Boolean = false,
     onFieldClick: () -> Unit,
@@ -80,11 +81,8 @@ internal fun FairyTalesAnswerSection(
     val checkButtonWidth = if (isCompact) 48.dp else 56.dp
     val buttonSpacing = if (isCompact) 8.dp else 12.dp
     val maxFieldWidth = (availableWidth - checkButtonWidth - buttonSpacing).coerceAtLeast(minimumFieldWidth)
-    val allowMultilineAnswer = if (isCompact) {
-        false
-    } else {
-        expectedAnswer.length > 10 || expectedAnswer.contains(' ')
-    }
+    val shouldAllowMultilineByContent = expectedAnswer.length > 10 || expectedAnswer.contains(' ')
+    val allowMultilineAnswer = shouldAllowMultilineByContent
     val wordCount = expectedAnswer.trim()
         .split(Regex("\\s+"))
         .count { it.isNotBlank() }
@@ -118,7 +116,7 @@ internal fun FairyTalesAnswerSection(
             buttonSpacing = buttonSpacing,
             matchFieldHeight = isCompact,
             textScaleOverride = if (isCompact) 1f else null,
-            multilineMaxLines = 3,
+            multilineMaxLines = 2,
             revealExpectedAnswer = isHintEnabled,
             separateLetters = useSeparatedLetters,
             isShiftEnabled = isShiftEnabled,
