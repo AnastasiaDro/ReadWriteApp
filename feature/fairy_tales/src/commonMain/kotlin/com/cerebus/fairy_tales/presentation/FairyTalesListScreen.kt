@@ -7,14 +7,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -25,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +56,18 @@ fun FairyTalesListScreen(
     onOpenFairyTale: (String) -> Unit,
     onCreateFairyTaleClick: () -> Unit,
 ) {
+    val density = LocalDensity.current
+    val windowInfo = LocalWindowInfo.current
+    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
+    val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
+    val isLandscape = windowWidthDp > windowHeightDp
+    val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
+    val listHorizontalPadding = when {
+        isLandscape && isTablet -> 60.dp
+        isLandscape -> 32.dp
+        else -> 0.dp
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -78,6 +93,7 @@ fun FairyTalesListScreen(
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = listHorizontalPadding),
         ) {
             items(fairyTales) { fairyTale ->
                 FairyTaleRow(
