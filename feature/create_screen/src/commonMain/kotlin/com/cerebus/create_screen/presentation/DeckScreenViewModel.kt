@@ -3,6 +3,7 @@ package com.cerebus.create_screen.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cerebus.core.deck_package.domain.service.DeckPackageService
+import com.cerebus.core.game_engine.domain.model.SrsConfig
 import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.core.game_engine.domain.logic.SrsSessionCandidate
 import com.cerebus.core.game_engine.domain.logic.planSrsSession
@@ -19,6 +20,7 @@ import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import com.cerebus.data.flashcards.domain.repositories.FlashcardRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
+import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
 import com.cerebus.core.utils.GameLaunchMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,7 @@ class DeckScreenViewModel(
     private val flashcardRepository: FlashcardRepository,
     private val deckPackageService: DeckPackageService,
     private val preferencesRepository: PreferencesRepository,
+    private val studentDeckRepository: StudentDeckRepository,
     private val cardProgressRepository: CardProgressRepository,
     private val studentPrefsRepository: StudentPrefsRepository,
     private val reviewLogRepository: ReviewLogRepository,
@@ -42,6 +45,7 @@ class DeckScreenViewModel(
     private companion object {
         const val MAX_DECK_NAME_LENGTH = 40
         const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
+        val LEARNED_LEVEL_THRESHOLD = SrsConfig().learnedLevelThreshold
     }
 
     private val _uiState = MutableStateFlow(DeckUiState())
@@ -314,10 +318,18 @@ class DeckScreenViewModel(
             studentId = studentId,
             sinceEpochMillis = dayStartMillis,
         )
-        val deckCardIds = flashcards.mapTo(mutableSetOf()) { it.id }
+        val activeDeckIds = resolveGlobalSrsDeckIds(
+            studentId = studentId,
+            currentDeckId = deckId,
+            progressByCardId = progressByCardId,
+        )
+        val globalDeckCardIds = activeDeckIds
+            .flatMapTo(mutableSetOf()) { activeDeckId ->
+                flashcardRepository.getFlashcardsByDeckId(activeDeckId).map { card -> card.id }
+            }
         val remainingDailyNewSlots = (
             prefs.maxNewCardsPerDay.coerceAtLeast(0) -
-                introducedTodayCardIds.count { it in deckCardIds }
+                introducedTodayCardIds.count { it in globalDeckCardIds }
             ).coerceAtLeast(0)
         val candidates = flashcards.map { flashcard ->
             val progress = progressByCardId[flashcard.id]
@@ -342,6 +354,25 @@ class DeckScreenViewModel(
             nowEpochMillis = nowMillis(),
             dayEndEpochMillis = dayStartMillis + MILLIS_PER_DAY,
         ).toAvailability()
+    }
+
+    private suspend fun resolveGlobalSrsDeckIds(
+        studentId: String,
+        currentDeckId: String,
+        progressByCardId: Map<String, CardProgress>,
+    ): Set<String> {
+        val assignedDecks = studentDeckRepository.getStudentWithDecks(studentId)
+            ?.decks
+            .orEmpty()
+        val activeDeckIds = assignedDecks.mapNotNull { deck ->
+            val deckCards = flashcardRepository.getFlashcardsByDeckId(deck.id)
+            val isStudied = deckCards.isNotEmpty() && deckCards.all { card ->
+                val progress = progressByCardId[card.id] ?: return@all false
+                progress.level >= LEARNED_LEVEL_THRESHOLD
+            }
+            if (isStudied) null else deck.id
+        }.toSet()
+        return if (activeDeckIds.isNotEmpty()) activeDeckIds else setOf(currentDeckId)
     }
 
     private fun addCard() {

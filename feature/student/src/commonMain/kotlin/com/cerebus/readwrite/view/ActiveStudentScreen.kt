@@ -95,7 +95,6 @@ import readwriteapp.feature.student.generated.resources.active_student_no_active
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
 import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_other_decks
-import readwriteapp.feature.student.generated.resources.active_student_progress
 import readwriteapp.feature.student.generated.resources.active_student_share
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_all_done_today
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_available_now
@@ -353,119 +352,106 @@ private fun ActiveStudentScreen(
         ) {
             BoxWithConstraints {
                 val compactHeroSpacing = maxWidth < 600.dp
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    StudentAvatar(
-                        avatarUri = state.studentAvatarUri,
-                        size = 124.dp,
-                    )
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 8.dp, end = 8.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(
+                            onClick = { onAction(ActiveStudentAction.OnImportStudentClick) },
+                        ) {
+                            Text(text = stringResource(Res.string.active_student_import))
+                        }
+                        TextButton(
+                            onClick = { onAction(ActiveStudentAction.OnExportStudentClick) },
+                        ) {
+                            Text(text = stringResource(Res.string.active_student_share))
+                        }
+                    }
 
                     Column(
-                        modifier = Modifier.padding(bottom = if (compactHeroSpacing) 0.dp else 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Text(
-                            text = displayName,
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center,
+                        StudentAvatar(
+                            avatarUri = state.studentAvatarUri,
+                            size = 124.dp,
                         )
 
-                        TextButton(
-                            onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
-                        ) {
-                            Text(text = stringResource(Res.string.active_student_change))
-                        }
-                    }
-
-                    Button(
-                        onClick = { onAction(ActiveStudentAction.OnStartClick) },
-                        enabled = state.activeDecks.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(Res.string.active_student_start))
-                    }
-
-                    state.srsAvailability?.let { availability ->
-                        ActiveStudentSrsStatus(
-                            availability = availability,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 4.dp, vertical = 2.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            TextButton(
-                                onClick = { state.studentId?.let(onOpenSessionSettings) },
-                                enabled = state.studentId != null,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    text = stringResource(Res.string.active_student_learning_settings),
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                            TextButton(
-                                onClick = { state.studentId?.let(onOpenKeyboardSettings) },
-                                enabled = state.studentId != null,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    text = stringResource(Res.string.active_student_keyboard_settings),
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                    }
-
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(bottom = if (compactHeroSpacing) 0.dp else 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(0.dp),
                         ) {
                             Text(
-                                text = stringResource(Res.string.active_student_progress),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = displayName,
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = TextAlign.Center,
                             )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+
+                            TextButton(
+                                onClick = { onAction(ActiveStudentAction.OnChangeStudentClick) },
                             ) {
-                                StudentUtilityChip(
-                                    title = stringResource(Res.string.active_student_import),
-                                    onClick = { onAction(ActiveStudentAction.OnImportStudentClick) },
+                                Text(text = stringResource(Res.string.active_student_change))
+                            }
+                        }
+
+                        Button(
+                            onClick = { onAction(ActiveStudentAction.OnStartClick) },
+                            enabled = state.activeDecks.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(Res.string.active_student_start))
+                        }
+
+                        state.srsAvailability?.let { availability ->
+                            ActiveStudentSrsStatus(
+                                availability = availability,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                TextButton(
+                                    onClick = { state.studentId?.let(onOpenSessionSettings) },
+                                    enabled = state.studentId != null,
                                     modifier = Modifier.weight(1f),
-                                )
-                                StudentUtilityChip(
-                                    title = stringResource(Res.string.active_student_share),
-                                    onClick = { onAction(ActiveStudentAction.OnExportStudentClick) },
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.active_student_learning_settings),
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
+                                TextButton(
+                                    onClick = { state.studentId?.let(onOpenKeyboardSettings) },
+                                    enabled = state.studentId != null,
                                     modifier = Modifier.weight(1f),
-                                )
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.active_student_keyboard_settings),
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
                             }
                         }
                     }
+
                 }
             }
         }
@@ -966,35 +952,6 @@ private fun buildImportSummaryText(summary: String) = buildAnnotatedString {
         append(summary.substring(0, separatorIndex + 1))
     }
     append(summary.substring(separatorIndex + 1))
-}
-
-@Composable
-private fun StudentUtilityChip(
-    title: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
 }
 
 @Composable
