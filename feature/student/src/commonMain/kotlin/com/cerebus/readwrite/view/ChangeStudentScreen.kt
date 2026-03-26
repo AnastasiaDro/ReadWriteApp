@@ -18,6 +18,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebus.create_screen.navigation.DeckNavigationState
+import com.cerebus.readwrite.media.rememberDeckArchivePicker
 import com.cerebus.readwrite.media.rememberCoverImagePicker
 import com.cerebus.readwrite.media.rememberPlatformMessenger
 import org.jetbrains.compose.resources.stringResource
@@ -50,8 +52,15 @@ import readwriteapp.feature.student.generated.resources.active_student_delete_st
 import readwriteapp.feature.student.generated.resources.active_student_edit
 import readwriteapp.feature.student.generated.resources.active_student_edit_student_title
 import readwriteapp.feature.student.generated.resources.active_student_error_delete_student_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_import_student_failed
+import readwriteapp.feature.student.generated.resources.active_student_error_open_archive_picker_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_open_photo_picker_failed
 import readwriteapp.feature.student.generated.resources.active_student_error_update_student_failed
+import readwriteapp.feature.student.generated.resources.active_student_import_student
+import readwriteapp.feature.student.generated.resources.active_student_import_student_confirmation_message
+import readwriteapp.feature.student.generated.resources.active_student_import_student_confirmation_title
+import readwriteapp.feature.student.generated.resources.active_student_import_student_summary
+import readwriteapp.feature.student.generated.resources.active_student_update_student
 import readwriteapp.feature.student.generated.resources.add_photo
 import readwriteapp.feature.student.generated.resources.cancel
 import readwriteapp.feature.student.generated.resources.choose_from_gallery
@@ -78,6 +87,16 @@ fun ChangeStudentRoute(
     val photoPickerErrorText = stringResource(Res.string.active_student_error_open_photo_picker_failed)
     val updateStudentErrorText = stringResource(Res.string.active_student_error_update_student_failed)
     val deleteStudentErrorText = stringResource(Res.string.active_student_error_delete_student_failed)
+    val importStudentErrorText = stringResource(Res.string.active_student_error_import_student_failed)
+    val archivePickerErrorText = stringResource(Res.string.active_student_error_open_archive_picker_failed)
+    val studentArchivePicker = rememberDeckArchivePicker(
+        onArchivePicked = { uri ->
+            viewModel.onAction(ChangeStudentAction.OnImportStudentFilePicked(uri))
+        },
+        onError = {
+            messenger.showMessage(archivePickerErrorText)
+        },
+    )
     val photoPicker = rememberCoverImagePicker(
         onImagePicked = { uri ->
             viewModel.onAction(ChangeStudentAction.OnPhotoPicked(uri))
@@ -130,6 +149,16 @@ fun ChangeStudentRoute(
 
             ChangeStudentEffect.ShowDeleteStudentFailed -> {
                 messenger.showMessage(deleteStudentErrorText)
+                viewModel.consumeEffect()
+            }
+
+            ChangeStudentEffect.OpenImportStudentPicker -> {
+                studentArchivePicker.openArchivePicker()
+                viewModel.consumeEffect()
+            }
+
+            ChangeStudentEffect.ShowImportStudentFailed -> {
+                messenger.showMessage(importStudentErrorText)
                 viewModel.consumeEffect()
             }
 
@@ -226,13 +255,24 @@ private fun ChangeStudentScreen(
             }
         }
 
-        Button(
-            onClick = { onAction(ChangeStudentAction.OnCreateStudentClick) },
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(text = stringResource(Res.string.change_student_create))
+            OutlinedButton(
+                onClick = { onAction(ChangeStudentAction.OnImportStudentClick) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(text = stringResource(Res.string.active_student_import_student))
+            }
+            Button(
+                onClick = { onAction(ChangeStudentAction.OnCreateStudentClick) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(text = stringResource(Res.string.change_student_create))
+            }
         }
     }
 
@@ -333,6 +373,46 @@ private fun ChangeStudentScreen(
             },
             dismissButton = {
                 TextButton(onClick = { onAction(ChangeStudentAction.OnDismissDeleteStudentDialog) }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            },
+        )
+    }
+
+    val pendingStudentImportConfirmation = state.pendingStudentImportConfirmation
+    if (pendingStudentImportConfirmation != null) {
+        AlertDialog(
+            onDismissRequest = { onAction(ChangeStudentAction.OnDismissImportStudentUpdate) },
+            title = {
+                Text(stringResource(Res.string.active_student_import_student_confirmation_title))
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = stringResource(
+                            Res.string.active_student_import_student_confirmation_message,
+                            pendingStudentImportConfirmation.importedStudentName,
+                            pendingStudentImportConfirmation.existingStudentName,
+                        ),
+                    )
+                    Text(
+                        text = stringResource(
+                            Res.string.active_student_import_student_summary,
+                            pendingStudentImportConfirmation.matchedDecksCount,
+                            pendingStudentImportConfirmation.missingDecksCount,
+                            pendingStudentImportConfirmation.matchedCardsCount,
+                            pendingStudentImportConfirmation.missingCardsCount,
+                        ),
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { onAction(ChangeStudentAction.OnConfirmImportStudentUpdate) }) {
+                    Text(stringResource(Res.string.active_student_update_student))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onAction(ChangeStudentAction.OnDismissImportStudentUpdate) }) {
                     Text(stringResource(Res.string.cancel))
                 }
             },

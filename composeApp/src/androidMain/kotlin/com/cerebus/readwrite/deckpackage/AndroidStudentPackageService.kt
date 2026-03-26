@@ -285,10 +285,18 @@ class AndroidStudentPackageService(
                             return@forEach
                         }
 
+                        val importedProgress = progressEntry.toDomain(
+                            studentId = targetStudentId,
+                            cardId = matchedCard.id,
+                        )
+                        val existingProgress = cardProgressRepository.getProgress(
+                            studentId = targetStudentId,
+                            cardId = matchedCard.id,
+                        )
                         cardProgressRepository.upsertProgress(
-                            progressEntry.toDomain(
-                                studentId = targetStudentId,
-                                cardId = matchedCard.id,
+                            mergeImportedProgress(
+                                existing = existingProgress,
+                                imported = importedProgress,
                             )
                         )
                         restoredCardsCount++
@@ -665,6 +673,28 @@ private fun StudentPackageReviewLog.toDomain(
         dueAtBeforeEpochMillis = dueAtBeforeEpochMillis,
         dueAtAfterEpochMillis = dueAtAfterEpochMillis,
     )
+}
+
+private fun mergeImportedProgress(
+    existing: CardProgress?,
+    imported: CardProgress,
+): CardProgress {
+    if (existing == null) return imported
+
+    val existingReviewedAt = existing.lastReviewedAtEpochMillis ?: Long.MIN_VALUE
+    val importedReviewedAt = imported.lastReviewedAtEpochMillis ?: Long.MIN_VALUE
+
+    return when {
+        importedReviewedAt > existingReviewedAt -> imported
+        existingReviewedAt > importedReviewedAt -> existing
+        imported.level > existing.level -> imported
+        existing.level > imported.level -> existing
+        imported.dueAtEpochMillis > existing.dueAtEpochMillis -> imported
+        existing.dueAtEpochMillis > imported.dueAtEpochMillis -> existing
+        imported.recallSuccessStreak + imported.copySuccessStreak >=
+            existing.recallSuccessStreak + existing.copySuccessStreak -> imported
+        else -> existing
+    }
 }
 
 private data class ReviewLogFingerprint(

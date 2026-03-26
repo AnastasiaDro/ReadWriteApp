@@ -2,6 +2,9 @@ package com.cerebus.readwrite.view
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cerebus.core.deck_package.domain.service.StudentPackageImportPreview
+import com.cerebus.core.deck_package.domain.service.StudentPackageService
+import com.cerebus.core.utils.CustomResult
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
 import com.cerebus.data.student.domain.repositories.StudentRepository
@@ -34,6 +37,17 @@ data class ChangeStudentUiState(
     val pendingPickerRequest: StudentPickerRequest? = null,
     val deletingStudentId: String? = null,
     val isDeleteStudentDialogVisible: Boolean = false,
+    val pendingStudentImportConfirmation: ChangeStudentPendingStudentImportConfirmation? = null,
+)
+
+data class ChangeStudentPendingStudentImportConfirmation(
+    val archiveUri: String,
+    val importedStudentName: String,
+    val existingStudentName: String,
+    val matchedDecksCount: Int,
+    val missingDecksCount: Int,
+    val matchedCardsCount: Int,
+    val missingCardsCount: Int,
 )
 
 sealed interface ChangeStudentAction {
@@ -55,6 +69,10 @@ sealed interface ChangeStudentAction {
     data object OnDismissDeleteStudentDialog : ChangeStudentAction
     data object OnConfirmDeleteStudent : ChangeStudentAction
     data object OnCreateStudentClick : ChangeStudentAction
+    data object OnImportStudentClick : ChangeStudentAction
+    data class OnImportStudentFilePicked(val uri: String) : ChangeStudentAction
+    data object OnConfirmImportStudentUpdate : ChangeStudentAction
+    data object OnDismissImportStudentUpdate : ChangeStudentAction
 }
 
 sealed interface ChangeStudentEffect {
@@ -63,12 +81,15 @@ sealed interface ChangeStudentEffect {
     data object OpenCreateStudent : ChangeStudentEffect
     data object ShowStudentUpdateFailed : ChangeStudentEffect
     data object ShowDeleteStudentFailed : ChangeStudentEffect
+    data object OpenImportStudentPicker : ChangeStudentEffect
+    data object ShowImportStudentFailed : ChangeStudentEffect
 }
 
 class ChangeStudentViewModel(
     private val studentDeckRepository: StudentDeckRepository,
     private val preferencesRepository: PreferencesRepository,
     private val studentRepository: StudentRepository,
+    private val studentPackageService: StudentPackageService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ChangeStudentUiState())
     val uiState: StateFlow<ChangeStudentUiState> = _uiState.asStateFlow()
@@ -188,6 +209,14 @@ class ChangeStudentViewModel(
             ChangeStudentAction.OnCreateStudentClick -> {
                 _effects.value = ChangeStudentEffect.OpenCreateStudent
             }
+            ChangeStudentAction.OnImportStudentClick -> {
+                _effects.value = ChangeStudentEffect.OpenImportStudentPicker
+            }
+            is ChangeStudentAction.OnImportStudentFilePicked -> importStudentArchive(action.uri)
+            ChangeStudentAction.OnConfirmImportStudentUpdate -> confirmImportStudentUpdate()
+            ChangeStudentAction.OnDismissImportStudentUpdate -> {
+                _uiState.update { it.copy(pendingStudentImportConfirmation = null) }
+            }
         }
     }
 
@@ -252,8 +281,68 @@ class ChangeStudentViewModel(
                         deletingStudentId = it.deletingStudentId?.takeIf { id ->
                             snapshot.students.any { student -> student.studentId == id }
                         },
+                        pendingStudentImportConfirmation = it.pendingStudentImportConfirmation,
                     )
                 }
+            }
+        }
+    }
+
+    private fun importStudentArchive(uri: String) {
+        if (uri.isBlank()) return
+        viewModelScope.launch {
+            when (val preview = studentPackageService.inspectStudentImport(uri)) {
+                is CustomResult.Success -> handleStudentImportPreview(uri, preview.data)
+                is CustomResult.Failure -> {
+                    _effects.value = ChangeStudentEffect.ShowImportStudentFailed
+                }
+            }
+        }
+    }
+
+    private suspend fun handleStudentImportPreview(
+        archiveUri: String,
+        preview: StudentPackageImportPreview,
+    ) {
+        val existingStudentName = preview.existingStudentName
+        if (!existingStudentName.isNullOrBlank()) {
+            _uiState.update {
+                it.copy(
+                    pendingStudentImportConfirmation = ChangeStudentPendingStudentImportConfirmation(
+                        archiveUri = archiveUri,
+                        importedStudentName = preview.studentName,
+                        existingStudentName = existingStudentName,
+                        matchedDecksCount = preview.matchedDecksCount,
+                        missingDecksCount = preview.missingDecksCount,
+                        matchedCardsCount = preview.matchedCardsCount,
+                        missingCardsCount = preview.missingCardsCount,
+                    )
+                )
+            }
+            return
+        }
+
+        executeStudentImport(archiveUri)
+    }
+
+    private fun confirmImportStudentUpdate() {
+        val archiveUri = _uiState.value.pendingStudentImportConfirmation?.archiveUri ?: return
+        _uiState.update { it.copy(pendingStudentImportConfirmation = null) }
+        viewModelScope.launch {
+            executeStudentImport(archiveUri)
+        }
+    }
+
+    private suspend fun executeStudentImport(uri: String) {
+        when (val result = studentPackageService.importStudent(uri)) {
+            is CustomResult.Success -> {
+                val importedStudentId = result.data.studentId
+                preferencesRepository.setLastActiveStudentId(importedStudentId)
+                activeStudentId.value = importedStudentId
+                _effects.value = ChangeStudentEffect.NavigateBack
+            }
+            is CustomResult.Failure -> {
+                _effects.value = ChangeStudentEffect.ShowImportStudentFailed
             }
         }
     }

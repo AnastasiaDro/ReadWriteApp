@@ -95,6 +95,8 @@ import readwriteapp.feature.student.generated.resources.active_student_no_active
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
 import readwriteapp.feature.student.generated.resources.active_student_no_studied_letters
 import readwriteapp.feature.student.generated.resources.active_student_other_decks
+import readwriteapp.feature.student.generated.resources.active_student_progress
+import readwriteapp.feature.student.generated.resources.active_student_share
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_all_done_today
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_available_now
 import readwriteapp.feature.student.generated.resources.active_student_srs_status_card_few
@@ -430,6 +432,40 @@ private fun ActiveStudentScreen(
                             }
                         }
                     }
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.active_student_progress),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                StudentUtilityChip(
+                                    title = stringResource(Res.string.active_student_import),
+                                    onClick = { onAction(ActiveStudentAction.OnImportStudentClick) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                StudentUtilityChip(
+                                    title = stringResource(Res.string.active_student_share),
+                                    onClick = { onAction(ActiveStudentAction.OnExportStudentClick) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -569,29 +605,6 @@ private fun ActiveStudentScreen(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    OutlinedButton(
-                        onClick = { onAction(ActiveStudentAction.OnImportStudentClick) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.active_student_import_student),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { onAction(ActiveStudentAction.OnExportStudentClick) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.active_student_export_student),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
             }
         }
 
@@ -953,6 +966,35 @@ private fun buildImportSummaryText(summary: String) = buildAnnotatedString {
         append(summary.substring(0, separatorIndex + 1))
     }
     append(summary.substring(separatorIndex + 1))
+}
+
+@Composable
+private fun StudentUtilityChip(
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
 }
 
 @Composable
