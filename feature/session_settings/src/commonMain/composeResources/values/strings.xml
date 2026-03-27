@@ -24,7 +24,7 @@
     <string name="session_settings_neighbor_typo_sensitivity_strict">Only next to the key</string>
     <string name="session_settings_neighbor_typo_sensitivity_normal">Around the key</string>
     <string name="session_settings_neighbor_typo_sensitivity_soft">A wider area around the key</string>
-    <string name="session_settings_free_neighbor_slips">How many typos are allowed while typing a word</string>
+    <string name="session_settings_free_neighbor_slips">Free nearby-key slips</string>
     <string name="session_settings_free_neighbor_slips_hint">This many nearby key slips in one attempt do not raise the help level.</string>
     <string name="session_settings_active_decks">Active decks</string>
     <string name="session_settings_no_decks">No decks available</string>

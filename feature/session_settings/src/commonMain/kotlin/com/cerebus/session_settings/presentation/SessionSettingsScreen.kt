@@ -7,6 +7,8 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -227,7 +229,12 @@ fun SessionSettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(text = stringResource(Res.string.session_settings_allow_near_match))
+                    Text(
+                        text = stringResource(Res.string.session_settings_allow_near_match),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                    )
                     Switch(
                         checked = state.allowNearMatch,
                         onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNearMatch(it)) },
@@ -239,7 +246,12 @@ fun SessionSettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(text = stringResource(Res.string.session_settings_prevent_wrong_key_press))
+                    Text(
+                        text = stringResource(Res.string.session_settings_prevent_wrong_key_press),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                    )
                     Switch(
                         checked = state.preventWrongKeyPress,
                         onCheckedChange = { onIntent(SessionSettingsIntent.ChangePreventWrongKeyPress(it)) },
@@ -277,7 +289,12 @@ fun SessionSettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(text = stringResource(Res.string.session_settings_allow_neighbor_typos))
+                    Text(
+                        text = stringResource(Res.string.session_settings_allow_neighbor_typos),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                    )
                     Switch(
                         checked = state.allowNeighborTypos,
                         onCheckedChange = { onIntent(SessionSettingsIntent.ChangeAllowNeighborTypos(it)) },
@@ -503,6 +520,7 @@ private fun DiscreteSliderField(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun <T> ChoiceChipField(
     label: String,
@@ -527,9 +545,10 @@ private fun <T> ChoiceChipField(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             options.forEach { (value, title) ->
                 FilterChip(
