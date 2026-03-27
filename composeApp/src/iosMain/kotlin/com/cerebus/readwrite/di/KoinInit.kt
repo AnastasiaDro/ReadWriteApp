@@ -4,6 +4,8 @@ import com.cerebus.core.deck_package.domain.service.DeckPackageService
 import com.cerebus.core.deck_package.domain.service.StudentPackageService
 import com.cerebus.readwrite.deckpackage.IosDeckPackageService
 import com.cerebus.readwrite.deckpackage.IosStudentPackageService
+import com.cerebus.readwrite.student.IosStarterDeckInstaller
+import com.cerebus.readwrite.view.StarterDeckInstaller
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -26,6 +28,11 @@ val iosModules = listOf<Module>(
                 cardProgressRepository = get(),
                 reviewLogRepository = get(),
                 studentPrefsRepository = get(),
+            )
+        }
+        single<StarterDeckInstaller> {
+            IosStarterDeckInstaller(
+                deckPackageService = get(),
             )
         }
     }

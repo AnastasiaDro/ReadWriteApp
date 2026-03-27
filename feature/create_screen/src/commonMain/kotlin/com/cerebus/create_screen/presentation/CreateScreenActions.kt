@@ -26,6 +26,7 @@ sealed interface CreateScreenAction {
     data object OnExportSelectedDecksClick : CreateScreenAction
     data object OnDeleteSelectedDecksClick : CreateScreenAction
     data object OnDismissDeleteSelectedDialog : CreateScreenAction
+    data object OnConfirmUnassignSelectedDecks : CreateScreenAction
     data object OnConfirmDeleteSelectedDecks : CreateScreenAction
     data object OnClearDeckSelection : CreateScreenAction
 

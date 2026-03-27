@@ -2,7 +2,7 @@
     <string name="no_students_title">Добавьте ученика, чтобы начать занятие</string>
     <string name="no_students_subtitle">Для каждого ученика сохраняется свой прогресс и колоды</string>
     <string name="add_student_cta">+ Добавить ученика</string>
-    <string name="try_demo_cta">Попробовать демо</string>
+    <string name="try_demo_cta">Быстрый старт с готовой колодой</string>
     <string name="create_student_title">Добавим ученика</string>
     <string name="add_photo">Добавить фото</string>
     <string name="create_student_name_subtitle">Имя ученика</string>
@@ -32,15 +32,13 @@
     <string name="active_student_other_decks">Другие колоды на устройстве</string>
     <string name="active_student_studied_letters">Изученные буквы</string>
     <string name="active_student_studied_digits">Цифры</string>
-    <string name="active_student_studied_russian_letters">Русские буквы</string>
+    <string name="active_student_studied_russian_letters">Кириллица</string>
     <string name="active_student_studied_english_letters">Английские буквы</string>
     <string name="active_student_no_studied_letters">Пока нет изученных букв</string>
     <string name="active_student_deck_progress">Изучено %1$d из %2$d</string>
     <string name="active_student_mode_dialog_title">Как заниматься</string>
     <string name="active_student_mode_dialog_plan_title">По плану</string>
     <string name="active_student_mode_dialog_plan_hint">Новые карточки и повторения из активных колод</string>
-    <string name="active_student_mode_dialog_random_title">Случайные изученные</string>
-    <string name="active_student_mode_dialog_random_hint">Свободная практика знакомых карточек без изменения прогресса</string>
     <string name="active_student_mode_dialog_gallery_title">Галерея карточек</string>
     <string name="active_student_mode_dialog_gallery_hint">Выбрать колоду и листать карточки вручную</string>
     <string name="active_student_srs_status_available_now">SRS сейчас: %1$s</string>
@@ -88,4 +86,5 @@
     <string name="change_student_title">Сменить ученика</string>
     <string name="change_student_last_deck">Последняя колода:</string>
     <string name="change_student_create">Создать ученика</string>
+    <string name="create_student_error_create_failed">Не удалось создать ученика с готовой колодой</string>
 </resources>

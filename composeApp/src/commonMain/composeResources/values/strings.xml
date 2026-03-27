@@ -3,7 +3,7 @@
     <string name="start_learning">Start learning!</string>
     <string name="go_to_decks">To deck list</string>
     <string name="back">Back</string>
-    <string name="my_decks">My decks</string>
+    <string name="my_decks">All decks</string>
     <string name="no_decks_yet">No decks yet</string>
     <string name="deck_name_label">Deck name</string>
     <string name="add_cover">Add cover</string>
@@ -16,8 +16,12 @@
     <string name="close">Close</string>
     <string name="delete_deck_title">Delete deck?</string>
     <string name="delete_deck_message">Delete "%s"?</string>
-    <string name="confirm_delete_decks_title">Delete selected decks?</string>
+    <string name="confirm_delete_decks_title">What would you like to do with the selected decks?</string>
     <string name="confirm_delete_decks_message">Selected decks will be permanently deleted.</string>
+    <string name="unassign_decks_from_student">Unassign from student "%1$s"</string>
+    <string name="unassign_decks_from_student_message">Remove only from student "%1$s". The decks will stay on this device and remain available for other students.</string>
+    <string name="delete_decks_from_device">Delete from device</string>
+    <string name="delete_decks_from_device_message">Delete for all students with no way to restore them.</string>
     <string name="confirm_import_deck_replacement_title">Replace existing deck?</string>
     <string name="confirm_import_deck_replacement_message">The archive for "%1$s" matches an existing deck "%2$s". Replace its cards and cover with the imported version?</string>
     <string name="import_deck_replace_summary">Replace: update %1$d matching cards, add %2$d new cards, remove %3$d cards that exist only on this device.</string>

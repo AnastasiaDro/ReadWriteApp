@@ -2,7 +2,7 @@
     <string name="no_students_title">Add a student to start a lesson</string>
     <string name="no_students_subtitle">Each student has their own saved progress and decks</string>
     <string name="add_student_cta">+ Add student</string>
-    <string name="try_demo_cta">Try demo</string>
+    <string name="try_demo_cta">Quick start with a ready deck</string>
     <string name="create_student_title">Let’s add a student</string>
     <string name="add_photo">Add photo</string>
     <string name="create_student_name_subtitle">Student name</string>
@@ -32,15 +32,13 @@
     <string name="active_student_other_decks">Other decks on this device</string>
     <string name="active_student_studied_letters">Studied letters</string>
     <string name="active_student_studied_digits">Digits</string>
-    <string name="active_student_studied_russian_letters">Russian letters</string>
+    <string name="active_student_studied_russian_letters">Cyrillic</string>
     <string name="active_student_studied_english_letters">English letters</string>
     <string name="active_student_no_studied_letters">No studied letters yet</string>
     <string name="active_student_deck_progress">Studied %1$d of %2$d</string>
     <string name="active_student_mode_dialog_title">How to practice</string>
     <string name="active_student_mode_dialog_plan_title">Follow the plan</string>
     <string name="active_student_mode_dialog_plan_hint">New cards and scheduled reviews from active decks</string>
-    <string name="active_student_mode_dialog_random_title">Random studied cards</string>
-    <string name="active_student_mode_dialog_random_hint">Free practice with familiar cards without changing progress</string>
     <string name="active_student_mode_dialog_gallery_title">Card gallery</string>
     <string name="active_student_mode_dialog_gallery_hint">Choose a deck and browse cards manually</string>
     <string name="active_student_srs_status_available_now">SRS now: %1$s</string>
@@ -88,4 +86,5 @@
     <string name="change_student_title">Change student</string>
     <string name="change_student_last_deck">Last deck:</string>
     <string name="change_student_create">Create student</string>
+    <string name="create_student_error_create_failed">Unable to create a student with the starter deck</string>
 </resources>

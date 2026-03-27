@@ -52,7 +52,6 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.cerebus.core.ui.components.AppAnimatedDialog
-import com.cerebus.core.ui.components.AppConfirmationDialog
 import com.cerebus.core.ui.components.AppEntityEditorDialog
 import com.cerebus.core.ui.components.AppEntityEditorMode
 import com.cerebus.data.decks.domain.models.Deck
@@ -240,16 +239,61 @@ fun CreateScreen(
         )
     }
 
-    AppConfirmationDialog(
-        visible = state.isDeleteSelectedDialogVisible,
-        title = strings.confirmDeleteDecksTitle,
-        message = strings.confirmDeleteDecksMessage,
-        confirmText = strings.delete,
-        dismissText = strings.cancel,
-        confirmEnabled = !state.isDeletingSelectedDecks,
-        onConfirm = { onAction(CreateScreenAction.OnConfirmDeleteSelectedDecks) },
-        onDismiss = { onAction(CreateScreenAction.OnDismissDeleteSelectedDialog) },
-    )
+    val pendingDeleteConfirmation = state.pendingDeckDeleteConfirmation
+    if (pendingDeleteConfirmation != null) {
+        AppAnimatedDialog(visible = true) {
+            AlertDialog(
+                onDismissRequest = { onAction(CreateScreenAction.OnDismissDeleteSelectedDialog) },
+                title = { Text(strings.confirmDeleteDecksTitle) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val activeStudentName = pendingDeleteConfirmation.activeStudentName
+                        if (!activeStudentName.isNullOrBlank()) {
+                            Text(
+                                text = strings.unassignDecksFromStudentMessage
+                                    .replace("%1\$s", activeStudentName),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        Text(
+                            text = strings.deleteDecksFromDeviceMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                },
+                confirmButton = {
+                    Column(horizontalAlignment = Alignment.End) {
+                        val activeStudentName = pendingDeleteConfirmation.activeStudentName
+                        if (!activeStudentName.isNullOrBlank()) {
+                            Button(
+                                onClick = { onAction(CreateScreenAction.OnConfirmUnassignSelectedDecks) },
+                                enabled = !state.isDeletingSelectedDecks,
+                            ) {
+                                Text(
+                                    strings.unassignDecksFromStudent
+                                        .replace("%1\$s", activeStudentName)
+                                )
+                            }
+                        }
+                        TextButton(
+                            onClick = { onAction(CreateScreenAction.OnConfirmDeleteSelectedDecks) },
+                            enabled = !state.isDeletingSelectedDecks,
+                        ) {
+                            Text(strings.deleteDecksFromDevice)
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { onAction(CreateScreenAction.OnDismissDeleteSelectedDialog) },
+                        enabled = !state.isDeletingSelectedDecks,
+                    ) {
+                        Text(strings.cancel)
+                    }
+                },
+            )
+        }
+    }
 
     val pendingImportConfirmation = state.pendingDeckImportConfirmation
     if (pendingImportConfirmation != null) {

@@ -3,7 +3,7 @@
     <string name="start_learning">Начать учиться!</string>
     <string name="go_to_decks">К списку колод</string>
     <string name="back">Назад</string>
-    <string name="my_decks">Мои колоды</string>
+    <string name="my_decks">Все колоды</string>
     <string name="no_decks_yet">Пока нет колод</string>
     <string name="deck_name_label">Название колоды</string>
     <string name="add_cover">Добавить обложку</string>
@@ -16,8 +16,12 @@
     <string name="close">Закрыть</string>
     <string name="delete_deck_title">Удалить колоду?</string>
     <string name="delete_deck_message">Удалить "%s"?</string>
-    <string name="confirm_delete_decks_title">Удалить выбранные колоды?</string>
+    <string name="confirm_delete_decks_title">Что сделать с выбранными колодами?</string>
     <string name="confirm_delete_decks_message">Выбранные колоды будут удалены без возможности восстановления.</string>
+    <string name="unassign_decks_from_student">Отвязать у ученика «%1$s»</string>
+    <string name="unassign_decks_from_student_message">Отвязать только у ученика «%1$s». Колоды останутся на устройстве и у других учеников.</string>
+    <string name="delete_decks_from_device">Удалить с устройства</string>
+    <string name="delete_decks_from_device_message">Удалить для всех учеников без возможности восстановления.</string>
     <string name="confirm_import_deck_replacement_title">Обновить существующую колоду?</string>
     <string name="confirm_import_deck_replacement_message">Архив «%1$s» соответствует существующей колоде «%2$s». Заменить её карточки и обложку импортированной версией?</string>
     <string name="import_deck_replace_summary">Обновить полностью: заменить %1$d совпадающих карточек, добавить %2$d новых и удалить %3$d карточек, которые есть только на этом устройстве.</string>

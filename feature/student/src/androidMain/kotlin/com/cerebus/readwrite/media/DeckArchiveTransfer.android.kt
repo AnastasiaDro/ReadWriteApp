@@ -67,17 +67,23 @@ actual fun rememberDeckArchiveShareLauncher(
                             file,
                         )
                     }
+                    val mimeType = files
+                        .map { item -> item.fileName.lowercase() }
+                        .distinct()
+                        .singleOrNull()
+                        ?.let(::resolveArchiveMimeType)
+                        ?: "application/zip"
                     val chooserTitle = files.firstOrNull()?.fileName
                     val shareIntent = if (uris.size == 1) {
                         Intent(Intent.ACTION_SEND).apply {
-                            type = "application/zip"
+                            type = mimeType
                             putExtra(Intent.EXTRA_STREAM, uris.first())
                             putExtra(Intent.EXTRA_TITLE, chooserTitle)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                     } else {
                         Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                            type = "application/zip"
+                            type = mimeType
                             putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList<Uri>(uris))
                             putExtra(Intent.EXTRA_TITLE, chooserTitle)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -92,4 +98,10 @@ actual fun rememberDeckArchiveShareLauncher(
             }
         }
     }
+}
+
+private fun resolveArchiveMimeType(fileName: String): String = when {
+    fileName.endsWith(".rwstudent") -> "application/x-rwstudent"
+    fileName.endsWith(".rwdeck") -> "application/x-rwdeck"
+    else -> "application/zip"
 }

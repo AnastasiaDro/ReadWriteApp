@@ -88,8 +88,6 @@ import readwriteapp.feature.student.generated.resources.active_student_mode_dial
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_hint
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_plan_title
 import readwriteapp.feature.student.generated.resources.active_student_more
-import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_hint
-import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_random_title
 import readwriteapp.feature.student.generated.resources.active_student_mode_dialog_title
 import readwriteapp.feature.student.generated.resources.active_student_no_active_decks
 import readwriteapp.feature.student.generated.resources.active_student_no_decks
@@ -355,9 +353,9 @@ private fun ActiveStudentScreen(
                 Box(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 8.dp, end = 8.dp),
-                        horizontalArrangement = Arrangement.End,
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, start = 8.dp, end = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         TextButton(
                             onClick = { onAction(ActiveStudentAction.OnImportStudentClick) },
@@ -618,23 +616,6 @@ private fun ActiveStudentScreen(
                             Text(stringResource(Res.string.active_student_mode_dialog_plan_title))
                             Text(
                                 text = stringResource(Res.string.active_student_mode_dialog_plan_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-
-                    TextButton(
-                        onClick = {
-                            onAction(
-                                ActiveStudentAction.OnTrainingModeSelected(GameLaunchMode.RandomLearned)
-                            )
-                        },
-                    ) {
-                        Column(horizontalAlignment = Alignment.Start) {
-                            Text(stringResource(Res.string.active_student_mode_dialog_random_title))
-                            Text(
-                                text = stringResource(Res.string.active_student_mode_dialog_random_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

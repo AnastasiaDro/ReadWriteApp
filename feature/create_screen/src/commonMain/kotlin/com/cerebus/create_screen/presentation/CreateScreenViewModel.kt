@@ -10,6 +10,7 @@ import com.cerebus.core.utils.UniqueIdGenerator
 import com.cerebus.data.decks.domain.models.Deck
 import com.cerebus.data.decks.domain.repositories.DeckRepository
 import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
+import com.cerebus.data.student.domain.repositories.StudentRepository
 import com.cerebus.data.studentdeck.domain.repositories.StudentDeckRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ class CreateScreenViewModel(
     private val studentDeckRepository: StudentDeckRepository,
     private val preferencesRepository: PreferencesRepository,
     private val deckPackageService: DeckPackageService,
+    private val studentRepository: StudentRepository,
 ) : ViewModel() {
     private companion object {
         const val MAX_DECK_NAME_LENGTH = 40
@@ -118,17 +120,18 @@ class CreateScreenViewModel(
 
             CreateScreenAction.OnExportSelectedDecksClick -> exportSelectedDecks()
             CreateScreenAction.OnDeleteSelectedDecksClick -> {
-                _uiState.update { it.copy(isDeleteSelectedDialogVisible = true) }
+                openDeleteSelectedDecksDialog()
             }
             CreateScreenAction.OnDismissDeleteSelectedDialog -> {
-                _uiState.update { it.copy(isDeleteSelectedDialogVisible = false) }
+                _uiState.update { it.copy(pendingDeckDeleteConfirmation = null) }
             }
-            CreateScreenAction.OnConfirmDeleteSelectedDecks -> deleteSelectedDecks()
+            CreateScreenAction.OnConfirmUnassignSelectedDecks -> unassignSelectedDecksFromActiveStudent()
+            CreateScreenAction.OnConfirmDeleteSelectedDecks -> deleteSelectedDecksFromDevice()
             CreateScreenAction.OnClearDeckSelection -> {
                 _uiState.update {
                     it.copy(
                         selectedDeckIds = emptySet(),
-                        isDeleteSelectedDialogVisible = false,
+                        pendingDeckDeleteConfirmation = null,
                         validationError = null,
                     )
                 }
@@ -330,7 +333,74 @@ class CreateScreenViewModel(
         }
     }
 
-    private fun deleteSelectedDecks() {
+    private fun openDeleteSelectedDecksDialog() {
+        val selectedIds = _uiState.value.selectedDeckIds
+        if (selectedIds.isEmpty()) return
+
+        viewModelScope.launch {
+            val activeStudentId = preferencesRepository.getLastActiveStudentId()
+            val activeStudentName = activeStudentId
+                ?.let { studentRepository.getStudentById(it)?.name?.trim() }
+                ?.takeUnless { it.isNullOrBlank() }
+            _uiState.update {
+                it.copy(
+                    pendingDeckDeleteConfirmation = PendingDeckDeleteConfirmation(
+                        activeStudentId = activeStudentId,
+                        activeStudentName = activeStudentName,
+                    ),
+                    validationError = null,
+                )
+            }
+        }
+    }
+
+    private fun unassignSelectedDecksFromActiveStudent() {
+        val selectedIds = _uiState.value.selectedDeckIds.toList()
+        val studentId = _uiState.value.pendingDeckDeleteConfirmation?.activeStudentId
+        if (selectedIds.isEmpty() || studentId.isNullOrBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isDeletingSelectedDecks = true,
+                    validationError = null,
+                )
+            }
+
+            when (val result = studentDeckRepository.unassignDecksFromStudent(studentId, selectedIds)) {
+                is CustomResult.Success -> {
+                    if (result.data.failedCount == 0) {
+                        _uiState.update {
+                            it.copy(
+                                selectedDeckIds = emptySet(),
+                                pendingDeckDeleteConfirmation = null,
+                                isDeletingSelectedDecks = false,
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                pendingDeckDeleteConfirmation = null,
+                                isDeletingSelectedDecks = false,
+                                validationError = CreateValidationError.DELETE_DECKS_FAILED,
+                            )
+                        }
+                    }
+                }
+                is CustomResult.Failure -> {
+                    _uiState.update {
+                        it.copy(
+                            pendingDeckDeleteConfirmation = null,
+                            isDeletingSelectedDecks = false,
+                            validationError = CreateValidationError.DELETE_DECKS_FAILED,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun deleteSelectedDecksFromDevice() {
         val selectedIds = _uiState.value.selectedDeckIds.toList()
         if (selectedIds.isEmpty()) return
 
@@ -353,14 +423,14 @@ class CreateScreenViewModel(
                 _uiState.update {
                     it.copy(
                         selectedDeckIds = emptySet(),
-                        isDeleteSelectedDialogVisible = false,
+                        pendingDeckDeleteConfirmation = null,
                         isDeletingSelectedDecks = false,
                     )
                 }
             } else {
                 _uiState.update {
                     it.copy(
-                        isDeleteSelectedDialogVisible = false,
+                        pendingDeckDeleteConfirmation = null,
                         isDeletingSelectedDecks = false,
                         validationError = CreateValidationError.DELETE_DECKS_FAILED,
                     )

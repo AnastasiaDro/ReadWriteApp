@@ -41,6 +41,7 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.cerebus.readwrite.media.rememberCoverImagePicker
+import com.cerebus.readwrite.media.rememberPlatformMessenger
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -54,6 +55,7 @@ import readwriteapp.feature.student.generated.resources.create_student_avatar_pl
 import readwriteapp.feature.student.generated.resources.create_student_name_hint
 import readwriteapp.feature.student.generated.resources.create_student_name_subtitle
 import readwriteapp.feature.student.generated.resources.create_student_title
+import readwriteapp.feature.student.generated.resources.create_student_error_create_failed
 import readwriteapp.feature.student.generated.resources.take_photo
 
 @Composable
@@ -63,6 +65,8 @@ fun CreateStudentRoute(
 ) {
     val viewModel = koinViewModel<CreateStudentViewModel>()
     val state by viewModel.uiState.collectAsState()
+    val messenger = rememberPlatformMessenger()
+    val createStudentFailedText = stringResource(Res.string.create_student_error_create_failed)
     val picker = rememberCoverImagePicker(
         onImagePicked = { uri ->
             viewModel.onAction(CreateStudentAction.OnPhotoPicked(uri))
@@ -102,6 +106,9 @@ fun CreateStudentRoute(
                     } else {
                         onNavigateToDeckList()
                     }
+                }
+                CreateStudentEffect.ShowCreateStudentFailed -> {
+                    messenger.showMessage(createStudentFailedText)
                 }
             }
         }

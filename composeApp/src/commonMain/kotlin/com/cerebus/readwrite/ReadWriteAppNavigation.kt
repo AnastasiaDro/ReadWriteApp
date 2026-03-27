@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -43,12 +44,16 @@ import com.cerebus.readwrite.view.CreateStudentRoute
 import com.cerebus.readwrite.view.DeckScreenRoute
 import com.cerebus.readwrite.view.HomeScreen
 import com.cerebus.readwrite.view.NoStudentsScreen
+import com.cerebus.readwrite.view.StarterStudentService
+import com.cerebus.readwrite.media.rememberPlatformMessenger
 import com.cerebus.session_settings.navigation.SessionSettingsNavigationState
 import com.cerebus.session_settings.navigation.SessionSettingsScrollTarget
 import com.cerebus.session_settings.presentation.SessionSettingsRoute
 import com.cerebus.tutube.navigation.Screens
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import readwriteapp.composeapp.generated.resources.Res
 import readwriteapp.composeapp.generated.resources.back
 import readwriteapp.composeapp.generated.resources.deck_gallery_copy_stage
@@ -74,6 +79,11 @@ import readwriteapp.composeapp.generated.resources.unnamed_deck
 fun ReadWriteAppNavigation() = MaterialTheme {
 
     val navController = rememberNavController()
+    val starterStudentService = koinInject<StarterStudentService>()
+    val messenger = rememberPlatformMessenger()
+    val scope = rememberCoroutineScope()
+    val starterStudentName = "Ученик 1"
+    val createStudentFailedText = "Не удалось создать ученика с готовой колодой"
     val pendingImportDeckArchiveUri = CreateNavigationState.pendingImportDeckArchiveUri.collectAsState().value
     val pendingImportStudentArchiveUri = StudentImportNavigationState.pendingImportStudentArchiveUri.collectAsState().value
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
@@ -164,7 +174,24 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                             navController.navigate(Screens.CREATE_STUDENT.route)
                         },
                         onTryDemoClick = {
-                            onTryDemoClicked()
+                            scope.launch {
+                                when (
+                                    starterStudentService.createStudentWithStarterDeck(
+                                        name = starterStudentName,
+                                        avatarUri = null,
+                                    )
+                                ) {
+                                    is com.cerebus.core.utils.CustomResult.Success -> {
+                                        navController.navigate(Screens.ACTIVE_STUDENT.route) {
+                                            popUpTo(Screens.NO_STUDENTS.route) { inclusive = true }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                    is com.cerebus.core.utils.CustomResult.Failure -> {
+                                        messenger.showMessage(createStudentFailedText)
+                                    }
+                                }
+                            }
                         },
                     )
                 }
@@ -415,10 +442,6 @@ private val TOP_LEVEL_TAB_SCREEN_ROUTES = setOf(
     Screens.CREATE.route,
     FairyTalesGraph.LIST_ROUTE,
 )
-
-private fun onTryDemoClicked() {
-    // TODO: Navigate to demo flow.
-}
 
 private fun androidx.navigation.NavHostController.navigateToTopLevelTab(route: String) {
     navigate(route) {

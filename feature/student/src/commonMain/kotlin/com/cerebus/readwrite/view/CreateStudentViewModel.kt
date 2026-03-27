@@ -2,10 +2,7 @@ package com.cerebus.readwrite.view
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.cerebus.core.utils.UniqueIdGenerator
-import com.cerebus.data.preferences.domain.repositories.PreferencesRepository
-import com.cerebus.data.student.domain.models.Student
-import com.cerebus.data.student.domain.repositories.StudentRepository
+import com.cerebus.core.utils.CustomResult
 import com.cerebus.readwrite.navigation.CreateStudentNavigationState
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -43,11 +40,11 @@ sealed interface CreateStudentAction {
 
 sealed interface CreateStudentEffect {
     data object NavigateToDeckList : CreateStudentEffect
+    data object ShowCreateStudentFailed : CreateStudentEffect
 }
 
 class CreateStudentViewModel(
-    private val studentRepository: StudentRepository,
-    private val preferencesRepository: PreferencesRepository,
+    private val starterStudentService: StarterStudentService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CreateStudentUiState())
     val uiState: StateFlow<CreateStudentUiState> = _uiState.asStateFlow()
@@ -106,20 +103,20 @@ class CreateStudentViewModel(
         if (name.isBlank()) return
 
         viewModelScope.launch {
-            val newStudentId = UniqueIdGenerator.randomAlphanumeric(prefix = "student")
-            val created = studentRepository.createStudent(
-                Student(
-                    id = newStudentId,
+            when (
+                val result = starterStudentService.createStudentWithStarterDeck(
                     name = name,
                     avatarUri = _uiState.value.avatarUri,
-                    activeLetters = "",
                 )
-            )
-            if (!created) return@launch
-
-            preferencesRepository.setLastActiveStudentId(newStudentId)
-            CreateStudentNavigationState.setPendingCreatedStudentId(newStudentId)
-            _effects.emit(CreateStudentEffect.NavigateToDeckList)
+            ) {
+                is CustomResult.Success -> {
+                    CreateStudentNavigationState.setPendingCreatedStudentId(result.data)
+                    _effects.emit(CreateStudentEffect.NavigateToDeckList)
+                }
+                is CustomResult.Failure -> {
+                    _effects.emit(CreateStudentEffect.ShowCreateStudentFailed)
+                }
+            }
         }
     }
 }

@@ -157,7 +157,6 @@ fun SessionSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
                 title = {
                     Text(text = stringResource(Res.string.session_settings_title))
                 },

@@ -18,12 +18,17 @@ data class PendingDeckImportConfirmation(
     val staleCardsCount: Int,
 )
 
+data class PendingDeckDeleteConfirmation(
+    val activeStudentId: String? = null,
+    val activeStudentName: String? = null,
+)
+
 data class CreateUiState(
     val decks: List<Deck> = emptyList(),
     val isCreateDialogVisible: Boolean = false,
     val isCoverSourceDialogVisible: Boolean = false,
     val isSuccessDialogVisible: Boolean = false,
-    val isDeleteSelectedDialogVisible: Boolean = false,
+    val pendingDeckDeleteConfirmation: PendingDeckDeleteConfirmation? = null,
     val selectedDeckIds: Set<String> = emptySet(),
     val isDeletingSelectedDecks: Boolean = false,
     val isExportingSelectedDecks: Boolean = false,

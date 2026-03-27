@@ -5,6 +5,8 @@ import com.cerebus.core.deck_package.domain.service.StudentPackageService
 import com.cerebus.readwrite.deckpackage.AndroidDeckPackageService
 import com.cerebus.readwrite.deckpackage.AndroidStudentPackageService
 import com.cerebus.readwrite.MyApp
+import com.cerebus.readwrite.student.AndroidStarterDeckInstaller
+import com.cerebus.readwrite.view.StarterDeckInstaller
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -31,6 +33,12 @@ val androidModules = listOf<Module>(
                 cardProgressRepository = get(),
                 reviewLogRepository = get(),
                 studentPrefsRepository = get(),
+            )
+        }
+        single<StarterDeckInstaller> {
+            AndroidStarterDeckInstaller(
+                appContext = androidContext(),
+                deckPackageService = get(),
             )
         }
     }

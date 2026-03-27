@@ -35,6 +35,8 @@ import readwriteapp.composeapp.generated.resources.confirm_import_deck_replaceme
 import readwriteapp.composeapp.generated.resources.confirm_import_deck_replacement_title
 import readwriteapp.composeapp.generated.resources.create
 import readwriteapp.composeapp.generated.resources.create_deck
+import readwriteapp.composeapp.generated.resources.delete_decks_from_device
+import readwriteapp.composeapp.generated.resources.delete_decks_from_device_message
 import readwriteapp.composeapp.generated.resources.deck_created_message
 import readwriteapp.composeapp.generated.resources.deck_name_label
 import readwriteapp.composeapp.generated.resources.delete
@@ -58,6 +60,8 @@ import readwriteapp.composeapp.generated.resources.no_decks_yet
 import readwriteapp.composeapp.generated.resources.add_missing_cards
 import readwriteapp.composeapp.generated.resources.replace_deck
 import readwriteapp.composeapp.generated.resources.selected_count
+import readwriteapp.composeapp.generated.resources.unassign_decks_from_student
+import readwriteapp.composeapp.generated.resources.unassign_decks_from_student_message
 import readwriteapp.composeapp.generated.resources.take_photo
 
 private enum class CreatePickerRequest {
@@ -178,6 +182,10 @@ fun CreateScreenRoute(
         exportLimitHint = stringResource(Res.string.export_decks_limit_hint),
         confirmDeleteDecksTitle = stringResource(Res.string.confirm_delete_decks_title),
         confirmDeleteDecksMessage = stringResource(Res.string.confirm_delete_decks_message),
+        unassignDecksFromStudent = stringResource(Res.string.unassign_decks_from_student),
+        unassignDecksFromStudentMessage = stringResource(Res.string.unassign_decks_from_student_message),
+        deleteDecksFromDevice = stringResource(Res.string.delete_decks_from_device),
+        deleteDecksFromDeviceMessage = stringResource(Res.string.delete_decks_from_device_message),
         confirmImportDeckReplacementTitle = stringResource(Res.string.confirm_import_deck_replacement_title),
         confirmImportDeckReplacementMessage = stringResource(Res.string.confirm_import_deck_replacement_message),
         importDeckReplaceSummary = stringResource(Res.string.import_deck_replace_summary),
