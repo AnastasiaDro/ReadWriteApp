@@ -101,7 +101,12 @@ android {
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
     compileOptions {
@@ -216,4 +221,12 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.con
     dependsOn(":feature:fairy_tales:convertXmlValueResourcesForCommonMain")
     dependsOn(":feature:fairy_tales:copyNonXmlValueResourcesForCommonMain")
     dependsOn(":feature:fairy_tales:prepareComposeResourcesTaskForCommonMain")
+}
+
+tasks.matching { it.name.contains("Lint", ignoreCase = true) }.configureEach {
+    dependsOn(copyFeatureStudentComposeResources)
+    dependsOn(copyFeatureSessionSettingsComposeResources)
+    dependsOn(copyFeatureGameScreenComposeResources)
+    dependsOn(copyFeatureCustomKeyboardComposeResources)
+    dependsOn(copyFeatureFairyTalesComposeResources)
 }
