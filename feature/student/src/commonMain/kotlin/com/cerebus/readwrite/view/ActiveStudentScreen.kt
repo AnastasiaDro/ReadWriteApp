@@ -120,7 +120,6 @@ import readwriteapp.feature.student.generated.resources.active_student_studied_r
 import readwriteapp.feature.student.generated.resources.add_photo
 import readwriteapp.feature.student.generated.resources.cancel
 import readwriteapp.feature.student.generated.resources.create_student_name_subtitle
-import readwriteapp.feature.student.generated.resources.create_student_avatar_placeholder
 import readwriteapp.feature.student.generated.resources.choose_source
 import readwriteapp.feature.student.generated.resources.choose_from_gallery
 import readwriteapp.feature.student.generated.resources.add_missing_cards

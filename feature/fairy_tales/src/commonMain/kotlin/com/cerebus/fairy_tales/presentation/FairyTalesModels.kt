@@ -233,7 +233,7 @@ data class FairyTalesUiState(
     val answerInput: String = "",
     val isStoryPlaybackInProgress: Boolean = false,
     val activeSymbols: Set<String> = emptySet(),
-    val isShiftEnabled: Boolean = false,
+    val isShiftEnabled: Boolean = true,
     val hideDigitsOnTightScreen: Boolean = true,
     val keyboardFeedbackKey: String? = null,
     val keyboardFeedbackType: TrainingKeyboardFeedbackType? = null,

@@ -76,7 +76,7 @@ class DeckGalleryViewModel(
                     isLoading = true,
                     deckId = deckId,
                     studentId = studentId,
-                    isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
+                    isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) ?: true,
                     isInputHintEnabled = preferencesRepository.getGalleryInputHintEnabled(studentId) == true,
                     isSimplifiedKeyboardEnabled = preferencesRepository
                         .getGallerySimplifiedKeyboardEnabled(studentId) ?: true,

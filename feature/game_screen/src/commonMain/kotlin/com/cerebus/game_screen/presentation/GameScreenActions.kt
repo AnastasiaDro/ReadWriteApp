@@ -10,6 +10,7 @@ sealed interface GameScreenAction {
     data class OnSimplifyKeyboardHelpToggled(val isEnabled: Boolean) : GameScreenAction
     data object OnTypoSuggestionDismissed : GameScreenAction
     data object OnCheckClick : GameScreenAction
+    data object OnPlanClick : GameScreenAction
     data object OnRetryClick : GameScreenAction
     data object OnRandomReviewClick : GameScreenAction
     data object OnLearnMoreClick : GameScreenAction

@@ -390,6 +390,7 @@ class DeckScreenViewModel(
                 imageUrl = state.cardImageUrl.orEmpty(),
                 name = normalizedName,
                 deckId = state.deckId,
+                position = (state.flashcards.maxOfOrNull(Flashcard::position) ?: -1) + 1,
             )
             val created = flashcardRepository.addFlashcard(newCard)
             if (created) {
@@ -423,11 +424,13 @@ class DeckScreenViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isCardSaving = true, validationError = null) }
+            val currentCard = state.flashcards.firstOrNull { it.id == cardId }
             val updatedCard = Flashcard(
                 id = cardId,
                 imageUrl = state.cardImageUrl.orEmpty(),
                 name = normalizedName,
                 deckId = state.deckId,
+                position = currentCard?.position ?: 0,
             )
             val updated = flashcardRepository.updateFlashcard(cardId, updatedCard)
             if (updated) {

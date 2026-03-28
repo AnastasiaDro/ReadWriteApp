@@ -70,7 +70,7 @@ class FairyTalesViewModel(
             applyState(
                 state.copy(
                 studentId = studentId,
-                isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) == true,
+                isShiftEnabled = preferencesRepository.getKeyboardShiftEnabled(studentId) ?: true,
                 isInputHintEnabled = preferencesRepository.getGalleryInputHintEnabled(studentId) == true,
                 isSimplifiedKeyboardEnabled = preferencesRepository
                     .getFairyTalesSimplifiedKeyboardEnabled(studentId) ?: true,
@@ -151,25 +151,8 @@ class FairyTalesViewModel(
             return
         }
 
-            transitionAfterCurrentAnimationCycle {
-                applyState(
-                    state.copy(
-                    currentLineIndex = state.storyLines.size,
-                    isStoryCompleted = true,
-                    isStoryPlaybackInProgress = false,
-                    visualState = FairyTaleVisualState.Waiting(state.visualScheme.completed),
-                )
-            )
-
-            showAttemptFeedback(
-                feedback = FairyTalesFeedbackUi(
-                    message = "Ура!",
-                    emoji = "🥳",
-                ),
-                afterDelay = {
-                    applyState(state.copy(feedback = null))
-                },
-            )
+        transitionAfterCurrentAnimationCycle {
+            completeStory()
         }
     }
 

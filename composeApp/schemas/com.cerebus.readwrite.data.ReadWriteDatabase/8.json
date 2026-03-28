@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 3,
-    "identityHash": "f2e51b5f946222263fcd9d13454de21d",
+    "version": 8,
+    "identityHash": "76cb8aa532f1807922de67336f916191",
     "entities": [
       {
         "tableName": "flashcards",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `imageUrl` TEXT NOT NULL, `name` TEXT NOT NULL, `activeLetters` TEXT NOT NULL, `deckId` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `imageUrl` TEXT NOT NULL, `name` TEXT NOT NULL, `activeLetters` TEXT NOT NULL, `deckId` TEXT, `position` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -36,6 +36,12 @@
             "fieldPath": "deckId",
             "columnName": "deckId",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -76,7 +82,7 @@
       },
       {
         "tableName": "students",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `activeLetters` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `avatarUri` TEXT, `activeLetters` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -89,6 +95,11 @@
             "columnName": "name",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "avatarUri",
+            "columnName": "avatarUri",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "activeLetters",
@@ -142,7 +153,7 @@
       },
       {
         "tableName": "study_progress",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`student_id` TEXT NOT NULL, `card_id` TEXT NOT NULL, `state` INTEGER NOT NULL, `due_at_epoch_millis` INTEGER NOT NULL, `interval_days` REAL NOT NULL, `ease` REAL NOT NULL, `learning_step_index` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `last_reviewed_at_epoch_millis` INTEGER, `last_grade` INTEGER, PRIMARY KEY(`student_id`, `card_id`), FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`card_id`) REFERENCES `flashcards`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`student_id` TEXT NOT NULL, `card_id` TEXT NOT NULL, `level` INTEGER NOT NULL, `due_at_epoch_millis` INTEGER NOT NULL, `recall_success_streak` INTEGER NOT NULL, `copy_success_streak` INTEGER NOT NULL, `last_reviewed_at_epoch_millis` INTEGER, `last_hint_level` INTEGER, `last_duration_ms` INTEGER, `last_wrong_press_count` INTEGER NOT NULL, PRIMARY KEY(`student_id`, `card_id`), FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`card_id`) REFERENCES `flashcards`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "studentId",
@@ -157,8 +168,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "state",
-            "columnName": "state",
+            "fieldPath": "level",
+            "columnName": "level",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -169,32 +180,14 @@
             "notNull": true
           },
           {
-            "fieldPath": "intervalDays",
-            "columnName": "interval_days",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ease",
-            "columnName": "ease",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "learningStepIndex",
-            "columnName": "learning_step_index",
+            "fieldPath": "recallSuccessStreak",
+            "columnName": "recall_success_streak",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "reps",
-            "columnName": "reps",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "lapses",
-            "columnName": "lapses",
+            "fieldPath": "copySuccessStreak",
+            "columnName": "copy_success_streak",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -204,9 +197,20 @@
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "lastGrade",
-            "columnName": "last_grade",
+            "fieldPath": "lastHintLevel",
+            "columnName": "last_hint_level",
             "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastDurationMs",
+            "columnName": "last_duration_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastWrongPressCount",
+            "columnName": "last_wrong_press_count",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -264,7 +268,7 @@
       },
       {
         "tableName": "review_log",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `student_id` TEXT NOT NULL, `card_id` TEXT NOT NULL, `shown_at_epoch_millis` INTEGER NOT NULL, `submitted_at_epoch_millis` INTEGER NOT NULL, `user_input_raw` TEXT NOT NULL, `user_input_normalized` TEXT NOT NULL, `best_expected_normalized` TEXT NOT NULL, `similarity` REAL NOT NULL, `is_exact` INTEGER NOT NULL, `match_type` INTEGER NOT NULL, `used_hint` INTEGER NOT NULL, `attempt_index` INTEGER NOT NULL, `state_before` INTEGER NOT NULL, `state_after` INTEGER NOT NULL, `grade` INTEGER NOT NULL, `scheduled_due_at_before_epoch_millis` INTEGER NOT NULL, `due_at_after_epoch_millis` INTEGER NOT NULL, `interval_before_days` REAL NOT NULL, `interval_after_days` REAL NOT NULL, `ease_before` REAL NOT NULL, `ease_after` REAL NOT NULL, FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`card_id`) REFERENCES `flashcards`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `student_id` TEXT NOT NULL, `card_id` TEXT NOT NULL, `shown_at_epoch_millis` INTEGER NOT NULL, `submitted_at_epoch_millis` INTEGER NOT NULL, `user_input_raw` TEXT NOT NULL, `user_input_normalized` TEXT NOT NULL, `expected_answer_normalized` TEXT NOT NULL, `is_correct` INTEGER NOT NULL, `hint_level` INTEGER NOT NULL, `wrong_press_count` INTEGER NOT NULL, `duration_ms` INTEGER NOT NULL, `copy_stage` INTEGER NOT NULL, `level_before` INTEGER NOT NULL, `level_after` INTEGER NOT NULL, `recall_success_streak_before` INTEGER NOT NULL, `recall_success_streak_after` INTEGER NOT NULL, `copy_success_streak_before` INTEGER NOT NULL, `copy_success_streak_after` INTEGER NOT NULL, `due_at_before_epoch_millis` INTEGER NOT NULL, `due_at_after_epoch_millis` INTEGER NOT NULL, FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`card_id`) REFERENCES `flashcards`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -309,62 +313,80 @@
             "notNull": true
           },
           {
-            "fieldPath": "bestExpectedNormalized",
-            "columnName": "best_expected_normalized",
+            "fieldPath": "expectedAnswerNormalized",
+            "columnName": "expected_answer_normalized",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "similarity",
-            "columnName": "similarity",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isExact",
-            "columnName": "is_exact",
+            "fieldPath": "isCorrect",
+            "columnName": "is_correct",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "matchType",
-            "columnName": "match_type",
+            "fieldPath": "hintLevel",
+            "columnName": "hint_level",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "usedHint",
-            "columnName": "used_hint",
+            "fieldPath": "wrongPressCount",
+            "columnName": "wrong_press_count",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "attemptIndex",
-            "columnName": "attempt_index",
+            "fieldPath": "durationMs",
+            "columnName": "duration_ms",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "stateBefore",
-            "columnName": "state_before",
+            "fieldPath": "copyStage",
+            "columnName": "copy_stage",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "stateAfter",
-            "columnName": "state_after",
+            "fieldPath": "levelBefore",
+            "columnName": "level_before",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "grade",
-            "columnName": "grade",
+            "fieldPath": "levelAfter",
+            "columnName": "level_after",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "scheduledDueAtBeforeEpochMillis",
-            "columnName": "scheduled_due_at_before_epoch_millis",
+            "fieldPath": "recallSuccessStreakBefore",
+            "columnName": "recall_success_streak_before",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recallSuccessStreakAfter",
+            "columnName": "recall_success_streak_after",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "copySuccessStreakBefore",
+            "columnName": "copy_success_streak_before",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "copySuccessStreakAfter",
+            "columnName": "copy_success_streak_after",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueAtBeforeEpochMillis",
+            "columnName": "due_at_before_epoch_millis",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -372,30 +394,6 @@
             "fieldPath": "dueAtAfterEpochMillis",
             "columnName": "due_at_after_epoch_millis",
             "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "intervalBeforeDays",
-            "columnName": "interval_before_days",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "intervalAfterDays",
-            "columnName": "interval_after_days",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "easeBefore",
-            "columnName": "ease_before",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "easeAfter",
-            "columnName": "ease_after",
-            "affinity": "REAL",
             "notNull": true
           }
         ],
@@ -454,12 +452,36 @@
       },
       {
         "tableName": "student_srs_prefs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`student_id` TEXT NOT NULL, `allow_near_match` INTEGER NOT NULL, `similarity_threshold` REAL NOT NULL, `easy_streak_required` INTEGER NOT NULL, PRIMARY KEY(`student_id`), FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`student_id` TEXT NOT NULL, `new_cards_per_session` INTEGER NOT NULL, `reviews_per_session` INTEGER NOT NULL, `learn_more_step` INTEGER NOT NULL, `max_new_cards_per_day` INTEGER NOT NULL, `allow_near_match` INTEGER NOT NULL, `similarity_threshold` REAL NOT NULL, `easy_streak_required` INTEGER NOT NULL, `guided_hint_success_threshold` INTEGER NOT NULL, PRIMARY KEY(`student_id`), FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "studentId",
             "columnName": "student_id",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "newCardsPerSession",
+            "columnName": "new_cards_per_session",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewsPerSession",
+            "columnName": "reviews_per_session",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "learnMoreStep",
+            "columnName": "learn_more_step",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxNewCardsPerDay",
+            "columnName": "max_new_cards_per_day",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -477,6 +499,12 @@
           {
             "fieldPath": "easyStreakRequired",
             "columnName": "easy_streak_required",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "guidedHintSuccessThreshold",
+            "columnName": "guided_hint_success_threshold",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -515,7 +543,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f2e51b5f946222263fcd9d13454de21d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '76cb8aa532f1807922de67336f916191')"
     ]
   }
 }

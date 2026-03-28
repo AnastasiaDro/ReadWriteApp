@@ -10,4 +10,5 @@ data class FlashcardEntity(
     val name: String,
     val activeLetters: String,
     val deckId: String? = null,
+    val position: Int = 0,
 )

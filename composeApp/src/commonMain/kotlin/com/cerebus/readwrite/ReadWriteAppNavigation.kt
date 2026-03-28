@@ -84,6 +84,7 @@ fun ReadWriteAppNavigation() = MaterialTheme {
     val scope = rememberCoroutineScope()
     val starterStudentName = "Ученик 1"
     val createStudentFailedText = "Не удалось создать ученика с готовой колодой"
+    val nothingAvailablePlanText = "На сегодня всё уже выучили!"
     val pendingImportDeckArchiveUri = CreateNavigationState.pendingImportDeckArchiveUri.collectAsState().value
     val pendingImportStudentArchiveUri = StudentImportNavigationState.pendingImportStudentArchiveUri.collectAsState().value
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
@@ -337,6 +338,9 @@ fun ReadWriteAppNavigation() = MaterialTheme {
                             listOfNotNull(DeckNavigationState.selectedDeckId.takeIf { it.isNotBlank() })
                         },
                         launchMode = GameSessionNavigationState.launchMode,
+                        onUnavailablePlanClick = {
+                            messenger.showMessage(nothingAvailablePlanText)
+                        },
                         onOpenSessionSettings = { studentId, scrollToTypos ->
                             navController.openSessionSettings(
                                 studentId = studentId,

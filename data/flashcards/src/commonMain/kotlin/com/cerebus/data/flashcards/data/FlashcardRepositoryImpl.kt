@@ -67,6 +67,7 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
         name = name,
         activeLetters = activeLetters,
         deckId = deckId,
+        position = position,
     )
 
     private fun Flashcard.toEntity() = FlashcardEntity(
@@ -75,5 +76,6 @@ class FlashcardRepositoryImpl(private val storage: FlashcardStorage) : Flashcard
         name = name,
         activeLetters = buildActiveLetters(name),
         deckId = deckId,
+        position = position,
     )
 }

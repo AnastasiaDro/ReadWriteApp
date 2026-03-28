@@ -89,6 +89,7 @@ class GameScreenViewModel(
             is GameScreenAction.OnSimplifyKeyboardHelpToggled -> toggleSimplifyKeyboardHelp(action.isEnabled)
             GameScreenAction.OnTypoSuggestionDismissed -> dismissTypoSuggestion()
             GameScreenAction.OnCheckClick -> checkAnswer()
+            GameScreenAction.OnPlanClick -> restartPlanSession()
             GameScreenAction.OnRetryClick -> repeatLastSession()
             GameScreenAction.OnRandomReviewClick -> repeatRandomStudiedCards()
             GameScreenAction.OnLearnMoreClick -> learnMore()
@@ -764,6 +765,43 @@ class GameScreenViewModel(
         }
     }
 
+    private fun restartPlanSession() {
+        feedbackJob?.cancel()
+
+        val current = session ?: return
+        viewModelScope.launch {
+            val planCards = buildSessionCards(
+                deckIds = selectedDeckIds,
+                studentId = current.studentId,
+                flashcardRepository = flashcardRepository,
+                cardProgressRepository = cardProgressRepository,
+                reviewLogRepository = reviewLogRepository,
+                studentPrefsRepository = studentPrefsRepository,
+                dailyLimitIncrease = dailyLimitIncrease,
+            )
+
+            if (planCards.isEmpty()) {
+                _uiState.value = buildFinishedUiState(current)
+                return@launch
+            }
+
+            saveLastSessionCardsSnapshot(
+                studentId = current.studentId,
+                deckIds = selectedDeckIds,
+                sessionCards = planCards,
+                preferencesRepository = preferencesRepository,
+            )
+
+            val restarted = restartSessionWithCards(
+                current = current,
+                cards = planCards,
+                sessionMode = GameSessionMode.Srs,
+            )
+            session = restarted
+            _uiState.value = restarted.toActiveUiState()
+        }
+    }
+
     private suspend fun resolveLearnMoreStep(studentId: String): Int {
         if (studentId.isBlank()) return DEFAULT_LEARN_MORE_STEP
         return runCatching { studentPrefsRepository.getPrefs(studentId).learnMoreStep }
@@ -1043,10 +1081,8 @@ private suspend fun buildSessionCards(
     studentPrefsRepository: StudentPrefsRepository,
     dailyLimitIncrease: Int = 0,
 ): List<GameCardData> {
-    val random = Random(nowMillis())
     val cardsByDeck = deckIds.associateWith { deckId ->
         flashcardRepository.getFlashcardsByDeckId(deckId)
-            .shuffled(random)
             .map { card ->
                 GameCardData(
                     deckId = deckId,
@@ -1504,8 +1540,8 @@ private fun loadKeyboardShiftEnabled(
     studentId: String,
     preferencesRepository: PreferencesRepository,
 ): Boolean {
-    if (studentId.isBlank()) return false
-    return preferencesRepository.getKeyboardShiftEnabled(studentId) == true
+    if (studentId.isBlank()) return true
+    return preferencesRepository.getKeyboardShiftEnabled(studentId) ?: true
 }
 
 private fun loadPreventWrongKeyPressEnabled(

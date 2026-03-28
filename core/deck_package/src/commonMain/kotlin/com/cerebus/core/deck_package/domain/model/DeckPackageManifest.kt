@@ -27,6 +27,7 @@ data class DeckPackageCard(
     val sourceCardId: String? = null,
     val text: String,
     val media: DeckPackageMediaRef? = null,
+    val position: Int? = null,
 )
 
 @Serializable

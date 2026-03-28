@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FlashcardDao {
-    @Query("SELECT * FROM flashcards")
+    @Query("SELECT * FROM flashcards ORDER BY deckId ASC, position ASC, id ASC")
     suspend fun getAll(): List<FlashcardEntity>
 
     @Query("SELECT * FROM flashcards WHERE id = :id LIMIT 1")
@@ -19,10 +19,10 @@ interface FlashcardDao {
     @Query("SELECT * FROM flashcards WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<String>): List<FlashcardEntity>
 
-    @Query("SELECT * FROM flashcards WHERE deckId = :deckId")
+    @Query("SELECT * FROM flashcards WHERE deckId = :deckId ORDER BY position ASC, id ASC")
     suspend fun getByDeckId(deckId: String): List<FlashcardEntity>
 
-    @Query("SELECT * FROM flashcards WHERE deckId = :deckId")
+    @Query("SELECT * FROM flashcards WHERE deckId = :deckId ORDER BY position ASC, id ASC")
     fun observeByDeckId(deckId: String): Flow<List<FlashcardEntity>>
 
     @Query("SELECT * FROM flashcards WHERE name LIKE '%' || :query || '%'")

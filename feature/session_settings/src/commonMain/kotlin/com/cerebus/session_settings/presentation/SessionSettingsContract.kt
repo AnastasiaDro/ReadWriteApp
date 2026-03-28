@@ -5,9 +5,9 @@ import com.cerebus.data.preferences.domain.models.NeighborTypoSensitivity
 
 data class SessionSettingsState(
     val newCardsPerSession: Int = 5,
-    val reviewsPerSession: Int = 15,
+    val reviewsPerSession: Int = 10,
     val learnMoreStep: Int = 5,
-    val guidedHintSuccessThreshold: Int = 2,
+    val guidedHintSuccessThreshold: Int = 1,
     val maxNewCardsPerDay: Int = 5,
     val allowNearMatch: Boolean = true,
     val preventWrongKeyPress: Boolean = true,

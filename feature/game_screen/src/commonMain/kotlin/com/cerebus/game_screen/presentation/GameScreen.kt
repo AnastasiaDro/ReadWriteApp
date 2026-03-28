@@ -54,6 +54,7 @@ fun GameScreenWrapper(
     navController: NavHostController,
     deckIds: List<String>,
     launchMode: GameLaunchMode,
+    onUnavailablePlanClick: () -> Unit,
     onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
@@ -86,6 +87,7 @@ fun GameScreenWrapper(
     GameScreen(
         state = state,
         onAction = viewModel::onAction,
+        onUnavailablePlanClick = onUnavailablePlanClick,
         onOpenSessionSettings = onOpenSessionSettings,
         onOpenKeyboardSettings = onOpenKeyboardSettings,
     )
@@ -95,6 +97,7 @@ fun GameScreenWrapper(
 fun GameScreen(
     state: GameUiState,
     onAction: (GameScreenAction) -> Unit,
+    onUnavailablePlanClick: () -> Unit,
     onOpenSessionSettings: (String, Boolean) -> Unit,
     onOpenKeyboardSettings: (String) -> Unit,
 ) {
@@ -154,6 +157,7 @@ fun GameScreen(
                 FinishedGameContent(
                     state = state,
                     onAction = onAction,
+                    onUnavailablePlanClick = onUnavailablePlanClick,
                 )
             }
         }

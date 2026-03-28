@@ -17,6 +17,7 @@
     <string name="game_srs_status_card_many">cards</string>
     <string name="game_srs_time_minutes_short">min</string>
     <string name="game_srs_time_hours_short">h</string>
+    <string name="game_srs_status_nothing_available_message">Everything for today is already learned!</string>
     <string name="game_back_to_student">Back to student screen</string>
     <string name="game_help_show_word">Show word</string>
     <string name="game_help_simplify_keyboard">Simplify keyboard</string>

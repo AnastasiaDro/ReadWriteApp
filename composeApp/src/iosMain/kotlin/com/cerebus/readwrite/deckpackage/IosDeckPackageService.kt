@@ -103,6 +103,7 @@ class IosDeckPackageService(
                         sourceCardId = card.id,
                         text = card.name,
                         media = media,
+                        position = card.position,
                     )
                 }
 
@@ -270,12 +271,13 @@ class IosDeckPackageService(
                         }
                     }
 
-                    val existingCardsById = flashcardRepository.getFlashcardsByDeckId(targetDeckId)
-                        .associateBy { it.id }
+                    val existingCards = flashcardRepository.getFlashcardsByDeckId(targetDeckId)
+                    val existingCardsById = existingCards.associateBy { it.id }
                     val importedCardIds = mutableSetOf<String>()
+                    var nextAppendPosition = (existingCards.maxOfOrNull(Flashcard::position) ?: -1) + 1
 
                     var importedCardsCount = 0
-                    manifest.cards.forEach { card ->
+                    manifest.cards.forEachIndexed { index, card ->
                         val targetCardId = card.sourceCardId?.takeIf { it.isNotBlank() }
                             ?: UniqueIdGenerator.randomAlphanumeric(prefix = "card")
                         val existingCard = existingCardsById[targetCardId]
@@ -284,7 +286,13 @@ class IosDeckPackageService(
                             importedCardIds += targetCardId
                         }
                         if (existingCard != null && !shouldReplaceExisting) {
-                            return@forEach
+                            return@forEachIndexed
+                        }
+                        val targetPosition = if (shouldReplaceExisting) {
+                            card.position ?: index
+                        } else {
+                            nextAppendPosition++
+                            nextAppendPosition - 1
                         }
 
                         val cardMediaUri = card.media?.let { media ->
@@ -298,6 +306,7 @@ class IosDeckPackageService(
                             imageUrl = cardMediaUri.orEmpty(),
                             name = card.text,
                             deckId = targetDeckId,
+                            position = targetPosition,
                         )
                         val syncedCard = if (existingCard != null) {
                             flashcardRepository.updateFlashcard(

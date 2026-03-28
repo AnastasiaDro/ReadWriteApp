@@ -31,7 +31,7 @@ data class DeckGalleryUiState(
     val cards: List<Flashcard> = emptyList(),
     val currentIndex: Int = 0,
     val activeSymbols: Set<String> = emptySet(),
-    val isShiftEnabled: Boolean = false,
+    val isShiftEnabled: Boolean = true,
     val keyboardFeedbackKey: String? = null,
     val keyboardFeedbackType: TrainingKeyboardFeedbackType? = null,
     val inputFeedbackType: TrainingKeyboardFeedbackType? = null,

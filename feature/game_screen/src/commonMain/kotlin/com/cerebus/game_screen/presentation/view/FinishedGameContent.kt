@@ -1,5 +1,6 @@
 package com.cerebus.game_screen.presentation.view
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import kotlinx.coroutines.delay
 fun FinishedGameContent(
     state: GameUiState.Finished,
     onAction: (GameScreenAction) -> Unit,
+    onUnavailablePlanClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -81,6 +83,11 @@ fun FinishedGameContent(
         state.srsAvailability?.let { availability ->
             FinishedSrsStatus(
                 availability = availability,
+                onPlanClick = if (availability.availableNow > 0) {
+                    { onAction(GameScreenAction.OnPlanClick) }
+                } else {
+                    onUnavailablePlanClick
+                },
                 modifier = Modifier
                     .padding(top = 20.dp)
                     .fillMaxWidth(0.86f),
@@ -155,6 +162,7 @@ fun FinishedGameContent(
 @Composable
 private fun FinishedSrsStatus(
     availability: SrsAvailability,
+    onPlanClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val currentTimeMillis by rememberSrsNowMillis()
@@ -164,7 +172,11 @@ private fun FinishedSrsStatus(
     )
 
     Surface(
-        modifier = modifier,
+        modifier = if (onPlanClick != null) {
+            modifier.clickable(onClick = onPlanClick)
+        } else {
+            modifier
+        },
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.large,
     ) {
