@@ -27,7 +27,7 @@ import com.cerebus.data.studyprogress.data.entity.StudyProgressEntity
         ReviewLogEntity::class,
         StudentSrsPrefsEntity::class,
     ],
-    version = 8,
+    version = 9,
 )
 @ConstructedBy(ReadWriteDatabaseConstructor::class)
 abstract class ReadWriteDatabase : RoomDatabase() {

@@ -42,4 +42,6 @@ data class StudentSrsPrefsEntity(
     val easyStreakRequired: Int,
     @ColumnInfo(name = "guided_hint_success_threshold")
     val guidedHintSuccessThreshold: Int,
+    @ColumnInfo(name = "updated_at_epoch_millis")
+    val updatedAtEpochMillis: Long,
 )

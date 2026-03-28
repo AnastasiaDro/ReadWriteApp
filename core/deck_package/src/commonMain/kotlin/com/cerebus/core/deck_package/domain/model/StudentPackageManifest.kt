@@ -12,12 +12,14 @@ data class StudentPackageManifest(
     val exportedAtEpochMillis: Long,
     val student: StudentPackageStudent,
     val decks: List<StudentPackageDeck> = emptyList(),
+    val media: List<DeckPackageMediaAsset> = emptyList(),
 )
 
 @Serializable
 data class StudentPackageStudent(
     val sourceStudentId: String? = null,
     val name: String,
+    val avatarMedia: DeckPackageMediaRef? = null,
     val activeLetters: String,
     val srsPrefs: StudentPackageSrsPrefs,
 )
@@ -78,4 +80,5 @@ data class StudentPackageSrsPrefs(
     val similarityThreshold: Double = 0.85,
     val easyStreakRequired: Int = 2,
     val guidedHintSuccessThreshold: Int = 1,
+    val updatedAtEpochMillis: Long = 0L,
 )

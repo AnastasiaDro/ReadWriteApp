@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 8,
-    "identityHash": "76cb8aa532f1807922de67336f916191",
+    "version": 9,
+    "identityHash": "4a681efeb287c6ec4c9fa01b8bdfde92",
     "entities": [
       {
         "tableName": "flashcards",
@@ -452,7 +452,7 @@
       },
       {
         "tableName": "student_srs_prefs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`student_id` TEXT NOT NULL, `new_cards_per_session` INTEGER NOT NULL, `reviews_per_session` INTEGER NOT NULL, `learn_more_step` INTEGER NOT NULL, `max_new_cards_per_day` INTEGER NOT NULL, `allow_near_match` INTEGER NOT NULL, `similarity_threshold` REAL NOT NULL, `easy_streak_required` INTEGER NOT NULL, `guided_hint_success_threshold` INTEGER NOT NULL, PRIMARY KEY(`student_id`), FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`student_id` TEXT NOT NULL, `new_cards_per_session` INTEGER NOT NULL, `reviews_per_session` INTEGER NOT NULL, `learn_more_step` INTEGER NOT NULL, `max_new_cards_per_day` INTEGER NOT NULL, `allow_near_match` INTEGER NOT NULL, `similarity_threshold` REAL NOT NULL, `easy_streak_required` INTEGER NOT NULL, `guided_hint_success_threshold` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL, PRIMARY KEY(`student_id`), FOREIGN KEY(`student_id`) REFERENCES `students`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "studentId",
@@ -507,6 +507,12 @@
             "columnName": "guided_hint_success_threshold",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updated_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -543,7 +549,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '76cb8aa532f1807922de67336f916191')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4a681efeb287c6ec4c9fa01b8bdfde92')"
     ]
   }
 }

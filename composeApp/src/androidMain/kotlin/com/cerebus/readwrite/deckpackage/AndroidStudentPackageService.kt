@@ -3,6 +3,10 @@ package com.cerebus.readwrite.deckpackage
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import android.webkit.MimeTypeMap
+import com.cerebus.core.deck_package.domain.model.DeckPackageMediaAsset
+import com.cerebus.core.deck_package.domain.model.DeckPackageMediaKind
+import com.cerebus.core.deck_package.domain.model.DeckPackageMediaRef
 import com.cerebus.core.deck_package.domain.model.RW_STUDENT_FORMAT
 import com.cerebus.core.deck_package.domain.model.RW_STUDENT_SCHEMA_VERSION
 import com.cerebus.core.deck_package.domain.model.StudentPackageCardProgress
@@ -37,6 +41,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.security.DigestInputStream
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -47,6 +53,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 private const val STUDENT_MANIFEST_FILE_NAME = "manifest.json"
+private const val STUDENT_MEDIA_DIR_NAME = "media"
 
 class AndroidStudentPackageService(
     private val appContext: Context,
@@ -71,7 +78,6 @@ class AndroidStudentPackageService(
                 ?: error("Student not found: $studentId")
             val studentWithDecks = studentDeckRepository.getStudentWithDecks(studentId)
             val assignedDecks = studentWithDecks?.decks.orEmpty()
-            val assignedDeckIds = assignedDecks.map { it.id }.toSet()
             val progressList = cardProgressRepository.observeProgress(studentId).first()
             val reviewLogs = reviewLogRepository.getLogs(studentId)
             val prefs = studentPrefsRepository.getPrefs(studentId)
@@ -86,34 +92,47 @@ class AndroidStudentPackageService(
                 cardsById[log.cardId]?.deckId
             }
 
-            val manifest = StudentPackageManifest(
-                exportedAtEpochMillis = nowMillis(),
-                student = StudentPackageStudent(
-                    sourceStudentId = student.id,
-                    name = student.name,
-                    activeLetters = student.activeLetters,
-                    srsPrefs = prefs.toPackageModel(),
-                ),
-                decks = assignedDecks.map { deck ->
-                    StudentPackageDeck(
-                        sourceDeckId = deck.id,
-                        deckName = deck.name,
-                        cards = progressByDeckId[deck.id].orEmpty()
-                            .mapNotNull { progress ->
-                                val card = cardsById[progress.cardId] ?: return@mapNotNull null
-                                progress.toPackageModel(cardName = card.name)
-                            },
-                        reviewLogs = reviewLogsByDeckId[deck.id].orEmpty()
-                            .mapNotNull { reviewLog ->
-                                val card = cardsById[reviewLog.cardId] ?: return@mapNotNull null
-                                reviewLog.toPackageModel(cardName = card.name)
-                            },
-                    )
-                },
-            )
-
             val workDir = createWorkDir(prefix = "rwstudent_export_")
             try {
+                val mediaAssets = mutableListOf<DeckPackageMediaAsset>()
+                val avatarMedia = student.avatarUri
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { sourceUri ->
+                        exportMedia(
+                            sourceUri = sourceUri,
+                            workDir = workDir,
+                            mediaAssets = mediaAssets,
+                            preferredPrefix = "student_avatar",
+                            fallbackKind = DeckPackageMediaKind.IMAGE,
+                        )
+                    }
+
+                val manifest = StudentPackageManifest(
+                    exportedAtEpochMillis = nowMillis(),
+                    student = addManifestStudent(
+                        student = student,
+                        prefs = prefs,
+                        avatarMedia = avatarMedia,
+                    ),
+                    decks = assignedDecks.map { deck ->
+                        StudentPackageDeck(
+                            sourceDeckId = deck.id,
+                            deckName = deck.name,
+                            cards = progressByDeckId[deck.id].orEmpty()
+                                .mapNotNull { progress ->
+                                    val card = cardsById[progress.cardId] ?: return@mapNotNull null
+                                    progress.toPackageModel(cardName = card.name)
+                                },
+                            reviewLogs = reviewLogsByDeckId[deck.id].orEmpty()
+                                .mapNotNull { reviewLog ->
+                                    val card = cardsById[reviewLog.cardId] ?: return@mapNotNull null
+                                    reviewLog.toPackageModel(cardName = card.name)
+                                },
+                        )
+                    },
+                    media = mediaAssets,
+                )
+
                 val manifestFile = File(workDir, STUDENT_MANIFEST_FILE_NAME)
                 manifestFile.writeText(json.encodeToString(StudentPackageManifest.serializer(), manifest))
 
@@ -212,12 +231,19 @@ class AndroidStudentPackageService(
                 val targetStudentId = existingStudent?.id
                     ?: sourceStudentId
                     ?: UniqueIdGenerator.randomAlphanumeric(prefix = "student")
+                val avatarUri = manifest.student.avatarMedia?.let { media ->
+                    importMediaAndGetLocalUri(
+                        unzipDir = unzipDir,
+                        mediaFile = media.file,
+                    )
+                }
 
                 if (existingStudent == null) {
                     val created = studentRepository.createStudent(
                         Student(
                             id = targetStudentId,
                             name = manifest.student.name,
+                            avatarUri = avatarUri,
                             activeLetters = manifest.student.activeLetters,
                         )
                     )
@@ -233,14 +259,20 @@ class AndroidStudentPackageService(
                         id = targetStudentId,
                         activeLetters = manifest.student.activeLetters,
                     )
-                    if (!updatedName || !updatedLetters) {
+                    val updatedAvatar = manifest.student.avatarMedia == null || studentRepository.updateAvatarUri(
+                        id = targetStudentId,
+                        avatarUri = avatarUri,
+                    )
+                    if (!updatedName || !updatedLetters || !updatedAvatar) {
                         error("Failed to update student from archive")
                     }
                 }
 
-                studentPrefsRepository.savePrefs(
-                    manifest.student.srsPrefs.toDomain(studentId = targetStudentId)
+                val mergedPrefs = mergeImportedPrefs(
+                    existing = studentPrefsRepository.getPrefs(targetStudentId),
+                    imported = manifest.student.srsPrefs.toDomain(studentId = targetStudentId),
                 )
+                studentPrefsRepository.savePrefs(mergedPrefs)
 
                 val allDecks = deckRepository.observeAllDecks().first()
                 val allDecksById = allDecks.associateBy { deck -> deck.id }
@@ -460,6 +492,20 @@ class AndroidStudentPackageService(
         }
     }
 
+    private fun addManifestStudent(
+        student: Student,
+        prefs: StudentSrsPrefs,
+        avatarMedia: DeckPackageMediaRef?,
+    ): StudentPackageStudent {
+        return StudentPackageStudent(
+            sourceStudentId = student.id,
+            name = student.name,
+            avatarMedia = avatarMedia,
+            activeLetters = student.activeLetters,
+            srsPrefs = prefs.toPackageModel(),
+        )
+    }
+
     private fun copyArchiveToTemp(archiveUri: String): File {
         val sourceUri = Uri.parse(archiveUri)
         val tempFile = File.createTempFile("rwstudent_", ".zip", appContext.cacheDir)
@@ -472,6 +518,73 @@ class AndroidStudentPackageService(
         }
 
         return tempFile
+    }
+
+    private fun exportMedia(
+        sourceUri: String,
+        workDir: File,
+        mediaAssets: MutableList<DeckPackageMediaAsset>,
+        preferredPrefix: String,
+        fallbackKind: DeckPackageMediaKind,
+    ): DeckPackageMediaRef? {
+        val uri = Uri.parse(sourceUri)
+        val extension = resolveExtension(uri, fallback = if (fallbackKind == DeckPackageMediaKind.VIDEO) "mp4" else "jpg")
+        val relativePath = "$STUDENT_MEDIA_DIR_NAME/${preferredPrefix}_${UniqueIdGenerator.randomAlphanumeric(prefix = "m", size = 10)}.$extension"
+        val outFile = File(workDir, relativePath).apply {
+            parentFile?.mkdirs()
+        }
+
+        val copied = copyUriToFile(uri, outFile)
+        if (!copied) return null
+
+        val kind = detectMediaKind(uri, fallbackKind)
+        mediaAssets += DeckPackageMediaAsset(
+            file = relativePath,
+            sha256 = sha256OfFile(outFile),
+            sizeBytes = outFile.length(),
+        )
+
+        return DeckPackageMediaRef(
+            kind = kind,
+            file = relativePath,
+        )
+    }
+
+    private fun importMediaAndGetLocalUri(
+        unzipDir: File,
+        mediaFile: String,
+    ): String? {
+        val source = safeResolve(unzipDir, mediaFile)
+        if (!source.exists() || !source.isFile) return null
+
+        val extension = source.extension.ifBlank { "bin" }
+        val mediaRoot = File(appContext.filesDir, "student_package_media").apply { mkdirs() }
+        val target = File(
+            mediaRoot,
+            "import_${UniqueIdGenerator.randomAlphanumeric(prefix = "m", size = 12)}.$extension",
+        )
+
+        source.inputStream().use { input ->
+            target.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        return Uri.fromFile(target).toString()
+    }
+
+    private fun copyUriToFile(
+        uri: Uri,
+        destination: File,
+    ): Boolean {
+        return runCatching {
+            openInputStream(uri).use { input ->
+                requireNotNull(input) { "Unable to open media uri: $uri" }
+                destination.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }.isSuccess
     }
 
     private fun openInputStream(uri: Uri): InputStream? {
@@ -491,6 +604,32 @@ class AndroidStudentPackageService(
                 if (maybeFile.exists()) maybeFile.inputStream() else null
             }
         }
+    }
+
+    private fun detectMediaKind(
+        uri: Uri,
+        fallbackKind: DeckPackageMediaKind,
+    ): DeckPackageMediaKind {
+        val mime = appContext.contentResolver.getType(uri).orEmpty()
+        if (mime.startsWith("video/")) return DeckPackageMediaKind.VIDEO
+        if (mime.startsWith("image/")) return DeckPackageMediaKind.IMAGE
+
+        val ext = resolveExtension(uri, fallback = "").lowercase(Locale.US)
+        return if (ext in VIDEO_EXTENSIONS) DeckPackageMediaKind.VIDEO else fallbackKind
+    }
+
+    private fun resolveExtension(
+        uri: Uri,
+        fallback: String,
+    ): String {
+        val mime = appContext.contentResolver.getType(uri)
+        val fromMime = mime?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
+        if (!fromMime.isNullOrBlank()) return fromMime
+
+        val fromPath = uri.lastPathSegment
+            ?.substringAfterLast('.', missingDelimiterValue = "")
+            ?.takeIf { it.isNotBlank() }
+        return fromPath ?: fallback
     }
 
     private fun sanitizeForFileName(raw: String): String {
@@ -553,7 +692,20 @@ class AndroidStudentPackageService(
     private fun normalizeName(it: String): String {
         return it.trim().lowercase(Locale.US)
     }
+
+    private fun sha256OfFile(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        DigestInputStream(file.inputStream(), digest).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (input.read(buffer) != -1) {
+                // Read through the whole stream to update the digest.
+            }
+        }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
 }
+
+private val VIDEO_EXTENSIONS = setOf("mp4", "mov", "m4v", "webm", "mkv")
 
 private data class StudentImportStats(
     val matchedDecksCount: Int,
@@ -572,6 +724,7 @@ private fun StudentSrsPrefs.toPackageModel(): StudentPackageSrsPrefs {
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
         guidedHintSuccessThreshold = guidedHintSuccessThreshold,
+        updatedAtEpochMillis = updatedAtEpochMillis,
     )
 }
 
@@ -586,7 +739,22 @@ private fun StudentPackageSrsPrefs.toDomain(studentId: String): StudentSrsPrefs 
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
         guidedHintSuccessThreshold = guidedHintSuccessThreshold,
+        updatedAtEpochMillis = updatedAtEpochMillis,
     )
+}
+
+private fun mergeImportedPrefs(
+    existing: StudentSrsPrefs,
+    imported: StudentSrsPrefs,
+): StudentSrsPrefs {
+    val existingUpdatedAt = existing.updatedAtEpochMillis
+    val importedUpdatedAt = imported.updatedAtEpochMillis
+
+    return when {
+        importedUpdatedAt > existingUpdatedAt -> imported
+        existingUpdatedAt > importedUpdatedAt -> existing
+        else -> imported
+    }
 }
 
 private fun CardProgress.toPackageModel(cardName: String): StudentPackageCardProgress {

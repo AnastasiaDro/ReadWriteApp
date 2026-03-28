@@ -98,6 +98,7 @@ fun StudentSrsPrefsEntity.toDomain(): StudentSrsPrefs {
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
         guidedHintSuccessThreshold = guidedHintSuccessThreshold,
+        updatedAtEpochMillis = updatedAtEpochMillis,
     )
 }
 
@@ -112,5 +113,6 @@ fun StudentSrsPrefs.toEntity(): StudentSrsPrefsEntity {
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
         guidedHintSuccessThreshold = guidedHintSuccessThreshold,
+        updatedAtEpochMillis = updatedAtEpochMillis,
     )
 }

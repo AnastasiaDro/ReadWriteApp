@@ -2,6 +2,9 @@ package com.cerebus.readwrite.deckpackage
 
 import com.cerebus.core.deck_package.domain.model.RW_STUDENT_FORMAT
 import com.cerebus.core.deck_package.domain.model.RW_STUDENT_SCHEMA_VERSION
+import com.cerebus.core.deck_package.domain.model.DeckPackageMediaAsset
+import com.cerebus.core.deck_package.domain.model.DeckPackageMediaKind
+import com.cerebus.core.deck_package.domain.model.DeckPackageMediaRef
 import com.cerebus.core.deck_package.domain.model.StudentPackageCardProgress
 import com.cerebus.core.deck_package.domain.model.StudentPackageDeck
 import com.cerebus.core.deck_package.domain.model.StudentPackageManifest
@@ -58,6 +61,7 @@ import platform.posix.fwrite
 import platform.posix.rewind
 
 private const val IOS_STUDENT_MANIFEST_FILE_NAME = "manifest.json"
+private const val IOS_STUDENT_MEDIA_DIR_NAME = "media"
 
 @OptIn(ExperimentalForeignApi::class)
 class IosStudentPackageService(
@@ -96,34 +100,49 @@ class IosStudentPackageService(
                 cardsById[log.cardId]?.deckId
             }
 
-            val manifest = StudentPackageManifest(
-                exportedAtEpochMillis = nowMillis(),
-                student = StudentPackageStudent(
-                    sourceStudentId = student.id,
-                    name = student.name,
-                    activeLetters = student.activeLetters,
-                    srsPrefs = prefs.toPackageModel(),
-                ),
-                decks = assignedDecks.map { deck ->
-                    StudentPackageDeck(
-                        sourceDeckId = deck.id,
-                        deckName = deck.name,
-                        cards = progressByDeckId[deck.id].orEmpty()
-                            .mapNotNull { progress ->
-                                val card = cardsById[progress.cardId] ?: return@mapNotNull null
-                                progress.toPackageModel(cardName = card.name)
-                            },
-                        reviewLogs = reviewLogsByDeckId[deck.id].orEmpty()
-                            .mapNotNull { reviewLog ->
-                                val card = cardsById[reviewLog.cardId] ?: return@mapNotNull null
-                                reviewLog.toPackageModel(cardName = card.name)
-                            },
-                    )
-                },
-            )
-
             val workDir = createWorkDir(prefix = "rwstudent_export_")
             try {
+                val mediaAssets = mutableListOf<DeckPackageMediaAsset>()
+                val avatarMedia = student.avatarUri
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { sourceUri ->
+                        exportMedia(
+                            sourceUri = sourceUri,
+                            workDir = workDir,
+                            mediaAssets = mediaAssets,
+                            preferredPrefix = "student_avatar",
+                            fallbackKind = DeckPackageMediaKind.IMAGE,
+                        )
+                    }
+
+                val manifest = StudentPackageManifest(
+                    exportedAtEpochMillis = nowMillis(),
+                    student = StudentPackageStudent(
+                        sourceStudentId = student.id,
+                        name = student.name,
+                        avatarMedia = avatarMedia,
+                        activeLetters = student.activeLetters,
+                        srsPrefs = prefs.toPackageModel(),
+                    ),
+                    decks = assignedDecks.map { deck ->
+                        StudentPackageDeck(
+                            sourceDeckId = deck.id,
+                            deckName = deck.name,
+                            cards = progressByDeckId[deck.id].orEmpty()
+                                .mapNotNull { progress ->
+                                    val card = cardsById[progress.cardId] ?: return@mapNotNull null
+                                    progress.toPackageModel(cardName = card.name)
+                                },
+                            reviewLogs = reviewLogsByDeckId[deck.id].orEmpty()
+                                .mapNotNull { reviewLog ->
+                                    val card = cardsById[reviewLog.cardId] ?: return@mapNotNull null
+                                    reviewLog.toPackageModel(cardName = card.name)
+                                },
+                        )
+                    },
+                    media = mediaAssets,
+                )
+
                 val manifestPath = safeResolve(workDir, IOS_STUDENT_MANIFEST_FILE_NAME)
                 writeFileBytes(
                     path = manifestPath,
@@ -222,12 +241,19 @@ class IosStudentPackageService(
                 val targetStudentId = existingStudent?.id
                     ?: sourceStudentId
                     ?: UniqueIdGenerator.randomAlphanumeric(prefix = "student")
+                val avatarUri = manifest.student.avatarMedia?.let { media ->
+                    importMediaAndGetLocalUri(
+                        unzipDir = unzipDir,
+                        mediaFile = media.file,
+                    )
+                }
 
                 if (existingStudent == null) {
                     val created = studentRepository.createStudent(
                         Student(
                             id = targetStudentId,
                             name = manifest.student.name,
+                            avatarUri = avatarUri,
                             activeLetters = manifest.student.activeLetters,
                         )
                     )
@@ -243,14 +269,20 @@ class IosStudentPackageService(
                         id = targetStudentId,
                         activeLetters = manifest.student.activeLetters,
                     )
-                    if (!updatedName || !updatedLetters) {
+                    val updatedAvatar = manifest.student.avatarMedia == null || studentRepository.updateAvatarUri(
+                        id = targetStudentId,
+                        avatarUri = avatarUri,
+                    )
+                    if (!updatedName || !updatedLetters || !updatedAvatar) {
                         error("Failed to update student from archive")
                     }
                 }
 
-                studentPrefsRepository.savePrefs(
-                    manifest.student.srsPrefs.toDomain(studentId = targetStudentId)
+                val mergedPrefs = mergeImportedPrefs(
+                    existing = studentPrefsRepository.getPrefs(targetStudentId),
+                    imported = manifest.student.srsPrefs.toDomain(studentId = targetStudentId),
                 )
+                studentPrefsRepository.savePrefs(mergedPrefs)
 
                 val allDecks = deckRepository.observeAllDecks().first()
                 val allDecksById = allDecks.associateBy { deck -> deck.id }
@@ -473,6 +505,55 @@ class IosStudentPackageService(
         return path
     }
 
+    private fun exportMedia(
+        sourceUri: String,
+        workDir: String,
+        mediaAssets: MutableList<DeckPackageMediaAsset>,
+        preferredPrefix: String,
+        fallbackKind: DeckPackageMediaKind,
+    ): DeckPackageMediaRef? {
+        val bytes = readUriBytes(sourceUri) ?: return null
+        val extension = resolveExtension(
+            uri = sourceUri,
+            fallback = if (fallbackKind == DeckPackageMediaKind.VIDEO) "mp4" else "jpg",
+        )
+        val relativePath = "$IOS_STUDENT_MEDIA_DIR_NAME/${preferredPrefix}_${UniqueIdGenerator.randomAlphanumeric(prefix = "m", size = 10)}.$extension"
+        val outputPath = safeResolve(workDir, relativePath)
+        writeFileBytes(outputPath, bytes)
+
+        mediaAssets += DeckPackageMediaAsset(
+            file = relativePath,
+            sizeBytes = bytes.size.toLong(),
+        )
+
+        return DeckPackageMediaRef(
+            kind = detectMediaKind(
+                uri = sourceUri,
+                fallbackKind = fallbackKind,
+            ),
+            file = relativePath,
+        )
+    }
+
+    private fun importMediaAndGetLocalUri(
+        unzipDir: String,
+        mediaFile: String,
+    ): String? {
+        val sourcePath = safeResolve(unzipDir, mediaFile)
+        val sourceBytes = readFileBytes(sourcePath) ?: return null
+
+        val extension = sourcePath.substringAfterLast('.', missingDelimiterValue = "bin")
+            .ifBlank { "bin" }
+        val mediaRoot = ensureDirectory("${documentsDirectoryPath()}/student_package_media")
+        val targetPath = safeResolve(
+            mediaRoot,
+            "import_${UniqueIdGenerator.randomAlphanumeric(prefix = "m", size = 12)}.$extension",
+        )
+        writeFileBytes(targetPath, sourceBytes)
+
+        return NSURL.fileURLWithPath(targetPath).absoluteString
+    }
+
     private fun zipDirectory(
         workDir: String,
         outputFilePath: String,
@@ -555,6 +636,25 @@ class IosStudentPackageService(
             .replace(Regex("[^a-zA-Z0-9а-яА-Я_-]+"), "_")
             .trim('_')
         return cleaned.ifBlank { "student" }
+    }
+
+    private fun detectMediaKind(
+        uri: String,
+        fallbackKind: DeckPackageMediaKind,
+    ): DeckPackageMediaKind {
+        val extension = resolveExtension(uri, fallback = "").lowercase()
+        return if (extension in VIDEO_EXTENSIONS) DeckPackageMediaKind.VIDEO else fallbackKind
+    }
+
+    private fun resolveExtension(
+        uri: String,
+        fallback: String,
+    ): String {
+        val path = resolvePathFromUri(uri) ?: uri
+        return path
+            .substringAfterLast('.', missingDelimiterValue = "")
+            .takeIf { it.isNotBlank() }
+            ?: fallback
     }
 
     private fun ensureDirectory(path: String): String {
@@ -690,6 +790,8 @@ class IosStudentPackageService(
     }
 }
 
+private val VIDEO_EXTENSIONS = setOf("mp4", "mov", "m4v", "webm", "mkv")
+
 private data class StudentImportStats(
     val matchedDecksCount: Int,
     val missingDecksCount: Int,
@@ -707,6 +809,7 @@ private fun StudentSrsPrefs.toPackageModel(): StudentPackageSrsPrefs {
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
         guidedHintSuccessThreshold = guidedHintSuccessThreshold,
+        updatedAtEpochMillis = updatedAtEpochMillis,
     )
 }
 
@@ -721,7 +824,22 @@ private fun StudentPackageSrsPrefs.toDomain(studentId: String): StudentSrsPrefs 
         similarityThreshold = similarityThreshold,
         easyStreakRequired = easyStreakRequired,
         guidedHintSuccessThreshold = guidedHintSuccessThreshold,
+        updatedAtEpochMillis = updatedAtEpochMillis,
     )
+}
+
+private fun mergeImportedPrefs(
+    existing: StudentSrsPrefs,
+    imported: StudentSrsPrefs,
+): StudentSrsPrefs {
+    val existingUpdatedAt = existing.updatedAtEpochMillis
+    val importedUpdatedAt = imported.updatedAtEpochMillis
+
+    return when {
+        importedUpdatedAt > existingUpdatedAt -> imported
+        existingUpdatedAt > importedUpdatedAt -> existing
+        else -> imported
+    }
 }
 
 private fun CardProgress.toPackageModel(cardName: String): StudentPackageCardProgress {

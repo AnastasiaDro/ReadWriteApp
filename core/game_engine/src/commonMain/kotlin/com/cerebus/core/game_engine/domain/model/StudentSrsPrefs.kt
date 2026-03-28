@@ -10,4 +10,5 @@ data class StudentSrsPrefs(
     val similarityThreshold: Double = 0.85,
     val easyStreakRequired: Int = 2,
     val guidedHintSuccessThreshold: Int = 1,
+    val updatedAtEpochMillis: Long = 0L,
 )

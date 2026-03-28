@@ -7,6 +7,7 @@ import com.cerebus.core.game_engine.domain.repository.AtomicProgressLogRepositor
 import com.cerebus.core.game_engine.domain.repository.CardProgressRepository
 import com.cerebus.core.game_engine.domain.repository.ReviewLogRepository
 import com.cerebus.core.game_engine.domain.repository.StudentPrefsRepository
+import com.cerebus.core.utils.nowMillis
 import com.cerebus.data.studyprogress.data.dao.StudyProgressDao
 import com.cerebus.data.studyprogress.data.mapper.toDomain
 import com.cerebus.data.studyprogress.data.mapper.toEntity
@@ -71,6 +72,8 @@ class RoomStudentPrefsRepository(
     }
 
     override suspend fun savePrefs(prefs: StudentSrsPrefs) {
-        dao.upsertStudentPrefs(prefs.toEntity())
+        dao.upsertStudentPrefs(
+            prefs.copy(updatedAtEpochMillis = nowMillis()).toEntity()
+        )
     }
 }
