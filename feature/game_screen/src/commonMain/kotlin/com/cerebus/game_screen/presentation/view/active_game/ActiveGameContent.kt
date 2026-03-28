@@ -36,6 +36,7 @@ import coil3.compose.LocalPlatformContext
 import com.cerebus.core.ui.components.AnswerFieldVerticalPadding
 import com.cerebus.core.ui.components.FeedbackOverlay
 import com.cerebus.core.ui.components.GameLikeActiveScreenShell
+import com.cerebus.core.ui.components.HintSize
 import com.cerebus.customkeyboard.TrainingKeyboard
 import com.cerebus.customkeyboard.resolveTrainingKeyboardHeight
 import com.cerebus.customkeyboard.resolveShowDigitsRow
@@ -64,6 +65,11 @@ fun ActiveGameContent(
     val isLandscape = windowWidthDp > windowHeightDp
     val isTablet = minOf(windowWidthDp, windowHeightDp) >= 600.dp
     val isPhoneLandscape = isLandscape && !isTablet
+    val hintSize = when {
+        isPhoneLandscape -> HintSize.SMALL
+        isTablet && !isLandscape -> HintSize.LARGE
+        else -> HintSize.MEDIUM
+    }
     val showDigitsRow = resolveShowDigitsRow(
         isPhoneLandscape = isPhoneLandscape,
         hideDigitsOnTightScreen = state.hideDigitsOnTightScreen,
@@ -185,6 +191,7 @@ fun ActiveGameContent(
                                             imagePath = state.currentCard.imagePath.orEmpty(),
                                             answer = state.currentCard.answer,
                                             isHintVisible = state.isHintVisible,
+                                            hintSize = hintSize,
                                             imageLoader = imageLoader,
                                         )
                                     }
@@ -270,6 +277,7 @@ fun ActiveGameContent(
                                                 imagePath = state.currentCard.imagePath.orEmpty(),
                                                 answer = state.currentCard.answer,
                                                 isHintVisible = state.isHintVisible,
+                                                hintSize = hintSize,
                                                 imageLoader = imageLoader,
                                             )
                                             AnswerInputSection(
@@ -342,6 +350,7 @@ fun ActiveGameContent(
                                     imagePath = state.currentCard.imagePath.orEmpty(),
                                     answer = state.currentCard.answer,
                                     isHintVisible = state.isHintVisible,
+                                    hintSize = hintSize,
                                     imageLoader = imageLoader,
                                 )
 

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import com.cerebus.core.ui.components.HintSize
 
 //TODO раскидать файлы в отдельный пакет
 @Composable
@@ -29,6 +30,7 @@ fun GameCard(
     imagePath: String,
     answer: String,
     isHintVisible: Boolean,
+    hintSize: HintSize,
     imageLoader: ImageLoader,
 ) {
     var imageLoadFailed by remember(imagePath) { mutableStateOf(false) }
@@ -66,6 +68,7 @@ fun GameCard(
         Hint(
             text = answer.uppercase(),
             visible = isHintVisible && !isTextCard,
+            size = hintSize,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 12.dp),

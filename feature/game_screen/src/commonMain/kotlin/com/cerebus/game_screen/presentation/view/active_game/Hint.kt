@@ -12,15 +12,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-
+import com.cerebus.core.ui.components.HintSize
 
 @Composable
 fun Hint(
     text: String,
     visible: Boolean,
+    size: HintSize,
     modifier: Modifier = Modifier,
 ) {
     if (!visible) return
+
+    val baseStyle = MaterialTheme.typography.titleMedium
+    val textScale = when (size) {
+        HintSize.SMALL -> 1.2f
+        HintSize.MEDIUM -> 2f
+        HintSize.LARGE -> 2.5f
+    }
 
     Text(
         text = text,
@@ -33,7 +41,9 @@ fun Hint(
                 shape = RoundedCornerShape(10.dp),
             )
             .padding(horizontal = 16.dp),
-        style = MaterialTheme.typography.titleMedium,
+        style = baseStyle.copy(
+            fontSize = baseStyle.fontSize * textScale,
+        ),
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
     )

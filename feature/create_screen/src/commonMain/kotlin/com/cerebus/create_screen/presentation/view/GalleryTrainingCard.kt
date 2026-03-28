@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
+import com.cerebus.core.ui.components.HintSize
 import com.cerebus.data.flashcards.domain.models.Flashcard
 import kotlin.math.absoluteValue
 
@@ -203,6 +204,7 @@ private fun GalleryMainCard(
         GalleryHint(
             text = card.name.uppercase(),
             visible = isHintVisible && !isTextCard,
+            size = if (isPhoneLandscape) HintSize.SMALL else HintSize.MEDIUM,
             modifier = if (isPhoneLandscape) {
                 Modifier
                     .align(Alignment.TopStart)
@@ -245,9 +247,17 @@ private fun GalleryCardTextFallback(
 private fun GalleryHint(
     text: String,
     visible: Boolean,
+    size: HintSize,
     modifier: Modifier = Modifier,
 ) {
     if (!visible) return
+
+    val baseStyle = MaterialTheme.typography.labelLarge
+    val textScale = when (size) {
+        HintSize.SMALL -> 1f
+        HintSize.MEDIUM -> 2f
+        HintSize.LARGE -> 2f
+    }
 
     Text(
         text = text,
@@ -260,7 +270,10 @@ private fun GalleryHint(
                 shape = RoundedCornerShape(10.dp),
             )
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        style = MaterialTheme.typography.labelLarge,
+        style = baseStyle.copy(
+            fontSize = baseStyle.fontSize * textScale,
+            lineHeight = baseStyle.lineHeight * textScale,
+        ),
         color = MaterialTheme.colorScheme.onSurface,
     )
 }
