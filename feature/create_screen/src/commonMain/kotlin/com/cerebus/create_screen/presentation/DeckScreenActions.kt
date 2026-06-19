@@ -29,9 +29,11 @@ sealed interface DeckScreenAction {
     data object OnDismissCardCoverSourceDialog : DeckScreenAction
     data object OnConfirmAddCard : DeckScreenAction
 
+    data object OnEnterCardSelectionMode : DeckScreenAction
     data class OnCardLongPress(val cardId: String) : DeckScreenAction
     data class OnCardClick(val cardId: String) : DeckScreenAction
     data class OnOpenCardEditor(val cardId: String) : DeckScreenAction
+    data class OnCardsReordered(val orderedCardIds: List<String>) : DeckScreenAction
     data object OnDeleteSelectedCardsClick : DeckScreenAction
     data object OnDismissDeleteSelectedCardsDialog : DeckScreenAction
     data object OnConfirmDeleteSelectedCards : DeckScreenAction

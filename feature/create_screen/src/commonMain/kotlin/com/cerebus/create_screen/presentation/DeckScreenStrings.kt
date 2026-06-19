@@ -32,6 +32,7 @@ data class DeckScreenStrings(
     val addCardTitle: String,
     val editCardTitle: String,
     val cards: String,
+    val select: String,
     val editName: String,
     val editCover: String,
     val addCover: String,

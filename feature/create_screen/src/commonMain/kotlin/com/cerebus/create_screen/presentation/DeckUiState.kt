@@ -47,6 +47,7 @@ data class DeckUiState(
     val cardImageUrl: String? = null,
     val isCardSaving: Boolean = false,
     val isDeleteSelectedDialogVisible: Boolean = false,
+    val isCardSelectionMode: Boolean = false,
     val selectedCardIds: Set<String> = emptySet(),
     val isDeletingSelectedCards: Boolean = false,
     val editingName: String = "",

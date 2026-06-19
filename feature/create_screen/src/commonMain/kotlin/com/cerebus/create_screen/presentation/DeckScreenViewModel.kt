@@ -192,9 +192,18 @@ class DeckScreenViewModel(
             }
 
             DeckScreenAction.OnConfirmAddCard -> saveCard()
-            is DeckScreenAction.OnCardLongPress -> toggleCardSelection(action.cardId)
+            DeckScreenAction.OnEnterCardSelectionMode -> {
+                _uiState.update {
+                    it.copy(
+                        isCardSelectionMode = true,
+                        validationError = null,
+                    )
+                }
+            }
+            is DeckScreenAction.OnCardLongPress -> Unit
             is DeckScreenAction.OnCardClick -> onCardClick(action.cardId)
             is DeckScreenAction.OnOpenCardEditor -> openCardEditor(action.cardId)
+            is DeckScreenAction.OnCardsReordered -> saveCardOrder(action.orderedCardIds)
             DeckScreenAction.OnDeleteSelectedCardsClick -> {
                 _uiState.update { it.copy(isDeleteSelectedDialogVisible = true) }
             }
@@ -205,6 +214,7 @@ class DeckScreenViewModel(
             DeckScreenAction.OnClearCardSelection -> {
                 _uiState.update {
                     it.copy(
+                        isCardSelectionMode = false,
                         selectedCardIds = emptySet(),
                         isDeleteSelectedDialogVisible = false,
                     )
@@ -270,12 +280,17 @@ class DeckScreenViewModel(
                             deckName = "",
                             coverUri = null,
                             flashcards = emptyList(),
+                            isCardSelectionMode = false,
                             selectedCardIds = emptySet(),
                             isLoading = false,
                             validationError = DeckValidationError.DECK_NOT_FOUND,
                             srsAvailability = null,
                         )
                     } else {
+                        val orderedFlashcards = orderFlashcardsForUi(
+                            deckId = deckId,
+                            flashcards = flashcards,
+                        )
                         val existingCardIds = flashcards.asSequence().map { it.id }.toSet()
                         val srsAvailability = buildSrsAvailability(
                             studentId = studentId,
@@ -287,7 +302,7 @@ class DeckScreenViewModel(
                             deckName = deck.name,
                             coverUri = deck.coverUri,
                             editingName = if (state.isEditNameDialogVisible) state.editingName else deck.name,
-                            flashcards = flashcards,
+                            flashcards = orderedFlashcards,
                             selectedCardIds = state.selectedCardIds.filterTo(mutableSetOf()) { it in existingCardIds },
                             isLoading = false,
                             validationError = if (state.validationError == DeckValidationError.DECK_NOT_FOUND) {
@@ -466,7 +481,7 @@ class DeckScreenViewModel(
     }
 
     private fun onCardClick(cardId: String) {
-        val isSelectionMode = _uiState.value.selectedCardIds.isNotEmpty()
+        val isSelectionMode = _uiState.value.isCardSelectionMode
         if (isSelectionMode) {
             toggleCardSelection(cardId)
             return
@@ -503,8 +518,27 @@ class DeckScreenViewModel(
                 selected.remove(cardId)
             }
             state.copy(
+                isCardSelectionMode = state.isCardSelectionMode,
                 selectedCardIds = selected,
                 validationError = null,
+            )
+        }
+    }
+
+    private fun saveCardOrder(orderedCardIds: List<String>) {
+        val deckId = _uiState.value.deckId
+        if (deckId.isBlank()) return
+
+        preferencesRepository.persistDeckCardOrder(
+            deckId = deckId,
+            orderedCardIds = orderedCardIds,
+        )
+        _uiState.update { state ->
+            state.copy(
+                flashcards = preferencesRepository.getOrderedDeckCards(
+                    deckId = deckId,
+                    flashcards = state.flashcards,
+                ),
             )
         }
     }
@@ -533,10 +567,17 @@ class DeckScreenViewModel(
                 val hasFailures = deletedIds.size != selectedIds.size
                 val remainingSelection = state.selectedCardIds - deletedIds
                 state.copy(
+                    isCardSelectionMode = state.isCardSelectionMode,
                     selectedCardIds = remainingSelection,
                     isDeletingSelectedCards = false,
                     isDeleteSelectedDialogVisible = false,
                     validationError = if (hasFailures) DeckValidationError.DELETE_CARDS_FAILED else null,
+                )
+            }
+            if (deletedIds.isNotEmpty()) {
+                preferencesRepository.removeDeletedCardsFromDeckOrder(
+                    deckId = _uiState.value.deckId,
+                    deletedIds = deletedIds,
                 )
             }
         }
@@ -642,6 +683,16 @@ class DeckScreenViewModel(
     override fun onCleared() {
         observeDeckJob?.cancel()
         super.onCleared()
+    }
+
+    private fun orderFlashcardsForUi(
+        deckId: String,
+        flashcards: List<Flashcard>,
+    ): List<Flashcard> {
+        return preferencesRepository.getOrderedDeckCards(
+            deckId = deckId,
+            flashcards = flashcards,
+        )
     }
 }
 

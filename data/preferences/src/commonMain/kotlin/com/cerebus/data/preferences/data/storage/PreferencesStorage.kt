@@ -42,4 +42,10 @@ interface PreferencesStorage {
         studentId: String,
         deckIds: List<String>,
     )
+    fun getDeckCardOrder(deckId: String): List<String>?
+    fun setDeckCardOrder(
+        deckId: String,
+        cardIds: List<String>,
+    )
+    fun clearDeckCardOrder(deckId: String)
 }

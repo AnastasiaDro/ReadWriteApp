@@ -17,6 +17,7 @@ private const val GALLERY_INPUT_HINT_PREFIX = "gallery_input_hint_v1_"
 private const val GALLERY_SIMPLIFIED_KEYBOARD_PREFIX = "gallery_simplified_keyboard_v1_"
 private const val FAIRY_TALES_SIMPLIFIED_KEYBOARD_PREFIX = "fairy_tales_simplified_keyboard_v1_"
 private const val LAST_SESSION_PREFIX = "last_session_v1_"
+private const val DECK_CARD_ORDER_PREFIX = "deck_card_order_v1_"
 private const val SESSION_IDS_SEPARATOR = ","
 private const val ANONYMOUS_STUDENT_ID = "_anonymous_"
 private const val NO_DECKS_MARKER = "_no_decks_"
@@ -244,6 +245,41 @@ class PreferencesStorageImpl(
         )
     }
 
+    override fun getDeckCardOrder(deckId: String): List<String>? {
+        val normalizedDeckId = deckId.takeIf { it.isNotBlank() } ?: return null
+        return settings.getStringOrNull(buildDeckCardOrderKey(normalizedDeckId))
+            ?.split(SESSION_IDS_SEPARATOR)
+            ?.map(String::trim)
+            ?.filter { it.isNotBlank() }
+            ?.distinct()
+            ?.takeIf { it.isNotEmpty() }
+    }
+
+    override fun setDeckCardOrder(
+        deckId: String,
+        cardIds: List<String>,
+    ) {
+        val normalizedDeckId = deckId.takeIf { it.isNotBlank() } ?: return
+        val normalizedCardIds = cardIds
+            .map(String::trim)
+            .filter { it.isNotBlank() }
+            .distinct()
+        val key = buildDeckCardOrderKey(normalizedDeckId)
+        if (normalizedCardIds.isEmpty()) {
+            settings.remove(key)
+            return
+        }
+        settings.putString(
+            key = key,
+            value = normalizedCardIds.joinToString(SESSION_IDS_SEPARATOR),
+        )
+    }
+
+    override fun clearDeckCardOrder(deckId: String) {
+        val normalizedDeckId = deckId.takeIf { it.isNotBlank() } ?: return
+        settings.remove(buildDeckCardOrderKey(normalizedDeckId))
+    }
+
     private fun buildLastSessionKey(
         studentId: String,
         deckIds: List<String>,
@@ -303,5 +339,9 @@ class PreferencesStorageImpl(
 
     private fun buildFairyTalesSimplifiedKeyboardKey(studentId: String): String {
         return "$FAIRY_TALES_SIMPLIFIED_KEYBOARD_PREFIX$studentId"
+    }
+
+    private fun buildDeckCardOrderKey(deckId: String): String {
+        return "$DECK_CARD_ORDER_PREFIX$deckId"
     }
 }

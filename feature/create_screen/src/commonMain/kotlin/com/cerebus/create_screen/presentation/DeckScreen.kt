@@ -3,7 +3,7 @@ package com.cerebus.create_screen.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,8 +26,10 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridItemInfo
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -57,10 +59,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -70,18 +76,22 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.cerebus.core.game_engine.domain.logic.SrsAvailability
 import com.cerebus.core.ui.components.AppAnimatedDialog
 import com.cerebus.core.ui.components.AppEntityEditorDialog
 import com.cerebus.core.ui.components.AppEntityEditorMode
 import com.cerebus.core.ui.components.AppConfirmationDialog
 import com.cerebus.core.utils.nowMillis
+import com.cerebus.data.flashcards.domain.models.Flashcard
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private const val MAX_DECK_NAME_LENGTH = 40
 
@@ -105,7 +115,7 @@ fun DeckScreen(
     val heightDp = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
     val shortestSideDp = minOf(widthDp, heightDp)
     val isTablet = shortestSideDp >= 600.dp
-    val isSelectionMode = state.selectedCardIds.isNotEmpty()
+    val isSelectionMode = state.isCardSelectionMode
     val columns = if (isTablet) 4 else 3
     val gridRows = ((state.flashcards.size + columns - 1) / columns).coerceAtLeast(1)
     val gridSpacing = 16.dp
@@ -267,8 +277,13 @@ fun DeckScreen(
                 title = strings.cards,
                 headerAction = {
                     if (!isSelectionMode) {
-                        OutlinedButton(onClick = { onAction(DeckScreenAction.OnAddCardClick) }) {
-                            Text(strings.addCard)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { onAction(DeckScreenAction.OnEnterCardSelectionMode) }) {
+                                Text(strings.select)
+                            }
+                            OutlinedButton(onClick = { onAction(DeckScreenAction.OnAddCardClick) }) {
+                                Text(strings.addCard)
+                            }
                         }
                     }
                 },
@@ -281,28 +296,17 @@ fun DeckScreen(
                     )
                 }
 
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(columns),
-                    userScrollEnabled = false,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(gridHeight),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = gridBottomPadding),
-                ) {
-                    items(state.flashcards, key = { it.id }) { card ->
-                        FlashcardGridItem(
-                            name = card.name,
-                            imageUrl = card.imageUrl,
-                            isSelectionMode = isSelectionMode,
-                            isSelected = card.id in state.selectedCardIds,
-                            onClick = { onAction(DeckScreenAction.OnCardClick(card.id)) },
-                            onEditClick = { onAction(DeckScreenAction.OnOpenCardEditor(card.id)) },
-                            onLongPress = { onAction(DeckScreenAction.OnCardLongPress(card.id)) },
-                        )
-                    }
-                }
+                ReorderableFlashcardGrid(
+                    cards = state.flashcards,
+                    columns = columns,
+                    gridHeight = gridHeight,
+                    gridBottomPadding = gridBottomPadding,
+                    isSelectionMode = isSelectionMode,
+                    selectedCardIds = state.selectedCardIds,
+                    onCardClick = { onAction(DeckScreenAction.OnCardClick(it)) },
+                    onEditClick = { onAction(DeckScreenAction.OnOpenCardEditor(it)) },
+                    onCardsReordered = { onAction(DeckScreenAction.OnCardsReordered(it)) },
+                )
             }
         }
     }
@@ -1091,6 +1095,142 @@ private fun TrainingModeHelpItem(
 }
 
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun ReorderableFlashcardGrid(
+    cards: List<Flashcard>,
+    columns: Int,
+    gridHeight: Dp,
+    gridBottomPadding: Dp,
+    isSelectionMode: Boolean,
+    selectedCardIds: Set<String>,
+    onCardClick: (String) -> Unit,
+    onEditClick: (String) -> Unit,
+    onCardsReordered: (List<String>) -> Unit,
+) {
+    val gridState = rememberLazyGridState()
+    var previewOrderIds by remember { mutableStateOf<List<String>?>(null) }
+    var draggedCardId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var hasDragged by remember { mutableStateOf(false) }
+    val displayedCards = remember(cards, previewOrderIds) {
+        previewOrderIds?.let(cards::sortedBySavedOrder) ?: cards
+    }
+    LaunchedEffect(cards, previewOrderIds, draggedCardId) {
+        val currentPreviewOrderIds = previewOrderIds ?: return@LaunchedEffect
+        if (draggedCardId == null && cards.map(Flashcard::id) == currentPreviewOrderIds) {
+            previewOrderIds = null
+        }
+    }
+    val latestDisplayedCards by rememberUpdatedState(displayedCards)
+    val latestCards by rememberUpdatedState(cards)
+    val latestPreviewOrderIds by rememberUpdatedState(previewOrderIds)
+
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Fixed(columns),
+        userScrollEnabled = false,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(gridHeight),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = gridBottomPadding),
+    ) {
+        items(displayedCards, key = { it.id }) { card ->
+            val isDragged = draggedCardId == card.id
+            FlashcardGridItem(
+                name = card.name,
+                imageUrl = card.imageUrl,
+                isSelectionMode = isSelectionMode,
+                isSelected = card.id in selectedCardIds,
+                onClick = { onCardClick(card.id) },
+                onEditClick = { onEditClick(card.id) },
+                modifier = Modifier
+                    .then(if (isDragged) Modifier else Modifier.animateItem())
+                    .zIndex(if (isDragged) 1f else 0f)
+                    .offset {
+                        val itemOffset = if (isDragged) dragOffset else Offset.Zero
+                        IntOffset(
+                            x = itemOffset.x.roundToInt(),
+                            y = itemOffset.y.roundToInt(),
+                        )
+                    }
+                    .graphicsLayer {
+                        if (isDragged) {
+                            scaleX = 1.03f
+                            scaleY = 1.03f
+                            shadowElevation = 10.dp.toPx()
+                        }
+                    }
+                    .let { baseModifier ->
+                        if (isSelectionMode) {
+                            baseModifier
+                        } else {
+                            baseModifier.pointerInput(card.id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        draggedCardId = card.id
+                                        dragOffset = Offset.Zero
+                                        hasDragged = false
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        val currentDraggedCardId = draggedCardId ?: return@detectDragGesturesAfterLongPress
+                                        val draggedItem = gridState.layoutInfo.visibleItemsInfo
+                                            .firstOrNull { it.key == currentDraggedCardId }
+                                            ?: return@detectDragGesturesAfterLongPress
+                                        val updatedDragOffset = dragOffset + dragAmount
+                                        dragOffset = updatedDragOffset
+                                        if (!hasDragged && dragAmount != Offset.Zero) {
+                                            hasDragged = true
+                                        }
+                                        val draggedCenter = draggedItem.draggedCenter(updatedDragOffset)
+                                        val targetItem = findDragTargetItem(
+                                            draggedCardId = currentDraggedCardId,
+                                            draggedCenter = draggedCenter,
+                                            visibleItems = gridState.layoutInfo.visibleItemsInfo,
+                                        ) ?: return@detectDragGesturesAfterLongPress
+                                        val currentCards = latestDisplayedCards
+                                        val fromIndex = currentCards.indexOfFirst { it.id == currentDraggedCardId }
+                                        val toIndex = targetItem.index.coerceIn(0, currentCards.lastIndex)
+                                        if (fromIndex == -1 || fromIndex == toIndex) {
+                                            return@detectDragGesturesAfterLongPress
+                                        }
+                                        previewOrderIds = currentCards
+                                            .moveCardBetweenIndices(fromIndex, toIndex)
+                                            .map(Flashcard::id)
+                                        dragOffset = updatedDragOffset + Offset(
+                                            x = draggedItem.offset.x - targetItem.offset.x.toFloat(),
+                                            y = draggedItem.offset.y - targetItem.offset.y.toFloat(),
+                                        )
+                                    },
+                                    onDragEnd = {
+                                        val reorderedIds = latestPreviewOrderIds ?: latestCards.map(Flashcard::id)
+                                        val originalIds = latestCards.map(Flashcard::id)
+                                        val moved = hasDragged && reorderedIds != originalIds
+                                        draggedCardId = null
+                                        dragOffset = Offset.Zero
+                                        hasDragged = false
+                                        if (moved) {
+                                            onCardsReordered(reorderedIds)
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        draggedCardId = null
+                                        dragOffset = Offset.Zero
+                                        previewOrderIds = null
+                                        hasDragged = false
+                                    },
+                                )
+                            }
+                        }
+                    },
+            )
+        }
+    }
+}
+
+@Composable
 private fun FlashcardGridItem(
     name: String,
     imageUrl: String,
@@ -1098,15 +1238,12 @@ private fun FlashcardGridItem(
     isSelected: Boolean,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
-    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongPress,
-            ),
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -1143,6 +1280,70 @@ private fun FlashcardGridItem(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+private fun List<Flashcard>.moveCardBetweenIndices(
+    fromIndex: Int,
+    toIndex: Int,
+): List<Flashcard> {
+    if (fromIndex == toIndex) return this
+    if (fromIndex !in indices || toIndex !in indices) return this
+
+    val mutableCards = toMutableList()
+    val movedCard = mutableCards.removeAt(fromIndex)
+    mutableCards.add(toIndex, movedCard)
+    return mutableCards
+}
+
+private fun findDragTargetItem(
+    draggedCardId: String,
+    draggedCenter: Offset,
+    visibleItems: List<LazyGridItemInfo>,
+): LazyGridItemInfo? {
+    val sortedItems = visibleItems.sortedBy { it.index }
+    val directTarget = sortedItems.firstOrNull { item ->
+        item.key != draggedCardId && item.containsPoint(draggedCenter)
+    }
+    if (directTarget != null) return directTarget
+
+    val nonDraggedItems = sortedItems.filter { it.key != draggedCardId }
+    val firstItem = nonDraggedItems.firstOrNull() ?: return null
+    val lastItem = nonDraggedItems.lastOrNull() ?: return null
+
+    return when {
+        draggedCenter.shouldMoveBefore(firstItem) -> firstItem
+        draggedCenter.shouldMoveAfter(lastItem) -> lastItem
+        else -> null
+    }
+}
+
+private fun LazyGridItemInfo.draggedCenter(offset: Offset): Offset {
+    return Offset(
+        x = offset.x + this.offset.x + (size.width / 2f),
+        y = offset.y + this.offset.y + (size.height / 2f),
+    )
+}
+
+private fun LazyGridItemInfo.containsPoint(point: Offset): Boolean {
+    val left = offset.x.toFloat()
+    val right = left + size.width
+    val top = offset.y.toFloat()
+    val bottom = top + size.height
+    return point.x in left..right && point.y in top..bottom
+}
+
+private fun Offset.shouldMoveBefore(item: LazyGridItemInfo): Boolean {
+    if (y < item.offset.y) return true
+    val top = item.offset.y.toFloat()
+    val bottom = top + item.size.height
+    return y in top..bottom && x < item.offset.x + (item.size.width / 2f)
+}
+
+private fun Offset.shouldMoveAfter(item: LazyGridItemInfo): Boolean {
+    val top = item.offset.y.toFloat()
+    val bottom = top + item.size.height
+    if (y > bottom) return true
+    return y in top..bottom && x > item.offset.x + (item.size.width / 2f)
 }
 
 @Composable

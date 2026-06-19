@@ -91,28 +91,32 @@ class DeckGalleryViewModel(
             ) { deck, cards ->
                 deck to cards
             }.collect { (deck, cards) ->
+                val orderedCards = preferencesRepository.getOrderedDeckCards(
+                    deckId = deckId,
+                    flashcards = cards,
+                )
                 val currentState = _uiState.value
                 val previousCardId = currentState.currentCard?.id
                 val preferredIndex = pendingInitialCardId?.let { cardId ->
-                    cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }
+                    orderedCards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }
                 }
                 if (preferredIndex != null) {
                     pendingInitialCardId = null
                 }
                 val persistedIndex = previousCardId?.let { cardId ->
-                    cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }
+                    orderedCards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }
                 }
                 val nextIndex = (preferredIndex ?: persistedIndex ?: currentState.currentIndex)
-                    .coerceIn(0, cards.lastIndex.coerceAtLeast(0))
-                val nextCardId = cards.getOrNull(nextIndex)?.id
+                    .coerceIn(0, orderedCards.lastIndex.coerceAtLeast(0))
+                val nextCardId = orderedCards.getOrNull(nextIndex)?.id
                 val cardChanged = currentState.isLoading || nextCardId != previousCardId
 
                 _uiState.update { state ->
                     state.copy(
                         isLoading = false,
                         deckId = deckId,
-                        cards = cards,
-                        currentIndex = if (cards.isEmpty()) 0 else nextIndex,
+                        cards = orderedCards,
+                        currentIndex = if (orderedCards.isEmpty()) 0 else nextIndex,
                     )
                 }
 

@@ -163,4 +163,22 @@ class PreferencesRepositoryImpl(
             deckIds = deckIds,
         )
     }
+
+    override fun getDeckCardOrder(deckId: String): List<String>? {
+        return storage.getDeckCardOrder(deckId)
+    }
+
+    override fun setDeckCardOrder(
+        deckId: String,
+        cardIds: List<String>,
+    ) {
+        storage.setDeckCardOrder(
+            deckId = deckId,
+            cardIds = cardIds,
+        )
+    }
+
+    override fun clearDeckCardOrder(deckId: String) {
+        storage.clearDeckCardOrder(deckId)
+    }
 }

@@ -80,6 +80,7 @@
     <string name="add_card_title">Create card</string>
     <string name="edit_card_title">Edit card</string>
     <string name="card_name_label">Card name</string>
+    <string name="select">Select</string>
     <string name="selected_count">selected</string>
     <string name="confirm_delete_cards_title">Delete selected cards?</string>
     <string name="confirm_delete_cards_message">Selected cards will be permanently deleted.</string>

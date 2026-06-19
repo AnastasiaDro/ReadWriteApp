@@ -80,6 +80,7 @@
     <string name="add_card_title">Создать карточку</string>
     <string name="edit_card_title">Изменить карточку</string>
     <string name="card_name_label">Название карточки</string>
+    <string name="select">Выбрать</string>
     <string name="selected_count">выбрано</string>
     <string name="confirm_delete_cards_title">Удалить выбранные карточки?</string>
     <string name="confirm_delete_cards_message">Выбранные карточки будут удалены без возможности восстановления.</string>
